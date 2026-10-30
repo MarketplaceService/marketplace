@@ -19,9 +19,7 @@ export class SessionAuthService {
     const row = await this.sessionRepository.findOne({
       where: { token },
       relations: {
-        user: {
-          roles: true,
-        },
+        user: true,
       },
     });
     if (row && row.expiresAt > new Date() && row.user) {

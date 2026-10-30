@@ -1,6 +1,6 @@
 import { BaseUuidEntity } from 'src/config/database/base-uuid.entity';
-import { Column, DeleteDateColumn, Entity, OneToMany } from 'typeorm';
-import { UserRole } from './user-role.entity';
+import { UserRole } from 'src/shared/types/user-role.enum';
+import { Column, DeleteDateColumn, Entity } from 'typeorm';
 
 @Entity()
 export class User extends BaseUuidEntity {
@@ -16,6 +16,9 @@ export class User extends BaseUuidEntity {
   @Column({ type: 'text', nullable: true })
   image: string | null;
 
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.CUSTOMER })
+  role: UserRole;
+
   @Column({ type: 'text', nullable: true })
   phone: string | null;
 
@@ -27,7 +30,4 @@ export class User extends BaseUuidEntity {
 
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
-
-  @OneToMany(() => UserRole, (userRole) => userRole.user)
-  roles: UserRole[];
 }

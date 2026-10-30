@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Transform } from 'class-transformer';
-import { UserRole } from '../entities/user-role.entity';
 
 export class UserResponseDto {
   @ApiProperty()
@@ -30,21 +29,9 @@ export class UserResponseDto {
   @Expose()
   image?: string | null;
 
-  @ApiProperty({
-    type: [String],
-    example: ['customer'],
-    description: 'Danh sách quyền của người dùng',
-  })
+  @ApiProperty()
   @Expose()
-  @Transform(
-    ({ value }: { value?: Array<UserRole | string> | null }): string[] => {
-      if (!Array.isArray(value)) {
-        return [];
-      }
-      return value.map((r) => (typeof r === 'string' ? r : r.role));
-    },
-  )
-  roles: string[];
+  role: string;
 
   @ApiProperty({ required: false, nullable: true })
   @Expose()

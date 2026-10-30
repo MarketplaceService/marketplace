@@ -20,11 +20,6 @@ export class UserService {
   }
 
   async getUser(id: string) {
-    return this.userRepository.findOne({
-      where: { id },
-      relations: {
-        roles: true,
-      },
-    });
+    return this.userRepository.findOne({ where: { id } });
   }
 }
