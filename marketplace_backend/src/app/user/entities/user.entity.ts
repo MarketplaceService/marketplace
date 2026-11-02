@@ -30,4 +30,7 @@ export class User extends BaseUuidEntity {
 
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
+
+  @Column({ default: false })
+  isAnonymous: boolean;
 }

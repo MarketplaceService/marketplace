@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/client";
+import { anonymousClient } from "better-auth/client/plugins";
 
 function serverBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(
@@ -11,6 +12,7 @@ function createConfiguredClient(baseURL: string) {
   return createAuthClient({
     baseURL,
     basePath: "/api/auth",
+    plugins: [anonymousClient()],
   });
 }
 

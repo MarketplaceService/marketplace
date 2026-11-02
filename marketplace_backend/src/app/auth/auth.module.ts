@@ -6,6 +6,8 @@ import { Verification } from './entities/verification.entity';
 import { SessionAuthService } from './session-auth/session-auth.service';
 import { AuthController } from './auth.controller';
 import { UserModule } from '../user/user.module';
+import { AuthGuard } from 'src/core/guards/auth.guard';
+import { RolesGuard } from 'src/core/guards/role.guard';
 
 @Global()
 @Module({
@@ -13,8 +15,8 @@ import { UserModule } from '../user/user.module';
     TypeOrmModule.forFeature([Account, Session, Verification]),
     UserModule,
   ],
-  providers: [SessionAuthService],
-  exports: [SessionAuthService],
+  providers: [SessionAuthService, AuthGuard, RolesGuard],
+  exports: [SessionAuthService, AuthGuard, RolesGuard],
   controllers: [AuthController],
 })
 export class AuthModule {}
