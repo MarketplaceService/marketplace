@@ -13,6 +13,7 @@ import { AllExceptionFilter } from './core/filters/all-exceptions.filter';
 import { UserModule } from './app/user/user.module';
 import { AuthModule } from './app/auth/auth.module';
 import { EmailModule } from './app/email/email.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 const envFile =
   process.env.NODE_ENV === 'production'
@@ -34,6 +35,7 @@ const envFile =
     UserModule,
     AuthModule,
     EmailModule,
+    ScheduleModule.forRoot(),
   ],
   providers: [
     {

@@ -34,6 +34,13 @@ export const auth = betterAuth({
     anonymous({
       emailDomainName: "temp.local",
       generateName: () => "Guest User",
+      schema: {
+        user: {
+          fields: {
+            isAnonymous: "is_anonymous",
+          },
+        },
+      },
     }),
     nextCookies(),
   ],

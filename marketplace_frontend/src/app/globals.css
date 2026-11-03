@@ -19,6 +19,10 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-foreground: var(--tertiary-foreground);
+  --color-neutral: var(--neutral);
+  --color-neutral-foreground: var(--neutral-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
@@ -66,104 +70,132 @@
 }
 
 :root {
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(54.6% 0.245 262.881);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.96 0.01 260);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.55 0.18 260);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.01 260);
-  --input: oklch(0.92 0.01 260);
-  --ring: oklch(0.55 0.15 260);
+  /* ── Bảng màu chính (Brand Palette) ────────────────────────── */
+  --primary: #059669; /* Xanh ngọc - Nút chính, xác thực */
+  --primary-foreground: #ffffff;
+
+  --secondary: #0D9488; /* Xanh cổ vịt - Biểu đồ Radar, điểm nhấn phụ */
+  --secondary-foreground: #ffffff;
+
+  --tertiary: #CD645F; /* Đỏ đất - Tag nổi bật, cảnh báo, nút phụ đặc biệt */
+  --tertiary-foreground: #ffffff;
+
+  --neutral: #727974; /* Xám ánh xanh - Hệ nền, viền, chữ phụ */
+  --neutral-foreground: #ffffff;
+
+  /* ── Hệ nền & chữ (Surfaces & Typography) ──────────────────── */
+  --background: #fbfcfb;
+  --foreground: #1c201d;
+  --card: #ffffff;
+  --card-foreground: #1c201d;
+  --popover: #ffffff;
+  --popover-foreground: #1c201d;
+
+  /* ── Viền & input & muted (dựa trên Neutral #727974) ──────── */
+  --muted: #f1f3f2;
+  --muted-foreground: #727974; /* chữ phụ */
+  --accent: #0D9488;
+  --accent-foreground: #ffffff;
+  --destructive: #CD645F; /* cảnh báo / đỏ đất */
+  --destructive-foreground: #ffffff;
+  --border: #e2e5e3; /* viền */
+  --input: #e2e5e3;
+  --ring: #059669;
   --radius: 0.75rem;
 
   /* ── Semantic status colors ────────────────────────────────── */
-  --success: oklch(0.52 0.17 145);
-  --success-foreground: oklch(0.985 0 0);
-  --success-subtle: oklch(0.93 0.05 145);
+  --success: #059669;
+  --success-foreground: #ffffff;
+  --success-subtle: #ecfdf5;
 
-  --warning: oklch(0.72 0.15 75);
-  --warning-foreground: oklch(0.145 0 0);
+  --warning: #f59e0b;
+  --warning-foreground: #1c201d;
 
   /* Order status badges */
-  --status-pending: oklch(0.72 0.15 75); /* yellow */
-  --status-confirmed: oklch(0.52 0.18 220); /* blue */
-  --status-processing: oklch(0.52 0.17 290); /* purple */
-  --status-shipping: var(--primary);
+  --status-pending: #f59e0b;
+  --status-confirmed: #0D9488; /* Xanh cổ vịt */
+  --status-processing: #0284c7;
+  --status-shipping: var(--primary); /* Xanh ngọc */
   --status-delivered: var(--success);
-  --status-cancelled: var(--destructive);
+  --status-cancelled: var(--tertiary); /* Đỏ đất */
 
-  /* Chart & sidebar */
-  --chart-1: oklch(0.55 0.18 260);
-  --chart-2: oklch(0.65 0.15 220);
-  --chart-3: oklch(0.5 0.12 280);
-  --chart-4: oklch(0.7 0.1 200);
-  --chart-5: oklch(0.45 0.2 260);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.35 0.14 260);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.96 0.01 260);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.92 0.01 260);
-  --sidebar-ring: oklch(0.55 0.15 260);
+  /* Chart & Radar & Sidebar */
+  --chart-1: #059669; /* Primary */
+  --chart-2: #0D9488; /* Secondary - Radar chart */
+  --chart-3: #CD645F; /* Tertiary */
+  --chart-4: #34d399;
+  --chart-5: #14b8a6;
+  --sidebar: #fbfcfb;
+  --sidebar-foreground: #1c201d;
+  --sidebar-primary: #059669;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0fdfa;
+  --sidebar-accent-foreground: #042f2e;
+  --sidebar-border: #e2e5e3;
+  --sidebar-ring: #059669;
 }
 
 .dark {
-  --background: oklch(0.13 0.02 260);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.17 0.02 260);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.17 0.02 260);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(64.6% 0.245 262.881);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.25 0.03 260);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.25 0.03 260);
-  --muted-foreground: oklch(0.65 0.05 260);
-  --accent: oklch(0.55 0.18 260);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.28 0.03 260);
-  --input: oklch(0.28 0.03 260);
-  --ring: oklch(0.55 0.15 260);
+  /* ── Bảng màu chính (Brand Palette - Dark Mode) ────────────── */
+  --primary: #10b981;
+  --primary-foreground: #022c22;
 
-  --success: oklch(0.62 0.17 145);
-  --success-foreground: oklch(0.985 0 0);
-  --success-subtle: oklch(0.22 0.06 145);
+  --secondary: #14b8a6;
+  --secondary-foreground: #022c22;
 
-  --warning: oklch(0.78 0.14 75);
-  --warning-foreground: oklch(0.145 0 0);
+  --tertiary: #CD645F;
+  --tertiary-foreground: #ffffff;
 
-  --status-pending: oklch(0.78 0.14 75);
-  --status-confirmed: oklch(0.62 0.18 220);
-  --status-processing: oklch(0.62 0.17 290);
+  --neutral: #868e88;
+  --neutral-foreground: #ffffff;
 
-  --chart-1: oklch(0.65 0.18 260);
-  --chart-2: oklch(0.7 0.15 220);
-  --chart-3: oklch(0.6 0.12 280);
-  --chart-4: oklch(0.75 0.1 200);
-  --chart-5: oklch(0.55 0.2 260);
-  --sidebar: oklch(0.17 0.02 260);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.65 0.18 260);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.25 0.03 260);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.28 0.03 260);
-  --sidebar-ring: oklch(0.55 0.15 260);
+  /* ── Hệ nền & chữ (Surfaces & Typography - Dark Mode) ──────── */
+  --background: #111413;
+  --foreground: #f2f4f3;
+  --card: #181c1a;
+  --card-foreground: #f2f4f3;
+  --popover: #181c1a;
+  --popover-foreground: #f2f4f3;
+
+  /* ── Viền & input & muted (dựa trên Neutral xám ánh xanh) ──── */
+  --muted: #222724;
+  --muted-foreground: #939c96;
+  --accent: #14b8a6;
+  --accent-foreground: #022c22;
+  --destructive: #CD645F;
+  --destructive-foreground: #ffffff;
+  --border: #28302c;
+  --input: #28302c;
+  --ring: #10b981;
+
+  --success: #10b981;
+  --success-foreground: #022c22;
+  --success-subtle: #064e3b;
+
+  --warning: #fbbf24;
+  --warning-foreground: #111413;
+
+  --status-pending: #fbbf24;
+  --status-confirmed: #14b8a6;
+  --status-processing: #38bdf8;
+  --status-shipping: var(--primary);
+  --status-delivered: var(--success);
+  --status-cancelled: var(--tertiary);
+
+  --chart-1: #10b981;
+  --chart-2: #14b8a6;
+  --chart-3: #CD645F;
+  --chart-4: #6ee7b7;
+  --chart-5: #2dd4bf;
+
+  --sidebar: #141816;
+  --sidebar-foreground: #f2f4f3;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #022c22;
+  --sidebar-accent: #1c2320;
+  --sidebar-accent-foreground: #f2f4f3;
+  --sidebar-border: #28302c;
+  --sidebar-ring: #10b981;
 }
 
 @layer base {
