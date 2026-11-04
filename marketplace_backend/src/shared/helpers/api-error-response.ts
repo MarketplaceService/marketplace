@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 
 export type ApiErrorPayload = {
-  succes: false;
+  success: false;
   statusCode: number;
   message: string;
   error?: string;
@@ -23,7 +23,7 @@ export function buildApiErrorPayload(
   ctx: ApiErrorCtx,
 ): ApiErrorPayload {
   return {
-    succes: false,
+    success: false,
     statusCode: statusCode,
     message: formatClientErrorMessage(message),
     requestId: ctx.requestId,
@@ -61,7 +61,7 @@ export function payloadFromUnknownException(
   exception: unknown,
   ctx: ApiErrorCtx,
 ): ApiErrorPayload {
-  const prod = (process.env.NODE_ENV = 'production');
+  const prod = process.env.NODE_ENV === 'production';
   if (exception instanceof Error) {
     return buildApiErrorPayload(
       HttpStatus.INTERNAL_SERVER_ERROR,
