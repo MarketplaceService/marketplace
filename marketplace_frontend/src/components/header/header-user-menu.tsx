@@ -1,5 +1,10 @@
+import { roleLabel } from "@/lib/user-role";
+import { cn } from "@/lib/utils";
 import { User } from "@/types/api.types";
-import { Button, buttonVariants } from "../ui/button";
+import { Loader2, LogOut, UserRound } from "lucide-react";
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { buttonVariants } from "../ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,42 +12,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import Link from "next/link";
-import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface UserMenuProps {
   user: User | null;
   loading: boolean;
-  isSigningOut?: boolean;
+  isSigningOut: boolean;
   onSignOut: () => void;
   signInHref: string;
-  shopCatalogHref: string;
+  accountHref: string;
 }
 
 export function UserMenu({
   user,
   loading,
-  isSigningOut = false,
+  isSigningOut,
   onSignOut,
   signInHref,
-  shopCatalogHref,
+  accountHref,
 }: UserMenuProps) {
   if (loading) {
-    return (
-      <div className="w-24 h-10 rounded-full bg-secondary/50 animate-pulse"></div>
-    );
+    return <div className="h-[38px] w-24 animate-pulse rounded-full bg-muted" />;
   }
 
   if (!user) {
     return (
       <Link
         href={signInHref}
-        className={cn(
-          buttonVariants({ size: "sm" }),
-          "h-10 px-5 rounded-full bg-gradient-to-r from-primary to-accent hover:from-primary/95 hover:to-accent/95 text-white font-bold shadow-md shadow-primary/10 hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.03] active:scale-[0.97] transition-all duration-150 ease-out ml-1 cursor-pointer",
-        )}
+        className={cn(buttonVariants(), "h-9 px-4")}
       >
         Đăng nhập
       </Link>
@@ -52,75 +48,54 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            className="rounded-full pl-2 pr-3.5 border border-border hover:border-primary/50 bg-secondary/30 hover:bg-secondary/60 shadow-sm"
-          />
-        }
+        aria-label="Menu tài khoản"
+        className="group flex cursor-pointer items-center gap-2.5 rounded-full pl-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <Avatar className="h-6.5 w-6.5 ring-2 ring-primary/30 transition-all duration-150 ease-out">
-          {user.image ? (
+        <Avatar className="size-[38px] shadow-xs">
+          {user.image && (
             <AvatarImage
               src={user.image}
               alt={user.name}
             />
-          ) : (
-            <AvatarFallback className="text-[10px] font-bold bg-primary text-white">
-              {user.name?.charAt(0).toUpperCase() || "U"}
-            </AvatarFallback>
           )}
+          <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">
+            {user.name?.charAt(0).toUpperCase() || "U"}
+          </AvatarFallback>
         </Avatar>
-        <span className="text-xs font-bold text-foreground max-w-[80px] truncate">
-          {user.name?.split(" ").pop()}
+        <span className="hidden flex-col text-left xl:flex">
+          <span className="max-w-32 truncate text-[13px] leading-tight font-semibold text-foreground transition-colors group-hover:text-primary">
+            {user.name}
+          </span>
+          {user.role && (
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {roleLabel(user.role)}
+            </span>
+          )}
         </span>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="end"
-        className="w-56 rounded-2xl border border-border bg-background/95 backdrop-blur-md shadow-xl p-1.5 animate-in fade-in duration-150"
+        className="w-56 p-1.5"
       >
-        <div className="px-3 py-2.5">
-          <p className="text-sm font-bold text-foreground truncate">{user.name}</p>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {user.email}
-          </p>
+        <div className="px-1.5 py-2">
+          <p className="truncate text-sm font-semibold text-foreground">{user.name}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
 
-        <DropdownMenuSeparator className="bg-border/60" />
+        <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          render={<Link href="/product/account" />}
-          className="w-full flex items-center justify-between font-semibold rounded-xl focus:bg-primary/5 focus:text-primary transition-all duration-150 ease-out cursor-pointer"
-        >
-          <span>Tài khoản</span>
-          <span className="w-1.5 h-1.5 bg-primary/60 rounded-full" />
+        <DropdownMenuItem render={<Link href={accountHref} />}>
+          <UserRound />
+          Tài khoản
         </DropdownMenuItem>
         <DropdownMenuItem
-          render={<Link href={shopCatalogHref} />}
-          className="w-full flex items-center justify-between font-semibold rounded-xl focus:bg-primary/5 focus:text-primary transition-all duration-150 ease-out cursor-pointer"
-        >
-          <span>Sản phẩm</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator className="bg-border/60" />
-
-        <DropdownMenuItem
-          onClick={(e) => {
-            e.preventDefault();
-            if (!isSigningOut) onSignOut();
-          }}
+          variant="destructive"
           disabled={isSigningOut}
-          className="rounded-xl text-destructive focus:bg-destructive/10 focus:text-destructive transition-all duration-150 ease-out font-bold cursor-pointer"
+          onClick={onSignOut}
         >
-          {isSigningOut ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Đang đăng xuất...
-            </>
-          ) : (
-            "Đăng xuất..."
-          )}
+          {isSigningOut ? <Loader2 className="animate-spin" /> : <LogOut />}
+          Đăng xuất
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

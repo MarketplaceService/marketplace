@@ -3,7 +3,6 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/providers/query-provider";
 import { Toaster } from "sonner";
-import { Header } from "@/components/header/header";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -17,8 +16,8 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "ShyTech",
-    template: "%s | ShyTech - Trang thương mại điện tử",
+    default: "TrustFix",
+    template: "%s | TrustFix - Trang thương mại điện tử",
   },
   description: "Mua sắm trực tuyến nhanh chóng và an toàn",
 };
@@ -31,7 +30,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <QueryProvider>
-          <Header />
           {children}
           <Toaster
             position="bottom-right"

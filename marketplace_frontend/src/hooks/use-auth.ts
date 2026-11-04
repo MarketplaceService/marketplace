@@ -10,12 +10,52 @@ import {
   User,
 } from "@/types/api.types";
 import { AuthMeResponse, AuthSession } from "@/types/hook.types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  noop,
+  QueryClient,
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 const GUEST_USER_ROLE = "unregistered";
+
+const authSessionQuery = queryOptions<AuthSession>({
+  queryKey: ["auth", "session"],
+  queryFn: async () => {
+    const res = await axiosInstance.get<AuthMeResponse>("/auth/me", {
+      validateStatus: () => true,
+    });
+
+    const oke = res.status >= 200 && res.status < 300;
+    const data = res.data;
+
+    if (!oke || !data.success || !data.authenticated || !data.user) {
+      return { user: null, isGuest: false, isAuthenticated: false };
+    }
+
+    const isGuest =
+      data.user.isAnonymous === true ||
+      data.user.role === GUEST_USER_ROLE ||
+      (typeof data.user.email === "string" &&
+        data.user.email.endsWith("@temp.local"));
+
+    return {
+      user: data.user,
+      isGuest,
+      isAuthenticated: true,
+    };
+  },
+  staleTime: 5 * 60 * 1000,
+});
+
+// Session phải lấy từ /auth/me vì user better-auth trả về thiếu các field như role
+const refreshAuthSession = (queryClient: QueryClient) =>
+  queryClient.query({ ...authSessionQuery, staleTime: 0 }).catch(noop);
 
 interface AuthToastMessages {
   success?: string;
@@ -31,12 +71,8 @@ export const useSignUp = (
   return useMutation({
     mutationFn: (data: SignUpDto) => authSerivce.signUp(data),
 
-    onSuccess: (response) => {
-      queryClient.setQueryData(["auth", "session"], {
-        user: response.user,
-        isGuest: false,
-        isAuthenticated: true,
-      });
+    onSuccess: async (response) => {
+      await refreshAuthSession(queryClient);
 
       if (response.token) {
         toast.success(messages?.success ?? "Account created successfully");
@@ -82,12 +118,8 @@ export const useSignIn = (messages?: AuthToastMessages, redirectTo?: string) => 
     mutationFn: (data: SignInDto & { rememberMe?: boolean }) =>
       authSerivce.signIn(data),
 
-    onSuccess: (response) => {
-      queryClient.setQueryData(["auth", "session"], {
-        user: response.user,
-        isGuest: false,
-        isAuthenticated: true,
-      });
+    onSuccess: async () => {
+      await refreshAuthSession(queryClient);
 
       toast.success(messages?.success ?? "Sign in successfull!");
 
@@ -146,34 +178,7 @@ export const useGoogleSignIn = (messages?: { error?: string }) => {
 };
 
 export const useAuthSession = () => {
-  return useQuery<AuthSession>({
-    queryKey: ["auth", "session"],
-    queryFn: async () => {
-      const res = await axiosInstance.get<AuthMeResponse>("/auth/me", {
-        validateStatus: () => true,
-      });
-
-      const oke = res.status >= 200 && res.status < 300;
-      const data = res.data;
-
-      if (!oke || !data.success || !data.authenticated || !data.user) {
-        return { user: null, isGuest: false, isAuthenticated: false };
-      }
-
-      const isGuest =
-        data.user.isAnonymous === true ||
-        data.user.role === GUEST_USER_ROLE ||
-        (typeof data.user.email === "string" &&
-          data.user.email.endsWith("@temp.local"));
-
-      return {
-        user: data.user,
-        isGuest,
-        isAuthenticated: true,
-      };
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  return useQuery(authSessionQuery);
 };
 
 export const useCurrentUser = (): { data: User | null; isLoading: boolean } => {

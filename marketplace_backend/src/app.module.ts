@@ -13,6 +13,7 @@ import { AllExceptionFilter } from './core/filters/all-exceptions.filter';
 import { UserModule } from './app/user/user.module';
 import { AuthModule } from './app/auth/auth.module';
 import { EmailModule } from './app/email/email.module';
+import { AddressModule } from './app/address/address.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 const envFile =
@@ -35,6 +36,7 @@ const envFile =
     UserModule,
     AuthModule,
     EmailModule,
+    AddressModule,
     ScheduleModule.forRoot(),
   ],
   providers: [

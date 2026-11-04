@@ -5,6 +5,9 @@ const messages: Record<string, string> = {
   'errors.auth.verificationFailed': 'Token xác minh không hợp lệ',
   'errors.auth.tokenExpired': 'Token xác minh đã hết hạn',
   'errors.auth.emailMismatch': 'Email không khớp với token xác minh',
+  'errors.address.notFound': 'Không tìm thấy địa chỉ',
+  'errors.address.defaultConflict':
+    'Địa chỉ mặc định vừa được thay đổi, vui lòng thử lại',
 };
 
 export function translateApiMessage(key: string) {
