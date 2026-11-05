@@ -1,10 +1,47 @@
 "use client";
 
+import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { setWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 
+// DNS của Viettel trả về 127.0.0.1 cho openstreetmap.org nên không dùng tile gốc của OSM,
+// còn tile raster của CARTO hiện bắt buộc có API key
+const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const MAP_ZOOM = 15;
+
+// Dữ liệu OSM ghi tên tiếng Trung ở Hoàng Sa, Trường Sa và Biển Đông nên chỉ cho xem đất liền
+// và đảo gần bờ. Zoom 7 là mức thấp nhất mà bản đồ rộng 640px vẫn nằm trọn trong khung này.
+const MAP_OPTIONS: L.MapOptions = {
+  maxBounds: [
+    [8.2, 101.9],
+    [23.6, 109.7],
+  ],
+  maxBoundsViscosity: 1,
+  bounceAtZoomLimits: false,
+  minZoom: 7,
+  maxZoom: 19,
+};
+
+setWorkerUrl(
+  new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
+);
+
+// MapLibre ném lỗi ngay khi khởi tạo nếu thiếu WebGL2, làm hỏng cả trang.
+// Chỉ kiểm tra một lần vì trình duyệt chỉ giữ được khoảng 16 WebGL context.
+const HAS_WEBGL = document.createElement("canvas").getContext("webgl2") !== null;
+
+// Style ưu tiên tên tiếng Anh và kèm chữ bản địa. name:latin giữ nguyên tên tiếng Việt,
+// còn nhãn chỉ có chữ Trung như tên bãi ngầm ngoài khơi thì không có trường này nên bị ẩn.
+function showLatinNames(map: MapLibreMap) {
+  for (const layer of map.getStyle().layers) {
+    if (layer.type === "symbol" && String(layer.layout?.["text-field"]).includes("name")) {
+      map.setLayoutProperty(layer.id, "text-field", ["get", "name:latin"]);
+    }
+  }
+}
 
 const markerIcon = L.divIcon({
   className: "",
@@ -38,12 +75,10 @@ export default function AddressMapPicker({
     if (!container) return;
 
     const start: L.LatLngTuple = [latitude, longitude];
-    const map = L.map(container).setView(start, MAP_ZOOM);
+    const map = L.map(container, MAP_OPTIONS).setView(start, MAP_ZOOM);
 
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(map);
+    const baseMap = maplibreGL({ style: MAP_STYLE }).addTo(map).getMaplibreMap();
+    baseMap.once("style.load", () => showLatinNames(baseMap));
 
     const marker = L.marker(start, { draggable: true, icon: markerIcon }).addTo(map);
 
@@ -83,6 +118,14 @@ export default function AddressMapPicker({
     marker.setLatLng([latitude, longitude]);
     map.panTo([latitude, longitude]);
   }, [latitude, longitude]);
+
+  if (!HAS_WEBGL) {
+    return (
+      <div className="flex h-[220px] w-full items-center justify-center rounded-lg border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
+        Trình duyệt không hiển thị được bản đồ. Bạn hãy nhập tọa độ ở bên dưới.
+      </div>
+    );
+  }
 
   return (
     <div

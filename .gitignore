@@ -56,6 +56,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 memory/
 CLAUDE.md
 .claude/
+AGENTS.md
 
 .DS_Store
 Thumbs.db
