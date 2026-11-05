@@ -28,7 +28,7 @@ async function fetchMeWithRetry(): Promise<User | null> {
       }
 
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   };

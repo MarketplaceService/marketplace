@@ -90,7 +90,7 @@ export function UserMenu({
         <DropdownMenuSeparator className="bg-border/60" />
 
         <DropdownMenuItem
-          render={<Link href="/product/account" />}
+          render={<Link href="/account" />}
           className="w-full flex items-center justify-between font-semibold rounded-xl focus:bg-primary/5 focus:text-primary transition-all duration-150 ease-out cursor-pointer"
         >
           <span>Tài khoản</span>
@@ -101,6 +101,20 @@ export function UserMenu({
           className="w-full flex items-center justify-between font-semibold rounded-xl focus:bg-primary/5 focus:text-primary transition-all duration-150 ease-out cursor-pointer"
         >
           <span>Sản phẩm</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          render={<Link href="/provider/register" />}
+          className="w-full flex items-center justify-between font-semibold rounded-xl focus:bg-primary/5 focus:text-primary transition-all duration-150 ease-out cursor-pointer"
+        >
+          <span>Đăng ký Nhà cung cấp</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          render={<Link href="/admin/providers" />}
+          className="w-full flex items-center justify-between font-semibold rounded-xl focus:bg-primary/5 focus:text-primary transition-all duration-150 ease-out cursor-pointer"
+        >
+          <span>Duyệt đối tác (Admin)</span>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator className="bg-border/60" />

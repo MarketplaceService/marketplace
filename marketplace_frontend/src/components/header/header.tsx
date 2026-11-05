@@ -43,6 +43,20 @@ export function Header() {
             >
               Sản phẩm
             </NavLink>
+            <NavLink
+              href="/provider/register"
+              active={false}
+              isAnchor
+            >
+              Đăng ký Nhà cung cấp
+            </NavLink>
+            <NavLink
+              href="/admin/providers"
+              active={false}
+              isAnchor
+            >
+              Duyệt nhà cung cấp (Admin)
+            </NavLink>
           </nav>
 
           <UserMenu
