@@ -1,0 +1,7 @@
+export enum ProviderDocumentType {
+  ID_CARD_FRONT = 'ID_CARD_FRONT',
+  ID_CARD_BACK = 'ID_CARD_BACK',
+  CERTIFICATE = 'CERTIFICATE',
+  TOOLKIT_PHOTO = 'TOOLKIT_PHOTO',
+}
+
