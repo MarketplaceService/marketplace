@@ -13,6 +13,7 @@ import { notifyComingSoon } from "../header/header-nav-link";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { formatAddress } from "./address-utils";
+import { AvatarUploadTrigger } from "./avatar-upload-trigger";
 
 interface ProfileSummaryProps {
   profile: UserProfile;
@@ -44,17 +45,10 @@ export function ProfileSummary({
               {profile.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          {isAdmin && (
-            <button
-              type="button"
-              title="Thay đổi ảnh đại diện"
-              aria-label="Thay đổi ảnh đại diện"
-              onClick={notifyComingSoon}
-              className="absolute right-0 bottom-0 rounded-full bg-primary p-1.5 text-primary-foreground shadow ring-2 ring-card transition-transform hover:scale-105"
-            >
-              <Camera className="h-3.5 w-3.5" />
-            </button>
-          )}
+          <AvatarUploadTrigger
+            className="absolute right-0 bottom-0 rounded-full bg-primary p-1.5 text-primary-foreground shadow ring-2 ring-card transition-transform hover:scale-105"
+            icon={<Camera className="h-3.5 w-3.5" />}
+          />
         </div>
 
         <div className="min-w-0 space-y-1.5">

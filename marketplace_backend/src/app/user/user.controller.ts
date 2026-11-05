@@ -1,6 +1,20 @@
-import { Body, Controller, Delete, Get, Patch, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -10,6 +24,7 @@ import { RequireRoles } from 'src/core/decorators/role-with-guard.decorator';
 import type { AuthenticatedRequest } from 'src/core/guards/auth.guard';
 import { UserRole } from 'src/shared/types/user-role.enum';
 import { ResEx } from 'src/swagger/response-examples';
+import { avatarFilePipe, avatarUploadOptions } from './avatar-upload';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { User } from './entities/user.entity';
@@ -50,6 +65,30 @@ export class UserController {
   ) {
     return this.mapProfile(
       await this.userService.updateProfile(req.user.id, body),
+    );
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('avatar', avatarUploadOptions))
+  @ApiOperation({
+    summary: 'Tải ảnh đại diện (JPG hoặc PNG, tối đa 2MB)',
+    operationId: 'users_upload_avatar',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['avatar'],
+      properties: { avatar: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiCreatedResponse({ schema: { example: ResEx.user.profile } })
+  async uploadAvatar(
+    @Req() req: AuthenticatedRequest,
+    @UploadedFile(avatarFilePipe) file: Express.Multer.File,
+  ) {
+    return this.mapProfile(
+      await this.userService.updateAvatar(req.user.id, file),
     );
   }
 

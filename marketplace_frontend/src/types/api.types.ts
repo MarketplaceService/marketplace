@@ -44,7 +44,6 @@ export interface UserProfile {
 export interface UpdateProfileDto {
   name?: string;
   phone?: string | null;
-  image?: string | null;
   birthday?: string | null;
   gender?: string | null;
 }

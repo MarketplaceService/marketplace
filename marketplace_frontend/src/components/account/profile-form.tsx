@@ -2,13 +2,14 @@
 
 import { useUpdateProfile } from "@/hooks/use-profile";
 import { roleLabel } from "@/lib/user-role";
+import { cn } from "@/lib/utils";
 import { UserProfile } from "@/types/api.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Save } from "lucide-react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Button } from "../ui/button";
+import { Button, buttonVariants } from "../ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import {
@@ -19,6 +20,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { PHONE_PATTERN } from "./address-utils";
+import { AvatarUploadTrigger } from "./avatar-upload-trigger";
 
 const GENDER_OPTIONS = [
   { value: "male", label: "Nam" },
@@ -39,9 +41,6 @@ const profileSchema = z.object({
     .or(z.literal("")),
   birthday: z.string(),
   gender: z.string(),
-  image: z
-    .url({ protocol: /^https?$/, error: "URL ảnh không hợp lệ" })
-    .or(z.literal("")),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -52,7 +51,6 @@ function toFormValues(profile: UserProfile): ProfileFormValues {
     phone: profile.phone ?? "",
     birthday: profile.birthday ?? "",
     gender: profile.gender ?? "",
-    image: profile.image ?? "",
   };
 }
 
@@ -70,15 +68,12 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
     values: toFormValues(profile),
   });
 
-  const imagePreview = useWatch({ control, name: "image" });
-
   const onSubmit = (data: ProfileFormValues) => {
     updateProfile.mutate({
       name: data.name,
       phone: data.phone || null,
       birthday: data.birthday || null,
       gender: data.gender || null,
-      image: data.image || null,
     });
   };
 
@@ -97,9 +92,9 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
       >
         <div className="flex flex-col items-start gap-5 border-b border-border pb-6 sm:flex-row sm:items-center">
           <Avatar className="h-16 w-16 border border-border">
-            {imagePreview && (
+            {profile.image && (
               <AvatarImage
-                src={imagePreview}
+                src={profile.image}
                 alt={profile.name}
               />
             )}
@@ -107,20 +102,15 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
               {profile.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <Field className="flex-1">
-            <FieldLabel htmlFor="profile-image">URL ảnh đại diện</FieldLabel>
-            <Input
-              id="profile-image"
-              type="url"
-              placeholder="https://..."
-              {...register("image")}
+          <div className="space-y-1.5">
+            <AvatarUploadTrigger
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              showLabel
             />
-            {errors.image && (
-              <FieldError className="text-destructive">
-                {errors.image.message}
-              </FieldError>
-            )}
-          </Field>
+            <p className="text-xs text-muted-foreground">
+              Hỗ trợ định dạng JPG, PNG. Dung lượng tối đa 2MB.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

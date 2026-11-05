@@ -31,6 +31,22 @@ export const useUpdateProfile = () => {
   });
 };
 
+export const useUploadAvatar = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => userService.uploadAvatar(file),
+
+    onSuccess: (profile) => {
+      queryClient.setQueryData(PROFILE_QUERY_KEY, profile);
+      void queryClient.invalidateQueries({ queryKey: ["auth", "session"] });
+      toast.success("Đã cập nhật ảnh đại diện");
+    },
+
+    onError: mutationErrorToast("Không thể tải ảnh lên"),
+  });
+};
+
 export const useDeleteAccount = () => {
   const queryClient = useQueryClient();
   const router = useRouter();

@@ -34,6 +34,12 @@ export const envSchema = z.looseObject({
 
   //* Internal API
   INTERNAL_API_SECRET: z.string().min(32),
+
+  //* Supabase Storage
+  SUPABASE_URL: z.url(), //https://<project-ref>.supabase.co, không kèm /rest/v1/
+  SUPABASE_SECRET_KEY: z.string().trim().min(1),
+  SUPABASE_BUCKET_NAME: z.string().trim().min(1),
+  SUPABASE_ANON_KEY: z.string().trim().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -5,7 +5,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUrl,
   Matches,
   MaxLength,
   ValidateIf,
@@ -36,9 +35,4 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsIn(USER_GENDERS)
   gender?: (typeof USER_GENDERS)[number] | null;
-
-  @ApiProperty({ required: false, nullable: true })
-  @IsOptional()
-  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
-  image?: string | null;
 }
