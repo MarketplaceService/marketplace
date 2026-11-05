@@ -32,6 +32,14 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-border-subtle: var(--border);
+
+  /* Surface & typography aliases */
+  --color-surface: var(--card);
+  --color-surface-muted: var(--muted);
+  --color-text-primary: var(--foreground);
+  --color-text-secondary: var(--muted-foreground);
+  --color-text-muted: var(--muted-foreground);
 
   /* Semantic — exposed as Tailwind utilities */
   --color-success: var(--success);
