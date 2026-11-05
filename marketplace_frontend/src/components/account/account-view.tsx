@@ -14,6 +14,7 @@ const ADDRESS_ROLES = ["customer", "provider"];
 
 export function AccountView() {
   const { data: profile, isLoading, isError } = useProfile();
+  const isAdmin = profile?.role === "admin";
   const canManageAddresses = !!profile && ADDRESS_ROLES.includes(profile.role);
   const { data: addresses = [], isLoading: isLoadingAddresses } =
     useAddresses(canManageAddresses);
@@ -25,13 +26,17 @@ export function AccountView() {
         <div className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
           <span>Tài khoản</span>
           <ChevronRight className="h-3.5 w-3.5" />
-          <span className="font-medium text-foreground">Hồ sơ & Địa chỉ</span>
+          <span className="font-medium text-foreground">
+            {isAdmin ? "Hồ sơ Quản trị viên" : "Hồ sơ & Địa chỉ"}
+          </span>
         </div>
         <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">
           Tài khoản của tôi
         </h1>
         <p className="mt-1 text-muted-foreground">
-          Quản lý thông tin hồ sơ cá nhân và địa chỉ nhận dịch vụ.
+          {isAdmin
+            ? "Thông tin tài khoản quản trị hệ thống."
+            : "Quản lý thông tin hồ sơ cá nhân và địa chỉ nhận dịch vụ."}
         </p>
       </div>
 
@@ -56,53 +61,55 @@ export function AccountView() {
             onViewAddresses={() => setTab("addresses")}
           />
 
-          <Tabs
-            value={tab}
-            onValueChange={setTab}
-            className="gap-6"
-          >
-            <TabsList
-              variant="line"
-              className="w-full justify-start border-b border-border"
+          {!isAdmin && (
+            <Tabs
+              value={tab}
+              onValueChange={setTab}
+              className="gap-6"
             >
-              <TabsTrigger
-                value="personal"
-                className="flex-none px-3"
+              <TabsList
+                variant="line"
+                className="w-full justify-start border-b border-border"
               >
-                <User />
-                Thông tin cá nhân
-              </TabsTrigger>
-              {canManageAddresses && (
                 <TabsTrigger
-                  value="addresses"
+                  value="personal"
                   className="flex-none px-3"
                 >
-                  <MapPin />
-                  Địa chỉ
-                  <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
-                    {addresses.length}
-                  </span>
+                  <User />
+                  Thông tin cá nhân
                 </TabsTrigger>
-              )}
-            </TabsList>
+                {canManageAddresses && (
+                  <TabsTrigger
+                    value="addresses"
+                    className="flex-none px-3"
+                  >
+                    <MapPin />
+                    Địa chỉ
+                    <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-bold">
+                      {addresses.length}
+                    </span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
 
-            <TabsContent
-              value="personal"
-              className="space-y-6"
-            >
-              <ProfileForm profile={profile} />
-              <DeleteAccountSection />
-            </TabsContent>
-
-            {canManageAddresses && (
-              <TabsContent value="addresses">
-                <AddressList
-                  addresses={addresses}
-                  isLoading={isLoadingAddresses}
-                />
+              <TabsContent
+                value="personal"
+                className="space-y-6"
+              >
+                <ProfileForm profile={profile} />
+                <DeleteAccountSection />
               </TabsContent>
-            )}
-          </Tabs>
+
+              {canManageAddresses && (
+                <TabsContent value="addresses">
+                  <AddressList
+                    addresses={addresses}
+                    isLoading={isLoadingAddresses}
+                  />
+                </TabsContent>
+              )}
+            </Tabs>
+          )}
         </>
       )}
     </main>

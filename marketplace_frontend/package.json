@@ -6,7 +6,8 @@
     "dev": "dotenv -e .env.dev -- next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:test-accounts": "dotenv -e .env.dev -- node scripts/seed-test-accounts.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
