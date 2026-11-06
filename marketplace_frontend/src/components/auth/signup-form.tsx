@@ -1,8 +1,9 @@
 "use client";
 
-import { useSignUp } from "@/hooks/use-auth";
+import { useCurrentUser, useGoogleSignIn, useSignUp } from "@/hooks/use-auth";
 import { SignUpDto } from "@/types/api.types";
-import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo } from "react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,14 +19,22 @@ import {
 } from "../ui/field";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { useGoogleSignIn } from "@/hooks/use-auth";
 import { SocialAuthButtons } from "./social-auth-buttons";
 
 type SignUpFormValues = SignUpDto & { confirmPassword: string };
 const SignUpForm = ({ className, ...props }: React.ComponentProps<"div">) => {
+  const router = useRouter();
+  const { data: currentUser } = useCurrentUser();
+
+  useEffect(() => {
+    if (currentUser) {
+      router.replace("/product/catalog");
+    }
+  }, [currentUser, router]);
+
   const signUpMutation = useSignUp({
-    success: "Tạo tài khoản thành công!",
-    verifyEmail: "Tạo tài khoản thành công! Vui lòng kiểm tra email để xác minh.",
+    success: "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.",
+    verifyEmail: "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.",
     error: "Đăng ký thất bại",
   });
 
@@ -65,6 +74,22 @@ const SignUpForm = ({ className, ...props }: React.ComponentProps<"div">) => {
     const { email, password, name } = data;
     await signUpMutation.mutateAsync({ email, password, name });
   };
+
+  if (currentUser) {
+    return (
+      <div className="bg-card rounded-2xl p-8 text-center border border-border shadow-sm max-w-md mx-auto">
+        <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm font-semibold text-foreground">
+          Bạn đã đăng nhập với tài khoản{' '}
+          <span className="text-primary font-bold">{currentUser.name || currentUser.email}</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Đang chuyển hướng về trang chủ...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn("flex flex-col gap-6", className)}

@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 // Sample initial mock providers matching screen19 HTML data (12 providers)
 const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
   {
-    id: 'TF-PRO-001',
+    id: 'SVG-PRO-001',
     userId: 'u-1',
     displayName: 'Điện Nước Phạm Hùng',
     phone: '0908 123 456',
@@ -45,7 +45,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-1',
-        providerId: 'TF-PRO-001',
+        providerId: 'SVG-PRO-001',
         areaName: 'Vùng trung tâm TP.HCM',
         centerLatitude: 10.7769,
         centerLongitude: 106.7009,
@@ -56,7 +56,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-002',
+    id: 'SVG-PRO-002',
     userId: 'u-2',
     displayName: 'Điện Lạnh Minh Đức',
     phone: '0918 765 432',
@@ -81,7 +81,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-2',
-        providerId: 'TF-PRO-002',
+        providerId: 'SVG-PRO-002',
         areaName: 'Vùng Bình Thạnh - Q.2',
         centerLatitude: 10.8012,
         centerLongitude: 106.7123,
@@ -92,7 +92,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-003',
+    id: 'SVG-PRO-003',
     userId: 'u-3',
     displayName: 'Khóa & Cửa Thông Minh Hoàng Vũ',
     phone: '0933 555 888',
@@ -117,7 +117,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-3',
-        providerId: 'TF-PRO-003',
+        providerId: 'SVG-PRO-003',
         areaName: 'Vùng Quận 7 - Nhà Bè',
         centerLatitude: 10.7321,
         centerLongitude: 106.7214,
@@ -128,7 +128,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-004',
+    id: 'SVG-PRO-004',
     userId: 'u-4',
     displayName: 'Bếp & Gia Dụng Quang Hải',
     phone: '0944 111 222',
@@ -154,7 +154,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-4',
-        providerId: 'TF-PRO-004',
+        providerId: 'SVG-PRO-004',
         areaName: 'Vùng Phú Nhuận',
         centerLatitude: 10.795,
         centerLongitude: 106.665,
@@ -165,7 +165,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-005',
+    id: 'SVG-PRO-005',
     userId: 'u-5',
     displayName: 'Điện Lạnh Hoàng Nam',
     phone: '0912 345 882',
@@ -190,7 +190,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-5',
-        providerId: 'TF-PRO-005',
+        providerId: 'SVG-PRO-005',
         areaName: 'Vùng trung tâm TP.HCM',
         centerLatitude: 10.7769,
         centerLongitude: 106.7009,
@@ -201,7 +201,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-006',
+    id: 'SVG-PRO-006',
     userId: 'u-6',
     displayName: 'Khóa Cửa Điện Tử Thắng Lợi',
     phone: '0968 222 333',
@@ -226,7 +226,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-6',
-        providerId: 'TF-PRO-006',
+        providerId: 'SVG-PRO-006',
         areaName: 'Vùng Bình Thạnh - Gò Vấp',
         centerLatitude: 10.8231,
         centerLongitude: 106.6872,
@@ -237,7 +237,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-007',
+    id: 'SVG-PRO-007',
     userId: 'u-7',
     displayName: 'Điện Nước Nhanh 24/7',
     phone: '0977 444 555',
@@ -262,7 +262,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-7',
-        providerId: 'TF-PRO-007',
+        providerId: 'SVG-PRO-007',
         areaName: 'Vùng Quận 5 - Quận 6',
         centerLatitude: 10.7554,
         centerLongitude: 106.6621,
@@ -273,7 +273,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-008',
+    id: 'SVG-PRO-008',
     userId: 'u-8',
     displayName: 'Cơ Điện Bếp Thành Đạt',
     phone: '0903 888 999',
@@ -298,7 +298,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-8',
-        providerId: 'TF-PRO-008',
+        providerId: 'SVG-PRO-008',
         areaName: 'Vùng TP. Thủ Đức',
         centerLatitude: 10.8456,
         centerLongitude: 106.7723,
@@ -309,7 +309,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-009',
+    id: 'SVG-PRO-009',
     userId: 'u-9',
     displayName: 'Điện Lạnh Tài Phát',
     phone: '0988 123 789',
@@ -334,7 +334,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-9',
-        providerId: 'TF-PRO-009',
+        providerId: 'SVG-PRO-009',
         areaName: 'Vùng Quận 1 - Quận 3',
         centerLatitude: 10.7612,
         centerLongitude: 106.6821,
@@ -345,7 +345,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-010',
+    id: 'SVG-PRO-010',
     userId: 'u-10',
     displayName: 'Khóa Cấp Tốc Bùi Tuấn',
     phone: '0915 678 901',
@@ -371,7 +371,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-10',
-        providerId: 'TF-PRO-010',
+        providerId: 'SVG-PRO-010',
         areaName: 'Vùng Quận 10 - Quận 11',
         centerLatitude: 10.7723,
         centerLongitude: 106.6589,
@@ -382,7 +382,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-011',
+    id: 'SVG-PRO-011',
     userId: 'u-11',
     displayName: 'Điện Nước Dân Dụng Bình Minh',
     phone: '0938 777 666',
@@ -407,7 +407,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-11',
-        providerId: 'TF-PRO-011',
+        providerId: 'SVG-PRO-011',
         areaName: 'Vùng Tân Bình - Phú Nhuận',
         centerLatitude: 10.7891,
         centerLongitude: 106.6987,
@@ -418,7 +418,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     ],
   },
   {
-    id: 'TF-PRO-012',
+    id: 'SVG-PRO-012',
     userId: 'u-12',
     displayName: 'Thiết Bị Bếp Hoàng Gia',
     phone: '0945 999 000',
@@ -443,7 +443,7 @@ const INITIAL_MOCK_PROVIDERS: ProviderProfile[] = [
     serviceAreas: [
       {
         id: 'sa-12',
-        providerId: 'TF-PRO-012',
+        providerId: 'SVG-PRO-012',
         areaName: 'Vùng Bình Thạnh - Q.2',
         centerLatitude: 10.8105,
         centerLongitude: 106.7042,
@@ -534,6 +534,7 @@ export default function AdminProvidersPage() {
     approveMutation.mutate(id, {
       onSuccess: (updated) => {
         setSelectedProvider(updated);
+        void refetch();
         setMockList((prev) =>
           prev.map((p) =>
             p.id === id
@@ -546,11 +547,13 @@ export default function AdminProvidersPage() {
               : p,
           ),
         );
-        toast.success(
-          `Đã phê duyệt Nhà cung cấp "${updated.displayName}" thành công! Đã cấp quyền Nhà cung cấp.`,
-        );
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('servigo_provider_status', 'APPROVED');
+          localStorage.setItem('trustfix_provider_status', 'APPROVED');
+        }
       },
       onError: () => {
+        void refetch();
         setMockList((prev) =>
           prev.map((p) =>
             p.id === id
@@ -571,9 +574,10 @@ export default function AdminProvidersPage() {
             approvedAt: new Date().toISOString(),
           });
         }
-        toast.success(
-          `Đã phê duyệt Nhà cung cấp "${selectedProvider?.displayName}" thành công! Đã cấp quyền Nhà cung cấp.`,
-        );
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('servigo_provider_status', 'APPROVED');
+          localStorage.setItem('trustfix_provider_status', 'APPROVED');
+        }
       },
     });
   };
@@ -584,6 +588,7 @@ export default function AdminProvidersPage() {
       {
         onSuccess: (updated) => {
           setSelectedProvider(updated);
+          void refetch();
           setMockList((prev) =>
             prev.map((p) =>
               p.id === id
@@ -595,11 +600,15 @@ export default function AdminProvidersPage() {
                 : p,
             ),
           );
-          toast.warning(
-            `Đã từ chối hồ sơ Nhà cung cấp "${updated.displayName}". Quyền tài khoản giữ nguyên là Khách hàng.`,
-          );
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('servigo_provider_status', 'REJECTED');
+            localStorage.setItem('trustfix_provider_status', 'REJECTED');
+            localStorage.setItem('servigo_provider_rejection_reason', reason);
+            localStorage.setItem('trustfix_provider_rejection_reason', reason);
+          }
         },
         onError: () => {
+          void refetch();
           setMockList((prev) =>
             prev.map((p) =>
               p.id === id
@@ -618,9 +627,12 @@ export default function AdminProvidersPage() {
               rejectionReason: reason,
             });
           }
-          toast.warning(
-            `Đã từ chối hồ sơ Nhà cung cấp "${selectedProvider?.displayName}". Quyền tài khoản giữ nguyên là Khách hàng.`,
-          );
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('servigo_provider_status', 'REJECTED');
+            localStorage.setItem('trustfix_provider_status', 'REJECTED');
+            localStorage.setItem('servigo_provider_rejection_reason', reason);
+            localStorage.setItem('trustfix_provider_rejection_reason', reason);
+          }
         },
       },
     );
@@ -728,6 +740,7 @@ export default function AdminProvidersPage() {
 
           {/* MODAL THẨM ĐỊNH CHI TIẾT HỒ SƠ */}
           <ProviderAppraisalModal
+            key={selectedProvider ? selectedProvider.id : 'none'}
             provider={selectedProvider}
             isOpen={isModalOpen}
             onClose={handleCloseAppraisal}

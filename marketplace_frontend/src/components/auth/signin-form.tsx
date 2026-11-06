@@ -1,12 +1,17 @@
 "use client";
 
-import { useGoogleSignIn, useSignIn } from "@/hooks/use-auth";
+import {
+  useCurrentUser,
+  useGoogleSignIn,
+  useResendVerificationEmail,
+  useSignIn,
+} from "@/hooks/use-auth";
 import { SignInDto } from "@/types/api.types";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "../ui/card";
 import {
@@ -25,8 +30,16 @@ import { SocialAuthButtons } from "./social-auth-buttons";
 
 
 export function SignInForm({ className, ...props }: React.ComponentProps<"div">) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? undefined;
+  const { data: currentUser } = useCurrentUser();
+
+  useEffect(() => {
+    if (currentUser) {
+      router.replace(redirectTo || "/product/catalog");
+    }
+  }, [currentUser, redirectTo, router]);
 
   const signInMutation = useSignIn(
     {
@@ -67,9 +80,43 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
     },
   });
 
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const { mutate: resendEmail, isPending: isResending } =
+    useResendVerificationEmail({
+      success: 'Đã gửi lại email xác thực! Vui lòng kiểm tra hộp thư của bạn.',
+      error: 'Gửi lại email xác thực thất bại. Vui lòng thử lại sau.',
+    });
+
   const onSubmit = async (data: SignInFormValues) => {
-    await signInMutation.mutateAsync(data);
+    try {
+      await signInMutation.mutateAsync(data);
+    } catch (err: unknown) {
+      const errMsg = (err as Error)?.message || '';
+      const errCode = (err as { code?: string })?.code || '';
+      if (
+        errCode === 'EMAIL_NOT_VERIFIED' ||
+        errMsg.toLowerCase().includes('xác thực') ||
+        errMsg.toLowerCase().includes('verified')
+      ) {
+        setUnverifiedEmail(data.email);
+      }
+    }
   };
+
+  if (currentUser) {
+    return (
+      <div className="bg-card rounded-2xl p-8 text-center border border-border shadow-sm max-w-md mx-auto">
+        <div className="w-9 h-9 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm font-semibold text-foreground">
+          Bạn đã đăng nhập với tài khoản{' '}
+          <span className="text-primary font-bold">{currentUser.name || currentUser.email}</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Đang chuyển hướng về trang chủ...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -89,6 +136,29 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
                   Đăng nhập vào tài khoản Shytech
                 </p>
               </div>
+
+              {unverifiedEmail && (
+                <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-900 text-xs animate-in fade-in duration-200">
+                  <p className="font-bold mb-1 flex items-center gap-1.5 text-amber-800">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span>Tài khoản chưa được xác thực email</span>
+                  </p>
+                  <p className="mb-2.5 leading-relaxed text-amber-800/90">
+                    Hệ thống đã gửi liên kết kích hoạt đến{' '}
+                    <strong className="font-mono text-amber-950 font-semibold">{unverifiedEmail}</strong>.
+                    Vui lòng kiểm tra hộp thư (kể cả mục Spam) để kích hoạt trước khi đăng nhập.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={isResending}
+                    onClick={() => resendEmail(unverifiedEmail)}
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold transition cursor-pointer disabled:opacity-50 text-xs inline-flex items-center gap-1"
+                  >
+                    <span>{isResending ? 'Đang gửi...' : 'Gửi lại email xác thực'}</span>
+                  </button>
+                </div>
+              )}
+
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input

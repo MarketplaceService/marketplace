@@ -20,8 +20,8 @@ export function AdminHeader() {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="flex items-baseline tracking-tight">
-              <span className="text-xl font-bold text-slate-900">Trust</span>
-              <span className="text-xl font-bold text-emerald-600">Fix</span>
+              <span className="text-xl font-bold text-slate-900">Servi</span>
+              <span className="text-xl font-bold text-emerald-600">go</span>
               <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 Admin
               </span>

@@ -11,12 +11,13 @@ import {
 } from '@/types/provider.types';
 import { toast } from 'sonner';
 
-export const useMyProviderProfile = () => {
+export const useMyProviderProfile = (userId?: string) => {
   return useQuery({
-    queryKey: ['provider', 'me'],
+    queryKey: ['provider', 'me', userId || 'current'],
     queryFn: () => providerService.getMyProfile(),
-    retry: false,
-    staleTime: 1000 * 60 * 2, // 2 mins
+    retry: 1,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 };
 

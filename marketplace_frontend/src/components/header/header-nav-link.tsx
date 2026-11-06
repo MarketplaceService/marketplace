@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils";
 export function NavLink({
   href,
   active,
-  isAnchor,
+  isAnchor = false,
   children,
 }: {
   href: string;
   active: boolean;
-  isAnchor: boolean;
+  isAnchor?: boolean;
   children: React.ReactNode;
 }) {
   const className = cn(

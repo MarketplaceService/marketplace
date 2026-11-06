@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   X,
   Hourglass,
@@ -34,9 +34,15 @@ export function ProviderAppraisalModal({
   isApproving = false,
   isRejecting = false,
 }: ProviderAppraisalModalProps) {
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectReason, setRejectReason] = useState(
+    () => provider?.rejectionReason || '',
+  );
+  const [rejectError, setRejectError] = useState('');
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+
+  const rejectBoxRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   if (!isOpen || !provider) return null;
 
@@ -46,42 +52,78 @@ export function ProviderAppraisalModal({
     ? `${Number(area.centerLatitude).toFixed(4)}, ${Number(area.centerLongitude).toFixed(4)}`
     : '10.7769, 106.7009';
 
-  // Sample default KYC documents if none in db
+  // 4 KYC documents mapped from provider.documents or default samples
   const defaultDocs = [
     {
       title: '1. CCCD / CMND Mặt trước',
       type: 'Mặt trước CCCD',
       file: 'cccd_mat_truoc.jpg',
-      img: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80',
+      status:
+        provider.documents?.find((d) => d.documentType === 'ID_CARD_FRONT')
+          ?.status || provider.verificationStatus,
+      img:
+        provider.documents?.find((d) => d.documentType === 'ID_CARD_FRONT')
+          ?.fileUrl ||
+        'https://lh3.googleusercontent.com/aida-public/AB6AXuBoKNyZ9FxRC7SEYhOD23KcZPMJdpHHmMYKFTGHiAYscF-BjsidSgSTBsdCvnuqGv80WMZhYNkLcVII3oHaV4xO1mMq63cJncuubXwyBwPZNMgMGhVWSCCUabq3W8UkMWaOXwTsRNx9jqWU2_6ltq4mXM1Pq2vnkHj_PRCSbDLfdvrbBIA2jRH0rm6IaVFPhsRkaT7ECC9ZqNRcEVGtP4B3v0eQljE3t5ByOZvFraheM2wuNgqjBlaQVIS2AJ1l621BS5rj9xl6y8Rx',
     },
     {
       title: '2. CCCD / CMND Mặt sau',
       type: 'Mặt sau CCCD',
       file: 'cccd_mat_sau.jpg',
-      img: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80',
+      status:
+        provider.documents?.find((d) => d.documentType === 'ID_CARD_BACK')
+          ?.status || provider.verificationStatus,
+      img:
+        provider.documents?.find((d) => d.documentType === 'ID_CARD_BACK')
+          ?.fileUrl ||
+        'https://lh3.googleusercontent.com/aida-public/AB6AXuDKKe6FcPRW2y-tf0c9rFSlvUNUDSqEwrVtFkArRT3H7PmHFSMcWE3lQ5Gl-0lcsPpZpz4DcCGel6Iw00Kl-jMMNr4Y8c7p4SDUyx-j4IyRGEpxNNlN_MCGVOVKeJVJC3aeYJ5-Ee6siv92rSL6rTtvPY_opaJ-HxuOiXIrRMN0Y5gSkJ5wP5L_WpZzRb72UAS5mkpMx5qBYqZBLzxktG0lqSL_DKwF7W-X2IytCvk4V2EmcxhWnokYBy7gyfADtPfmNDC1E50ZGFKm',
     },
     {
       title: '3. Chứng chỉ nghề / Bằng cấp',
       type: 'Chứng chỉ nghề',
       file: 'chung_chi_dien_spkt.pdf',
-      img: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80',
+      status:
+        provider.documents?.find((d) => d.documentType === 'CERTIFICATE')
+          ?.status || provider.verificationStatus,
+      img:
+        provider.documents?.find((d) => d.documentType === 'CERTIFICATE')
+          ?.fileUrl ||
+        'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80',
     },
     {
       title: '4. Ảnh chân dung & Đồ nghề',
       type: 'Ảnh đồ nghề',
       file: 'anh_do_nghe_tac_nghiep.jpg',
-      img: 'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=600&q=80',
+      status:
+        provider.documents?.find((d) => d.documentType === 'TOOLKIT_PHOTO')
+          ?.status || provider.verificationStatus,
+      img:
+        provider.documents?.find((d) => d.documentType === 'TOOLKIT_PHOTO')
+          ?.fileUrl ||
+        'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=600&q=80',
     },
   ];
 
+  const handleOpenRejectBox = () => {
+    setShowRejectBox(true);
+    setRejectReason(provider.rejectionReason || '');
+    setRejectError('');
+    setTimeout(() => {
+      rejectBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      textareaRef.current?.focus();
+    }, 60);
+  };
+
   const handleConfirmReject = () => {
-    if (!rejectReason.trim()) {
-      alert('Vui lòng nhập lý do từ chối hồ sơ!');
+    const trimmed = rejectReason.trim();
+    if (!trimmed) {
+      setRejectError('Vui lòng nhập lý do từ chối hồ sơ!');
+      textareaRef.current?.focus();
       return;
     }
-    onReject(provider.id, rejectReason.trim());
+    setRejectError('');
+    onReject(provider.id, trimmed);
     setShowRejectBox(false);
-    setRejectReason('');
   };
 
   return (
@@ -123,18 +165,21 @@ export function ProviderAppraisalModal({
                   {provider.displayName}
                 </h2>
                 {provider.verificationStatus === 'PENDING' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                    Chờ duyệt
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span>Chờ duyệt</span>
                   </span>
                 )}
                 {provider.verificationStatus === 'APPROVED' && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Đã duyệt
+                    <Check className="w-3 h-3 text-emerald-600" />
+                    <span>Đã duyệt</span>
                   </span>
                 )}
                 {provider.verificationStatus === 'REJECTED' && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700 border border-red-200">
-                    Đã từ chối
+                    <X className="w-3 h-3 text-red-600" />
+                    <span>Đã từ chối</span>
                   </span>
                 )}
               </div>
@@ -203,7 +248,7 @@ export function ProviderAppraisalModal({
 
             {/* Dịch vụ khởi tạo */}
             <div className="p-3.5 bg-emerald-50/60 rounded-lg border border-emerald-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-              <div>
+                <div>
                 <span className="text-[10px] font-bold text-emerald-800 uppercase">
                   Dịch vụ khởi tạo ban đầu
                 </span>
@@ -253,13 +298,18 @@ export function ProviderAppraisalModal({
             )}
 
             {provider.verificationStatus === 'REJECTED' && (
-              <div className="p-3 rounded-lg text-xs bg-red-50 border border-red-200 text-red-950 flex items-start gap-2">
+              <div className="p-3.5 rounded-xl text-xs bg-red-50 border border-red-200 text-slate-900 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-                <div>
-                  <span className="font-bold text-red-700">Lý do từ chối:</span>
-                  <p className="mt-0.5 text-slate-800">
+                <div className="space-y-1">
+                  <span className="font-bold text-red-700">
+                    Lý do từ chối hồ sơ:
+                  </span>
+                  <p className="text-slate-800 font-medium">
                     {provider.rejectionReason ||
                       'Tài liệu xác minh chưa đạt yêu cầu theo quy chuẩn.'}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Quyền tài khoản: <code className="font-mono text-slate-700 font-bold">customer</code>. Đối tác có thể cập nhật lại hồ sơ để gửi xét duyệt lại.
                   </p>
                 </div>
               </div>
@@ -326,16 +376,16 @@ export function ProviderAppraisalModal({
                     </span>
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        provider.verificationStatus === 'APPROVED'
+                        doc.status === 'APPROVED'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : provider.verificationStatus === 'REJECTED'
+                          : doc.status === 'REJECTED'
                             ? 'bg-red-50 text-red-600 border border-red-200'
                             : 'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}
                     >
-                      {provider.verificationStatus === 'APPROVED'
+                      {doc.status === 'APPROVED'
                         ? 'Đã duyệt'
-                        : provider.verificationStatus === 'REJECTED'
+                        : doc.status === 'REJECTED'
                           ? 'Đã từ chối'
                           : 'Chờ duyệt'}
                     </span>
@@ -366,24 +416,45 @@ export function ProviderAppraisalModal({
             </div>
           </section>
 
-          {/* KHUNG NHẬP LÝ DO TỪ CHỐI */}
+          {/* KHUNG NHẬP LÝ DO TỪ CHỐI (HIỂN THỊ NGAY TRONG FORM KHI CLICK 'TỪ CHỐI HỒ SƠ') */}
           {showRejectBox && (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 space-y-3 animate-in fade-in duration-150">
-              <label className="block text-xs font-bold text-red-700 uppercase tracking-wider">
+            <div
+              ref={rejectBoxRef}
+              className="p-5 rounded-2xl bg-red-50/50 border border-red-200 space-y-3 animate-in fade-in duration-200 shadow-xs"
+            >
+              <label
+                htmlFor="reject-reason-input"
+                className="block text-xs font-bold text-red-600 uppercase tracking-wider"
+              >
                 Nhập lý do từ chối hồ sơ <span className="text-red-500">*</span>
               </label>
               <textarea
-                rows={2}
+                id="reject-reason-input"
+                ref={textareaRef}
+                rows={3}
                 value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                className="w-full p-3 rounded-lg border border-red-300 bg-white text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-red-200 resize-none"
+                onChange={(e) => {
+                  setRejectReason(e.target.value);
+                  if (e.target.value.trim()) setRejectError('');
+                }}
+                className={`w-full p-3.5 rounded-xl border bg-white text-slate-800 text-sm focus:outline-none resize-none transition shadow-2xs ${
+                  rejectError
+                    ? 'border-red-400 focus:ring-2 focus:ring-red-100'
+                    : 'border-slate-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                }`}
                 placeholder="Ví dụ: Ảnh CCCD mặt sau bị mờ không đọc được thông tin số hiệu, vui lòng chụp lại rõ nét..."
               />
-              <div className="flex items-center justify-end gap-3 pt-1">
+              {rejectError && (
+                <p className="text-xs text-red-600 font-medium">{rejectError}</p>
+              )}
+              <div className="flex items-center justify-end gap-2.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => setShowRejectBox(false)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white transition cursor-pointer"
+                  onClick={() => {
+                    setShowRejectBox(false);
+                    setRejectError('');
+                  }}
+                  className="px-4 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 transition cursor-pointer"
                 >
                   Hủy
                 </button>
@@ -391,7 +462,7 @@ export function ProviderAppraisalModal({
                   type="button"
                   onClick={handleConfirmReject}
                   disabled={isRejecting}
-                  className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-700 active:scale-[0.99] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
                 >
                   {isRejecting ? 'Đang từ chối...' : 'Xác nhận từ chối'}
                 </button>
@@ -405,7 +476,7 @@ export function ProviderAppraisalModal({
           <div className="text-xs text-slate-500">
             <span>Thao tác bởi Quản trị viên: </span>
             <strong className="text-slate-800">Lê Quang Dũng</strong>
-            <span className="text-slate-400"> (#TF-ADM-01)</span>
+            <span className="text-slate-400"> (#SVG-ADM-01)</span>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -413,8 +484,9 @@ export function ProviderAppraisalModal({
               <>
                 <button
                   type="button"
-                  onClick={() => setShowRejectBox(true)}
-                  className="px-4 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  onClick={handleOpenRejectBox}
+                  disabled={isRejecting || isApproving}
+                  className="px-4 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 active:scale-[0.99] text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <XCircle className="w-4 h-4" />
                   <span>Từ chối hồ sơ</span>
@@ -422,14 +494,14 @@ export function ProviderAppraisalModal({
                 <button
                   type="button"
                   onClick={() => onApprove(provider.id)}
-                  disabled={isApproving}
+                  disabled={isApproving || isRejecting}
                   className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
                     {isApproving
                       ? 'Đang phê duyệt...'
-                      : 'Phê duyệt & Cấp quyền'}
+                      : 'Phê duyệt & Cấp quyền Nhà cung cấp'}
                   </span>
                 </button>
               </>
@@ -443,7 +515,7 @@ export function ProviderAppraisalModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-800 bg-white transition cursor-pointer"
+                  className="px-5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 bg-white transition cursor-pointer"
                 >
                   Đóng
                 </button>
@@ -455,11 +527,20 @@ export function ProviderAppraisalModal({
                 <button
                   type="button"
                   onClick={() => onApprove(provider.id)}
-                  disabled={isApproving}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  disabled={isApproving || isRejecting}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span>Xem xét &amp; Phê duyệt lại</span>
+                  <span>{isApproving ? 'Đang duyệt lại...' : 'Xem xét & Phê duyệt lại'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenRejectBox}
+                  disabled={isRejecting || isApproving}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold transition cursor-pointer"
+                  title="Cập nhật lại lý do từ chối"
+                >
+                  Sửa lý do từ chối
                 </button>
                 <button
                   type="button"
@@ -477,7 +558,7 @@ export function ProviderAppraisalModal({
       {/* LIGHTBOX MODAL TO VIEW LARGE IMAGE */}
       {viewingImage && (
         <div
-          className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-80 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setViewingImage(null)}
         >
           <div className="max-w-2xl max-h-[85vh] relative">

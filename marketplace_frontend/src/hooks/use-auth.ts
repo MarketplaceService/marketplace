@@ -29,32 +29,44 @@ export const useSignUp = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: SignUpDto) => authSerivce.signUp(data),
+    mutationFn: async (data: SignUpDto) => {
+      const res = await authSerivce.signUp(data);
+      // Đảm bảo không tự động đăng nhập khi vừa đăng ký xong
+      try {
+        await authSerivce.signOut();
+      } catch {
+        // bỏ qua lỗi nếu không có session
+      }
+      return res;
+    },
 
-    onSuccess: (response) => {
+    onSuccess: () => {
       queryClient.setQueryData(["auth", "session"], {
-        user: response.user,
+        user: null,
         isGuest: false,
-        isAuthenticated: true,
+        isAuthenticated: false,
       });
 
-      if (response.token) {
-        toast.success(messages?.success ?? "Account created successfully");
+      void queryClient.invalidateQueries({ queryKey: ["auth", "session"] });
 
-        router.push("/product/catalog");
-        return;
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("servigo_provider_status");
+        localStorage.removeItem("servigo_provider_rejection_reason");
+        localStorage.removeItem("trustfix_provider_status");
+        localStorage.removeItem("trustfix_provider_rejection_reason");
       }
 
-      toast.info(
+      toast.success(
         messages?.verifyEmail ??
           messages?.success ??
-          "Account created! Please check your email to verify your account",
+          "Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.",
+        { duration: 8000 },
       );
 
       router.push("/auth/signin");
     },
 
-    onError: mutationErrorToast(messages?.error ?? "Sign up failed"),
+    onError: mutationErrorToast(messages?.error ?? "Đăng ký thất bại"),
   });
 };
 
@@ -88,6 +100,8 @@ export const useSignIn = (messages?: AuthToastMessages, redirectTo?: string) => 
         isGuest: false,
         isAuthenticated: true,
       });
+
+      void queryClient.invalidateQueries({ queryKey: ["provider"] });
 
       toast.success(messages?.success ?? "Sign in successfull!");
 
@@ -199,6 +213,14 @@ export const useSignOut = (messages?: { success?: string }) => {
       await queryClient.invalidateQueries({ queryKey: ["auth", "session"] });
 
       void queryClient.invalidateQueries({ queryKey: ["cart"] });
+      void queryClient.invalidateQueries({ queryKey: ["provider"] });
+
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("servigo_provider_status");
+        localStorage.removeItem("servigo_provider_rejection_reason");
+        localStorage.removeItem("trustfix_provider_status");
+        localStorage.removeItem("trustfix_provider_rejection_reason");
+      }
 
       toast.success(messages?.success ?? "Signed out");
       router.push("/auth/signin");

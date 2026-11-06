@@ -20,9 +20,18 @@ export const providerService = {
     return res.data;
   },
 
-  getMyProfile: async (): Promise<ProviderProfile> => {
-    const res = await axiosInstance.get<ProviderProfile>('/provider/me');
-    return res.data;
+  getMyProfile: async (): Promise<ProviderProfile | null> => {
+    try {
+      const res = await axiosInstance.get<ProviderProfile>('/provider/me');
+      return res.data;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 404 || status === 401) {
+        return null;
+      }
+      throw err;
+    }
   },
 
   updateMyProfile: async (

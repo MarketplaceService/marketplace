@@ -16,12 +16,12 @@ function getAppUrl(): string {
 
 const appUrl = getAppUrl();
 
-const pool = new Pool({
+export const pool = new Pool({
   host: process.env.DB_HOST || "localhost",
   port: parseInt(process.env.DB_PORT || "5432", 10),
   user: process.env.DB_USERNAME || "postgres",
   password: process.env.DB_PASSWORD || "postgres",
-  database: process.env.DB_NAME || "ecommerce",
+  database: process.env.DB_NAME || "marketplace",
   max: 20, //* Số kết nối tối đa mà pool có thể giữ cùng 1 lúc
   idleTimeoutMillis: 30000, //* Thời gian 1 kết nối rãnh trước khi pool đóng lại
   connectionTimeoutMillis: 2000, //* Thời gian tối đa mà pool chờ để lấy kết nối trước khi báo lỗi
@@ -60,6 +60,7 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: true,
+    sendOnSignIn: true,
     autoSignInAfterVerification: false,
     expiresIn: 24 * 60 * 60,
     sendVerificationEmail: async ({ user, token }) => {
@@ -67,7 +68,8 @@ export const auth = betterAuth({
       await sendVerificationEmail(user.email, user.name, verifyUrl);
     },
   },
-  secret: process.env.BETTER_AUTH_SECRET || "",
+  secret:
+    process.env.BETTER_AUTH_SECRET || "82c0a1ec2ff05ed19ddf7679b349e42d",
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
   basePath: "/api/auth",
   user: {

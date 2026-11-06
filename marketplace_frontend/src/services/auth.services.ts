@@ -99,8 +99,20 @@ export const authSerivce = {
     });
 
     if (res.error) {
-      throw Object.assign(new Error(res.error.message || "Đăng nhập thất bại!"), {
-        response: { data: { message: res.error.message } },
+      let msg = res.error.message || "Đăng nhập thất bại!";
+      const errCode = (res.error as { code?: string }).code || "";
+      if (
+        errCode === "EMAIL_NOT_VERIFIED" ||
+        msg.toLowerCase().includes("email not verified") ||
+        msg.toLowerCase().includes("verify your email")
+      ) {
+        msg = "Email chưa được xác thực! Vui lòng kiểm tra hộp thư của bạn và bấm vào liên kết để xác thực tài khoản trước khi đăng nhập.";
+      } else if (msg.toLowerCase().includes("invalid email or password")) {
+        msg = "Email hoặc mật khẩu không chính xác!";
+      }
+      throw Object.assign(new Error(msg), {
+        response: { data: { message: msg } },
+        code: errCode,
       });
     }
 
@@ -115,17 +127,21 @@ export const authSerivce = {
     const user = mapAuthUser(raw);
 
     if (user.emailVerified === false) {
+      try {
+        await getAuthClient().signOut();
+      } catch {
+        // ignore
+      }
+      const msg = "Email chưa được xác thực! Vui lòng kiểm tra hộp thư của bạn và bấm vào liên kết để xác thực tài khoản trước khi đăng nhập.";
       throw Object.assign(
-        new Error(
-          "Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn.",
-        ),
+        new Error(msg),
         {
           response: {
             data: {
-              message:
-                "Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn.",
+              message: msg,
             },
           },
+          code: "EMAIL_NOT_VERIFIED",
         },
       );
     }

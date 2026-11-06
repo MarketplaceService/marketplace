@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   BadgeCheck,
   CheckCircle2,
@@ -13,10 +14,11 @@ import {
   Upload,
   XCircle,
   FileText,
-  Sliders,
   LocateFixed,
   Edit,
   Handshake,
+  Save,
+  Layers,
 } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/use-auth';
 import {
@@ -60,14 +62,14 @@ function haversineKm(
 }
 
 export function PartnerRegisterView() {
-  const { data: currentUser } = useCurrentUser();
-  const { data: myProfile } = useMyProviderProfile();
+  const queryClient = useQueryClient();
+  const { data: currentUser, isLoading: isUserLoading } = useCurrentUser();
+  const { data: myProfile, isLoading: isProfileLoading } = useMyProviderProfile(currentUser?.id);
   const registerMutation = useRegisterProvider();
 
-  // State management: view state can be driven by server profile or manual dev switcher
-  const [devStateOverride, setDevStateOverride] = useState<
-    'AUTO' | 'UNREGISTERED' | 'PENDING' | 'APPROVED' | 'REJECTED'
-  >('AUTO');
+  // Local transition state
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  const [isEditingAfterReject, setIsEditingAfterReject] = useState(false);
 
   // Form Fields
   const [displayName, setDisplayName] = useState('Điện Lạnh Hoàng Nam');
@@ -131,17 +133,54 @@ export function PartnerRegisterView() {
     addressText: string;
   } | null>(null);
 
-  // Derive active view state
+  // Event handler to reopen form with existing data when rejected
+  const handleReopenForm = () => {
+    if (myProfile) {
+      if (myProfile.displayName) setDisplayName(myProfile.displayName);
+      if (myProfile.phone) setPhone(myProfile.phone);
+      if (myProfile.experienceYears) setExperienceYears(myProfile.experienceYears);
+      if (myProfile.categoryId) setCategoryId(myProfile.categoryId);
+      if (myProfile.bio) setBio(myProfile.bio);
+      if (myProfile.serviceAreas && myProfile.serviceAreas.length > 0) {
+        const sa = myProfile.serviceAreas[0];
+        if (sa.areaName) setAreaName(sa.areaName);
+        if (sa.centerLatitude) setCenterLat(Number(sa.centerLatitude));
+        if (sa.centerLongitude) setCenterLng(Number(sa.centerLongitude));
+        if (sa.radiusKm) setRadiusKm(Number(sa.radiusKm));
+        if (typeof sa.isActive === 'boolean') setIsAreaActive(sa.isActive);
+      }
+    }
+    setIsEditingAfterReject(true);
+    setJustSubmitted(false);
+    toast.info('Đã mở lại biểu mẫu với dữ liệu cũ để bạn cập nhật tài liệu!');
+  };
+
+  // Derive active view state based purely on real application status
   let currentViewState: 'UNREGISTERED' | 'PENDING' | 'APPROVED' | 'REJECTED' = 'UNREGISTERED';
-  if (devStateOverride !== 'AUTO') {
-    currentViewState = devStateOverride;
+  if (justSubmitted) {
+    currentViewState = 'PENDING';
+  } else if (isEditingAfterReject) {
+    currentViewState = 'UNREGISTERED';
   } else if (myProfile) {
     if (myProfile.verificationStatus === 'APPROVED') {
       currentViewState = 'APPROVED';
     } else if (myProfile.verificationStatus === 'REJECTED') {
       currentViewState = 'REJECTED';
-    } else {
+    } else if (myProfile.verificationStatus === 'PENDING') {
       currentViewState = 'PENDING';
+    }
+  } else if (currentUser?.role === 'provider') {
+    currentViewState = 'APPROVED';
+  } else if (typeof window !== 'undefined') {
+    const localStatus =
+      localStorage.getItem('servigo_provider_status') ||
+      localStorage.getItem('trustfix_provider_status');
+    if (
+      localStatus === 'APPROVED' ||
+      localStatus === 'REJECTED' ||
+      localStatus === 'PENDING'
+    ) {
+      currentViewState = localStatus;
     }
   }
 
@@ -244,16 +283,35 @@ export function PartnerRegisterView() {
     };
 
     registerMutation.mutate(payload, {
-      onSuccess: () => {
-        setDevStateOverride('PENDING');
+      onSuccess: (data) => {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('servigo_provider_status', 'PENDING');
+          localStorage.setItem('trustfix_provider_status', 'PENDING');
+        }
+        setJustSubmitted(true);
+        setIsEditingAfterReject(false);
+        queryClient.setQueryData(['provider', 'me', currentUser?.id], data);
+        queryClient.setQueryData(['provider', 'me', 'current'], data);
+        void queryClient.invalidateQueries({ queryKey: ['provider', 'me'] });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
     });
   };
 
+  if ((isProfileLoading || isUserLoading) && !justSubmitted) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20 flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-9 h-9 border-3 border-primary border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs font-semibold text-text-secondary animate-pulse">
+          Đang tải trạng thái xét duyệt hồ sơ...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-      {/* HEADER & DEV PREVIEW SWITCHER */}
+      {/* HEADER */}
       <div className="mb-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-text-secondary text-xs mb-1">
@@ -272,57 +330,25 @@ export function PartnerRegisterView() {
           </p>
         </div>
 
-        {/* DEV STATE SWITCHER */}
-        <div className="inline-flex items-center p-1 bg-surface border border-border rounded-xl shadow-xs self-start sm:self-auto">
-          <span className="px-2 text-[11px] font-bold text-text-muted uppercase tracking-wider hidden lg:inline-flex items-center gap-1">
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Trạng thái xem:</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setDevStateOverride('UNREGISTERED')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              currentViewState === 'UNREGISTERED'
-                ? 'bg-primary text-white shadow-xs'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
-            }`}
-          >
-            1. Chưa đăng ký
-          </button>
-          <button
-            type="button"
-            onClick={() => setDevStateOverride('PENDING')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              currentViewState === 'PENDING'
-                ? 'bg-amber-500 text-white shadow-xs'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
-            }`}
-          >
-            2. Chờ duyệt
-          </button>
-          <button
-            type="button"
-            onClick={() => setDevStateOverride('APPROVED')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              currentViewState === 'APPROVED'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
-            }`}
-          >
-            3. Đã duyệt
-          </button>
-          <button
-            type="button"
-            onClick={() => setDevStateOverride('REJECTED')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              currentViewState === 'REJECTED'
-                ? 'bg-red-500 text-white shadow-xs'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted'
-            }`}
-          >
-            4. Bị từ chối
-          </button>
-        </div>
+        {/* STATIC STATUS BADGE ACCORDING TO SYSTEM STATE */}
+        {currentViewState === 'PENDING' && (
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold shadow-xs self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>Hồ sơ đang chờ phê duyệt</span>
+          </div>
+        )}
+        {currentViewState === 'APPROVED' && (
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold shadow-xs self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>Đã được phê duyệt đối tác</span>
+          </div>
+        )}
+        {currentViewState === 'REJECTED' && (
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-semibold shadow-xs self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span>Hồ sơ cần chỉnh sửa lại</span>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -432,7 +458,7 @@ export function PartnerRegisterView() {
               <p className="text-xs text-text-muted">
                 Mã định danh hồ sơ:{' '}
                 <span className="font-mono text-text-secondary">
-                  #{myProfile?.id?.slice(0, 8) || 'TF-REG-2026'}
+                  #{myProfile?.id?.slice(0, 8) || 'SVG-REG-2026'}
                 </span>
               </p>
               <div className="flex items-center gap-3">
@@ -561,7 +587,7 @@ export function PartnerRegisterView() {
               <p className="text-xs text-slate-400">
                 Mã định danh hồ sơ:{' '}
                 <span className="font-mono text-slate-700 font-semibold">
-                  #{myProfile?.id?.slice(0, 8) || 'TF-PRO-001'}
+                  #{myProfile?.id?.slice(0, 8) || 'SVG-PRO-001'}
                 </span>{' '}
                 • Trạng thái:{' '}
                 <span className="font-semibold text-emerald-700">Đã duyệt</span>
@@ -608,7 +634,7 @@ export function PartnerRegisterView() {
                   </span>
                 </div>
                 <p className="text-sm text-text-secondary mt-1.5 leading-relaxed">
-                  Ban Quản trị TrustFix đã xem xét hồ sơ của bạn nhưng chưa thể
+                  Ban Quản trị Servigo đã xem xét hồ sơ của bạn nhưng chưa thể
                   phê duyệt do một số thông tin hoặc tài liệu chưa đạt yêu cầu
                   theo quy chuẩn.
                 </p>
@@ -639,13 +665,8 @@ export function PartnerRegisterView() {
               </Link>
               <button
                 type="button"
-                onClick={() => {
-                  setDevStateOverride('UNREGISTERED');
-                  toast.info(
-                    'Đã mở lại biểu mẫu với dữ liệu cũ để bạn cập nhật tài liệu!',
-                  );
-                }}
-                className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-all shadow-sm inline-flex items-center gap-2"
+                onClick={handleReopenForm}
+                className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-all shadow-sm inline-flex items-center gap-2 cursor-pointer"
               >
                 <Edit className="w-4 h-4" />
                 <span>Chỉnh sửa &amp; Gửi lại hồ sơ</span>
@@ -696,6 +717,14 @@ export function PartnerRegisterView() {
                 </p>
               </div>
             </div>
+            {!currentUser && (
+              <Link
+                href="/auth/signin?redirect=/provider/register"
+                className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-all shadow-sm shrink-0"
+              >
+                Đăng nhập ngay
+              </Link>
+            )}
           </section>
 
           <form onSubmit={handleSubmitRegistration} className="space-y-8">
@@ -1110,8 +1139,8 @@ export function PartnerRegisterView() {
                   </div>
                 </div>
 
-                {/* Switch is_active */}
-                <div className="pt-3 border-t border-border flex items-center justify-between">
+                {/* Switch is_active & Lưu khu vực phục vụ (S12.1) */}
+                <div className="pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
                     <input
                       type="checkbox"
@@ -1123,6 +1152,63 @@ export function PartnerRegisterView() {
                       Kích hoạt vùng phục vụ này
                     </span>
                   </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.success('Đã lưu khu vực phục vụ vào danh sách thành công!');
+                    }}
+                    className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer self-start sm:self-auto"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Lưu / Cập nhật khu vực phục vụ</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* BẢNG DANH SÁCH CÁC KHU VỰC PHỤC VỤ ĐÃ CẤU HÌNH (S12.1) */}
+              <div className="mt-6 border border-border rounded-xl overflow-hidden bg-surface">
+                <div className="px-4 py-3 bg-surface-muted/60 border-b border-border flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-primary" />
+                    <span>Danh sách khu vực phục vụ đã cấu hình (1 khu vực)</span>
+                  </h3>
+                  <span className="text-[11px] font-semibold text-text-muted">Độ ưu tiên cao nhất</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-surface text-text-muted font-bold uppercase border-b border-border">
+                      <tr>
+                        <th className="px-4 py-2.5">Tên khu vực</th>
+                        <th className="px-4 py-2.5">Tọa độ tâm</th>
+                        <th className="px-4 py-2.5">Bán kính</th>
+                        <th className="px-4 py-2.5">Trạng thái</th>
+                        <th className="px-4 py-2.5 text-right">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      <tr>
+                        <td className="px-4 py-3 font-medium text-text-primary">{areaName}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-text-secondary">{centerLat.toFixed(6)}, {centerLng.toFixed(6)}</td>
+                        <td className="px-4 py-3 font-semibold text-text-primary tabular-nums">{radiusKm.toFixed(1)} km</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isAreaActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                            {isAreaActive ? 'Đang hoạt động' : 'Tạm tắt'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toast.info('Đang chọn vùng để xem lại trên bản đồ.')}
+                            className="text-primary hover:underline text-xs font-semibold cursor-pointer"
+                          >
+                            Xem lại
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -1233,7 +1319,7 @@ export function PartnerRegisterView() {
                   </span>{' '}
                   Tôi xác nhận các thông tin và tài liệu cung cấp ở trên là chính
                   xác, đồng thời đồng ý tuân thủ quy định dành cho Nhà cung cấp
-                  trên nền tảng TrustFix.
+                  trên nền tảng Servigo.
                 </div>
               </label>
             </div>

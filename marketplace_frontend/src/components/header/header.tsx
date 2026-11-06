@@ -32,31 +32,29 @@ export function Header() {
             <NavLink
               href="/"
               active={false}
-              isAnchor
             >
               Trang chủ
             </NavLink>
             <NavLink
               href="/product/catalog"
               active={false}
-              isAnchor
             >
               Sản phẩm
             </NavLink>
             <NavLink
               href="/provider/register"
               active={false}
-              isAnchor
             >
               Đăng ký Nhà cung cấp
             </NavLink>
-            <NavLink
-              href="/admin/providers"
-              active={false}
-              isAnchor
-            >
-              Duyệt nhà cung cấp (Admin)
-            </NavLink>
+            {user?.role === "admin" && (
+              <NavLink
+                href="/admin/providers"
+                active={false}
+              >
+                Duyệt nhà cung cấp (Admin)
+              </NavLink>
+            )}
           </nav>
 
           <UserMenu

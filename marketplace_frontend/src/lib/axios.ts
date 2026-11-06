@@ -13,7 +13,16 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
+      const url = String(error.config?.url || "");
+      // Do not hard-redirect on status queries like provider profile or current session check
+      if (url.includes("/provider/me") || url.includes("/auth/me")) {
+        return Promise.reject(error);
+      }
+
       const path = window.location.pathname;
+      if (path.startsWith("/auth/signin") || path.startsWith("/auth/signup")) {
+        return Promise.reject(error);
+      }
 
       const redirect = encodeURIComponent(path + window.location.search);
 

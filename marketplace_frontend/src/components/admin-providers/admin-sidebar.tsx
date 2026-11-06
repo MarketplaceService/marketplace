@@ -42,8 +42,8 @@ export function AdminSidebar({ pendingCount = 6 }: AdminSidebarProps) {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div className="flex items-baseline tracking-tight">
-              <span className="text-[18px] font-bold text-slate-900">Trust</span>
-              <span className="text-[18px] font-bold text-emerald-700">Fix</span>
+              <span className="text-[18px] font-bold text-slate-900">Servi</span>
+              <span className="text-[18px] font-bold text-emerald-700">go</span>
               <span className="ml-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                 Admin
               </span>
@@ -77,7 +77,7 @@ export function AdminSidebar({ pendingCount = 6 }: AdminSidebarProps) {
           >
             <div className="flex items-center gap-3">
               <UserCheck className="w-5 h-5 text-emerald-700" />
-              <span>Duyệt đối tác</span>
+              <span>Duyệt nhà cung cấp</span>
             </div>
             {pendingCount > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-700 text-white">
@@ -163,8 +163,8 @@ export function AdminSidebar({ pendingCount = 6 }: AdminSidebarProps) {
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div className="flex items-baseline tracking-tight">
-            <span className="text-[16px] font-bold text-slate-900">Trust</span>
-            <span className="text-[16px] font-bold text-emerald-700">Fix</span>
+            <span className="text-[16px] font-bold text-slate-900">Servi</span>
+            <span className="text-[16px] font-bold text-emerald-700">go</span>
           </div>
           <span className="ml-1 text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
             Quản trị viên
@@ -181,7 +181,7 @@ export function AdminSidebar({ pendingCount = 6 }: AdminSidebarProps) {
           <Link
             href="/admin/providers"
             className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 font-semibold transition"
-            title="Duyệt đối tác"
+            title="Duyệt nhà cung cấp"
           >
             <UserCheck className="w-5 h-5" />
           </Link>

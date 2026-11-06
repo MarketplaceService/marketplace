@@ -5,13 +5,28 @@ import { NextRequest, NextResponse } from "next/server";
 
 const FORWARDED_HEADERS = ["content-type", "accept", "accept-language"];
 
-async function getSessionToken(): Promise<string> {
+async function getSessionToken(request: NextRequest): Promise<string> {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    return session?.session?.token ?? "";
+    if (session?.session?.token) {
+      return session.session.token;
+    }
   } catch {
-    return "";
+    // ignore
   }
+
+  // Fallback: extract directly from better-auth.session_token cookie
+  const cookieHeader = request.headers.get("cookie") || "";
+  const match = cookieHeader.match(
+    /(?:better-auth\.session_token|__Secure-better-auth\.session_token)=([^;]+)/,
+  );
+  if (match && match[1]) {
+    const rawVal = decodeURIComponent(match[1].trim());
+    const dotIdx = rawVal.lastIndexOf(".");
+    return dotIdx !== -1 ? rawVal.slice(0, dotIdx) : rawVal;
+  }
+
+  return "";
 }
 
 function buildNestUrl(path: string[], request: NextRequest): URL {
@@ -26,7 +41,7 @@ function buildNestUrl(path: string[], request: NextRequest): URL {
 }
 
 async function proxyToNest(request: NextRequest, path: string[]) {
-  const sessionToken = await getSessionToken();
+  const sessionToken = await getSessionToken(request);
   const nestUrl = buildNestUrl(path, request);
 
   const proxyHeaders: Record<string, string> = {};
@@ -34,6 +49,12 @@ async function proxyToNest(request: NextRequest, path: string[]) {
     const value = request.headers.get(header);
     if (value) proxyHeaders[header] = value;
   });
+
+  // Always forward cookie header so NestJS can inspect better-auth cookies directly
+  const cookie = request.headers.get("cookie");
+  if (cookie) {
+    proxyHeaders.cookie = cookie;
+  }
 
   if (sessionToken) {
     proxyHeaders.Authorization = `Bearer ${sessionToken}`;
