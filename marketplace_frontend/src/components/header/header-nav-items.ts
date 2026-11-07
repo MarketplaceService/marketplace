@@ -13,4 +13,5 @@ export const HEADER_NAV_ITEMS: HeaderNavItem[] = [
 
 export const BECOME_PROVIDER_ITEM: HeaderNavItem = {
   label: "Trở thành nhà cung cấp",
+  href: "/provider/register",
 };

@@ -7,6 +7,9 @@ const ROLE_ROUTES: Record<string, string> = {
   "/provider": "provider",
 };
 
+// Các route không yêu cầu vai trò "provider" (cho phép khách hàng truy cập đăng ký Thợ)
+const EXCLUDED_PROVIDER_ROUTES = ["/provider/register"];
+
 function redirectToSignIn(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const url = new URL("/auth/signin", request.url);
@@ -15,6 +18,14 @@ function redirectToSignIn(request: NextRequest) {
 }
 
 function requiredRole(pathname: string): string | undefined {
+  if (
+    EXCLUDED_PROVIDER_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`),
+    )
+  ) {
+    return undefined;
+  }
+
   const prefix = Object.keys(ROLE_ROUTES).find(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
