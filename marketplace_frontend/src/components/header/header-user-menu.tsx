@@ -1,7 +1,7 @@
 import { roleLabel } from "@/lib/user-role";
 import { cn } from "@/lib/utils";
 import { User } from "@/types/api.types";
-import { Loader2, LogOut, UserRound } from "lucide-react";
+import { LayoutDashboard, Loader2, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { buttonVariants } from "../ui/button";
@@ -83,7 +83,12 @@ export function UserMenu({
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
 
-        <DropdownMenuSeparator />
+        {user.role === "admin" && (
+          <DropdownMenuItem render={<Link href="/admin" />}>
+            <LayoutDashboard />
+            Quản trị hệ thống
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuItem render={<Link href={accountHref} />}>
           <UserRound />

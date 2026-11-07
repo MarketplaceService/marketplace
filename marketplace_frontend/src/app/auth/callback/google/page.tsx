@@ -50,7 +50,7 @@ function GoogleCallbackPageInner() {
   useEffect(() => {
     let cancelled = false;
     let redirectTimer: ReturnType<typeof setTimeout> | undefined;
-    const redirectTo = searchParams.get("redirect") || "/product/catalog";
+    const redirectParam = searchParams.get("redirect");
 
     void (async () => {
       const user = await fetchMeWithRetry();
@@ -68,7 +68,9 @@ function GoogleCallbackPageInner() {
         } else {
           toast.success("Đăng nhập thành công! Đang chuyển hướng...");
         }
-        redirectTimer = setTimeout(() => router.push(redirectTo), 600);
+        const destination =
+          redirectParam || (user.role === "admin" ? "/admin" : "/product/catalog");
+        redirectTimer = setTimeout(() => router.push(destination), 600);
         return;
       }
 

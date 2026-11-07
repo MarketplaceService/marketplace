@@ -55,7 +55,7 @@ const authSessionQuery = queryOptions<AuthSession>({
 
 // Session phải lấy từ /auth/me vì user better-auth trả về thiếu các field như role
 const refreshAuthSession = (queryClient: QueryClient) =>
-  queryClient.query({ ...authSessionQuery, staleTime: 0 }).catch(noop);
+  queryClient.fetchQuery({ ...authSessionQuery, staleTime: 0 }).catch(noop);
 
 interface AuthToastMessages {
   success?: string;
@@ -119,11 +119,26 @@ export const useSignIn = (messages?: AuthToastMessages, redirectTo?: string) => 
       authSerivce.signIn(data),
 
     onSuccess: async () => {
-      await refreshAuthSession(queryClient);
+      const session = (await refreshAuthSession(queryClient)) as
+        | AuthSession
+        | undefined;
+      const user =
+        session?.user ??
+        queryClient.getQueryData<AuthSession>(["auth", "session"])?.user;
 
       toast.success(messages?.success ?? "Sign in successfull!");
 
-      router.push(redirectTo ?? "/product/catalog");
+      if (redirectTo) {
+        router.push(redirectTo);
+        return;
+      }
+
+      if (user?.role === "admin") {
+        router.push("/admin");
+        return;
+      }
+
+      router.push("/product/catalog");
     },
 
     onError: mutationErrorToast(messages?.error ?? "Sign in failed"),
