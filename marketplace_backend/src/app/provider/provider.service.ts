@@ -90,7 +90,10 @@ export class ProviderService {
       where: { userId },
     });
 
-    if (existing && existing.verificationStatus === VerificationStatus.APPROVED) {
+    if (
+      existing &&
+      existing.verificationStatus === VerificationStatus.APPROVED
+    ) {
       throw new ConflictException('Hồ sơ của bạn đã được phê duyệt');
     }
 
@@ -165,7 +168,9 @@ export class ProviderService {
     }
 
     if (!providerId) {
-      throw new BadRequestException('Vui lòng chỉ định ID Nhà cung cấp để kiểm tra');
+      throw new BadRequestException(
+        'Vui lòng chỉ định ID Nhà cung cấp để kiểm tra',
+      );
     }
 
     const areas = await this.areaRepo.find({
@@ -221,7 +226,13 @@ export class ProviderService {
     search?: string;
     category?: string;
     status?: string;
+    page?: number;
+    limit?: number;
   }) {
+    const page = Math.max(1, Number(filters.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(filters.limit) || 10));
+    const skip = (page - 1) * limit;
+
     const qb = this.profileRepo
       .createQueryBuilder('profile')
       .leftJoinAndSelect('profile.user', 'user')
@@ -249,7 +260,9 @@ export class ProviderService {
       );
     }
 
-    const items = await qb.getMany();
+    qb.skip(skip).take(limit);
+
+    const [items, totalFiltered] = await qb.getManyAndCount();
 
     // Stats
     const total = await this.profileRepo.count();
@@ -266,6 +279,10 @@ export class ProviderService {
     return {
       stats: { total, pending, approved, rejected },
       items,
+      total: totalFiltered,
+      page,
+      limit,
+      totalPages: Math.ceil(totalFiltered / limit),
     };
   }
 
@@ -338,4 +355,3 @@ export class ProviderService {
     return this.profileRepo.save(profile);
   }
 }
-

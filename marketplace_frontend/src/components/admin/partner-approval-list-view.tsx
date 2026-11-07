@@ -6,6 +6,8 @@ import {
   AlertCircle,
   BadgeCheck,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Eye,
   FileCheck,
@@ -41,6 +43,8 @@ export function PartnerApprovalListView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
     null,
   );
@@ -49,6 +53,8 @@ export function PartnerApprovalListView() {
     search: searchTerm || undefined,
     category: selectedCategory || undefined,
     status: selectedStatus || undefined,
+    page,
+    limit: pageSize,
   });
 
   const stats = data?.stats ?? {
@@ -59,11 +65,17 @@ export function PartnerApprovalListView() {
   };
 
   const items = data?.items ?? [];
+  const totalFiltered = data?.total ?? items.length;
+  const totalPages = Math.max(
+    1,
+    data?.totalPages ?? Math.ceil(totalFiltered / pageSize),
+  );
 
   const handleResetFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedStatus("ALL");
+    setPage(1);
   };
 
   return (
@@ -154,7 +166,10 @@ export function PartnerApprovalListView() {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
               placeholder="Tìm theo tên hiển thị, họ tên, email, SĐT, mã #TF-PRO..."
               className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
             />
@@ -164,7 +179,10 @@ export function PartnerApprovalListView() {
             {/* Category dropdown */}
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setPage(1);
+              }}
               className="h-10 min-w-[200px] rounded-lg border border-border bg-background px-3 text-xs text-foreground focus:border-primary focus:outline-none cursor-pointer"
             >
               <option value="">Ngành nghề: Tất cả</option>
@@ -201,7 +219,10 @@ export function PartnerApprovalListView() {
             <button
               key={pill.id}
               type="button"
-              onClick={() => setSelectedStatus(pill.id)}
+              onClick={() => {
+                setSelectedStatus(pill.id);
+                setPage(1);
+              }}
               className={`rounded-full px-3.5 py-1 text-xs font-semibold transition shrink-0 ${
                 selectedStatus === pill.id
                   ? "bg-primary text-primary-foreground shadow-2xs"
@@ -340,6 +361,109 @@ export function PartnerApprovalListView() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* 4. THANH PHÂN TRANG (PAGINATION FOOTER) */}
+        <div className="px-5 py-3.5 bg-card border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <span>
+              Hiển thị{" "}
+              <strong className="font-semibold text-foreground tabular-nums">
+                {totalFiltered === 0 ? 0 : (page - 1) * pageSize + 1}
+              </strong>
+              –
+              <strong className="font-semibold text-foreground tabular-nums">
+                {Math.min(page * pageSize, totalFiltered)}
+              </strong>{" "}
+              trong tổng số{" "}
+              <strong className="font-semibold text-foreground tabular-nums">
+                {totalFiltered}
+              </strong>{" "}
+              hồ sơ
+            </span>
+            <div className="h-4 w-px bg-border hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <label
+                htmlFor="page-size-select"
+                className="text-xs text-muted-foreground hidden sm:inline"
+              >
+                Hiển thị:
+              </label>
+              <select
+                id="page-size-select"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2.5 py-1 rounded-lg border border-border bg-card text-xs font-medium text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none cursor-pointer"
+              >
+                <option value={5}>5 / trang</option>
+                <option value={10}>10 / trang</option>
+                <option value={20}>20 / trang</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Controls */}
+          {totalFiltered > 0 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                title="Trang trước"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                if (
+                  p === 1 ||
+                  p === totalPages ||
+                  (p >= page - 1 && p <= page + 1)
+                ) {
+                  const isActive = p === page;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-semibold tabular-nums flex items-center justify-center transition cursor-pointer ${
+                        isActive
+                          ? "border border-primary bg-primary text-primary-foreground shadow-2xs"
+                          : "border border-border text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                }
+                if (p === page - 2 || p === page + 2) {
+                  return (
+                    <span
+                      key={p}
+                      className="px-1 text-muted-foreground text-xs"
+                    >
+                      ...
+                    </span>
+                  );
+                }
+                return null;
+              })}
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                title="Trang kế tiếp"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

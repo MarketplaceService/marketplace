@@ -85,6 +85,10 @@ export interface AdminProviderListResponse {
     rejected: number;
   };
   items: ProviderProfileData[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  totalPages?: number;
 }
 
 export const providerServices = {
@@ -115,6 +119,8 @@ export const providerServices = {
     search?: string;
     category?: string;
     status?: string;
+    page?: number;
+    limit?: number;
   }): Promise<AdminProviderListResponse> => {
     const { data } = await axiosInstance.get<AdminProviderListResponse>(
       "/admin/providers",

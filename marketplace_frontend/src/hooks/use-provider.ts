@@ -52,6 +52,8 @@ export function useAdminProviders(filters?: {
   search?: string;
   category?: string;
   status?: string;
+  page?: number;
+  limit?: number;
 }) {
   return useQuery({
     queryKey: PROVIDER_KEYS.adminList(filters),

@@ -23,13 +23,23 @@ export class AdminProviderController {
   constructor(private readonly providerService: ProviderService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Admin lấy danh sách hồ sơ Thợ chờ duyệt & thống kê' })
+  @ApiOperation({
+    summary: 'Admin lấy danh sách hồ sơ Thợ chờ duyệt & thống kê',
+  })
   async list(
     @Query('search') search?: string,
     @Query('category') category?: string,
     @Query('status') status?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
-    return this.providerService.listForAdmin({ search, category, status });
+    return this.providerService.listForAdmin({
+      search,
+      category,
+      status,
+      page,
+      limit,
+    });
   }
 
   @Get(':id')
@@ -57,4 +67,3 @@ export class AdminProviderController {
     return this.providerService.reject(req.user.id, id, dto.reason);
   }
 }
-
