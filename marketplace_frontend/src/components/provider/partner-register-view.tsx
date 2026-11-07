@@ -57,6 +57,7 @@ export const STANDARD_CATEGORIES = [
   { id: "cat-it-mang", name: "6. Máy tính & Mạng (PC, Wifi, Camera an ninh)" },
   { id: "cat-thong-tac", name: "7. Thông tắc & Chống thấm (Cống nghẹt, chống thấm)" },
   { id: "cat-ve-sinh", name: "8. Vệ sinh công nghiệp (Sofa, nệm, văn phòng)" },
+  { id: "cat-khac", name: "9. Khác (Tự nhập ngành nghề...)" },
 ];
 
 export interface UploadedDoc {
@@ -79,6 +80,7 @@ export function PartnerRegisterView() {
   const [phone, setPhone] = useState("");
   const [experienceYears, setExperienceYears] = useState<number | "">("");
   const [categoryId, setCategoryId] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [bio, setBio] = useState("");
 
   // Initial service info
@@ -204,8 +206,14 @@ export function PartnerRegisterView() {
       return;
     }
 
-    if (!phone.trim()) {
+    const phoneClean = phone.trim();
+    if (!phoneClean) {
       toast.error("Vui lòng nhập số điện thoại nhận việc");
+      return;
+    }
+
+    if (!/^[0-9]{10,11}$/.test(phoneClean)) {
+      toast.error("Số điện thoại không hợp lệ (phải từ 10 - 11 chữ số)");
       return;
     }
 
@@ -219,6 +227,11 @@ export function PartnerRegisterView() {
       return;
     }
 
+    if (categoryId === "cat-khac" && !customCategory.trim()) {
+      toast.error("Vui lòng nhập ngành nghề dịch vụ khác của bạn");
+      return;
+    }
+
     if (!doc1 || !doc2 || !doc3 || !doc4) {
       toast.error(
         "Vui lòng tải lên đầy đủ 4 tài liệu xác minh (CCCD 2 mặt, chứng chỉ nghề, ảnh chân dung / đồ nghề)",
@@ -226,11 +239,17 @@ export function PartnerRegisterView() {
       return;
     }
 
+    const finalCategory =
+      categoryId === "cat-khac"
+        ? customCategory.trim()
+        : STANDARD_CATEGORIES.find((c) => c.id === categoryId)?.name ||
+          categoryId;
+
     registerMutation.mutate({
       displayName: displayName.trim(),
-      phone: phone.trim(),
+      phone: phoneClean,
       experienceYears: Number(experienceYears),
-      categoryId,
+      categoryId: finalCategory,
       bio: bio.trim(),
       documents: [
         { documentType: "ID_CARD_FRONT", fileUrl: doc1.url },
@@ -588,14 +607,20 @@ export function PartnerRegisterView() {
                     </label>
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={11}
                       required
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        const numericOnly = e.target.value.replace(/\D/g, "");
+                        setPhone(numericOnly);
+                      }}
                       placeholder="VD: 0912345882"
-                      className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
+                      className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground tabular-nums"
                     />
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      Số điện thoại liên hệ trực tiếp khi khách hàng đặt lịch dịch vụ.
+                      Chỉ nhập chữ số liên hệ trực tiếp khi khách hàng đặt lịch dịch vụ.
                     </p>
                   </div>
                 </div>
@@ -641,8 +666,27 @@ export function PartnerRegisterView() {
                         </option>
                       ))}
                     </select>
+
+                    {categoryId === "cat-khac" && (
+                      <div className="mt-2.5 animate-in fade-in zoom-in-95">
+                        <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                          Nhập ngành nghề khác của bạn <span className="text-destructive">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={customCategory}
+                          onChange={(e) => setCustomCategory(e.target.value)}
+                          placeholder="VD: Sửa xe tận nơi, Giặt rèm nệm sofa, Cơ khí sắt..."
+                          className="h-11 w-full rounded-xl border border-primary/40 bg-background px-3.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
+                        />
+                      </div>
+                    )}
+
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      Chọn 1 trong 8 danh mục tiêu chuẩn của TrustFix.
+                      {categoryId === "cat-khac"
+                        ? "Vui lòng ghi rõ tên ngành nghề dịch vụ bạn cung cấp."
+                        : "Chọn 1 trong các danh mục tiêu chuẩn hoặc chọn Khác để tự nhập."}
                     </p>
                   </div>
                 </div>

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateProviderModuleTables1793814290531
-  implements MigrationInterface
-{
+export class CreateProviderModuleTables1793814290531 implements MigrationInterface {
   name = 'CreateProviderModuleTables1793814290531';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -122,4 +120,3 @@ export class CreateProviderModuleTables1793814290531
     await queryRunner.query(`DROP TYPE "public"."verification_status"`);
   }
 }
-
