@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { anonymous, bearer } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { Pool } from "pg";
@@ -106,6 +107,22 @@ export const auth = betterAuth({
             await pool.query(`UPDATE "user" SET role = 'customer' WHERE id = $1`, [
               user.id,
             ]);
+          }
+        },
+      },
+    },
+    session: {
+      create: {
+        before: async (session) => {
+          const { rows } = await pool.query<{ deleted_at: Date | null }>(
+            `SELECT deleted_at FROM "user" WHERE id = $1`,
+            [session.userId],
+          );
+
+          if (rows[0]?.deleted_at) {
+            throw new APIError("FORBIDDEN", {
+              message: "Tài khoản này đã bị xóa",
+            });
           }
         },
       },

@@ -4,7 +4,7 @@ import { useGoogleSignIn, useSignIn } from "@/hooks/use-auth";
 import { SignInDto } from "@/types/api.types";
 import { useSearchParams } from "next/navigation";
 import * as z from "zod";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -55,8 +55,7 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
@@ -86,7 +85,7 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
               <div className="flex flex-col items-center gap-2 text-center">
                 <h1 className="text-2xl font-bold">Chào mừng trở lại</h1>
                 <p className="text-muted-foreground text-balance">
-                  Đăng nhập vào tài khoản Shytech
+                  Đăng nhập vào tài khoản TrustFix
                 </p>
               </div>
               <Field>
@@ -128,10 +127,16 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
               </Field>
               <Field>
                 <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={watch("rememberMe")}
-                    onCheckedChange={(v) => setValue("rememberMe", v === true)}
-                    disabled={signInMutation.isPending}
+                  <Controller
+                    control={control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                        disabled={signInMutation.isPending}
+                      />
+                    )}
                   />
                   Ghi nhớ đăng nhập
                 </label>

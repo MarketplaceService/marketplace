@@ -40,7 +40,7 @@ async function proxyToNest(request: NextRequest, path: string[]) {
   }
 
   const hasBody = request.method !== "GET" && request.method !== "HEAD";
-  const body = hasBody ? await request.text() : undefined;
+  const body = hasBody ? await request.arrayBuffer() : undefined;
 
   const nestResponse = await fetch(nestUrl.toString(), {
     method: request.method,

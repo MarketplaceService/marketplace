@@ -7,6 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
+import type { Request } from 'express';
 import { User } from '../user/entities/user.entity';
 import { UserResponseDto } from '../user/dto/user-response.dto';
 import { ResEx } from 'src/swagger/response-examples';
@@ -58,7 +59,7 @@ export class AuthController {
     },
   })
   @ApiBearerAuth()
-  async getCurrentUser(@Req() req: any) {
+  async getCurrentUser(@Req() req: Request) {
     const session = await this.sessionFromRequest(req);
 
     if (!session?.user) {
@@ -91,7 +92,7 @@ export class AuthController {
     },
   })
   @ApiBearerAuth()
-  async getSession(@Req() req: any) {
+  async getSession(@Req() req: Request) {
     const session = await this.sessionFromRequest(req);
     if (!session?.session) {
       return {
@@ -124,7 +125,7 @@ export class AuthController {
     },
   })
   @ApiBearerAuth()
-  async checkAuth(@Req() req: any) {
+  async checkAuth(@Req() req: Request) {
     const session = await this.sessionFromRequest(req);
 
     if (!session?.user) {

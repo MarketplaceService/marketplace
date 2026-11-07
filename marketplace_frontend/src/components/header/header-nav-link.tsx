@@ -1,38 +1,76 @@
-import Link from "next/link";
-import { cn } from "@/lib/utils";
+"use client";
 
-export function NavLink({
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { HeaderNavItem } from "./header-nav-items";
+
+export function notifyComingSoon() {
+  toast.info("Tính năng đang phát triển", { id: "coming-soon" });
+}
+
+export function isActivePath(pathname: string, href?: string): boolean {
+  if (!href) return false;
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function HeaderAction({
   href,
-  active,
-  isAnchor,
+  active = false,
+  className,
+  onSelect,
   children,
 }: {
-  href: string;
-  active: boolean;
-  isAnchor: boolean;
+  href?: string;
+  active?: boolean;
+  className?: string;
+  onSelect?: () => void;
   children: React.ReactNode;
 }) {
-  const className = cn(
-    "text-sm font-semibold transition-color",
-    active ? "text-primary" : "text-foreground hover: text-primary",
-  );
-
-  if (isAnchor)
+  if (href) {
     return (
-      <a
+      <Link
         href={href}
+        aria-current={active ? "page" : undefined}
         className={className}
+        onClick={onSelect}
       >
         {children}
-      </a>
+      </Link>
     );
+  }
 
   return (
-    <Link
-      href={href}
+    <button
+      type="button"
       className={className}
+      onClick={() => {
+        notifyComingSoon();
+        onSelect?.();
+      }}
     >
       {children}
-    </Link>
+    </button>
+  );
+}
+
+export function NavLink({ item }: { item: HeaderNavItem }) {
+  const active = isActivePath(usePathname(), item.href);
+
+  return (
+    <HeaderAction
+      href={item.href}
+      active={active}
+      className={cn(
+        "text-sm whitespace-nowrap transition-colors duration-150",
+        active
+          ? "border-b-2 border-primary pb-1 font-semibold text-primary"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {item.label}
+    </HeaderAction>
   );
 }

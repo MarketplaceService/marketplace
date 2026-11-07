@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { toast } from "sonner";
 
 const axiosInstance = axios.create({
@@ -11,7 +11,7 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
       const path = window.location.pathname;
 

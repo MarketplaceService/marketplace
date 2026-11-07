@@ -22,7 +22,7 @@ export class SessionAuthService {
         user: true,
       },
     });
-    if (row && row.expiresAt > new Date() && row.user) {
+    if (row && row.expiresAt > new Date() && row.user && !row.user.deletedAt) {
       return {
         session: {
           id: row.id,

@@ -1,10 +1,19 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 
 const messages: Record<string, string> = {
   'errors.common.userNotFound': 'Không tìm thấy người dùng',
   'errors.auth.verificationFailed': 'Token xác minh không hợp lệ',
   'errors.auth.tokenExpired': 'Token xác minh đã hết hạn',
   'errors.auth.emailMismatch': 'Email không khớp với token xác minh',
+  'errors.address.notFound': 'Không tìm thấy địa chỉ',
+  'errors.address.defaultConflict':
+    'Địa chỉ mặc định vừa được thay đổi, vui lòng thử lại',
+  'errors.user.invalidAvatar': 'Ảnh đại diện phải là file JPG hoặc PNG',
+  'errors.storage.uploadFailed': 'Không thể tải ảnh lên, vui lòng thử lại sau',
 };
 
 export function translateApiMessage(key: string) {
@@ -17,4 +26,8 @@ export function apiBadRequest(key: string): never {
 
 export function apiNotFound(key: string): never {
   throw new NotFoundException(translateApiMessage(key));
+}
+
+export function apiBadGateway(key: string): never {
+  throw new BadGatewayException(translateApiMessage(key));
 }

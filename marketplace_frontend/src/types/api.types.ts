@@ -14,43 +14,51 @@ export interface User {
 }
 
 export interface ProfileAddress {
-  id: number;
-  userId: string;
+  id: string;
   fullName: string;
   phone: string;
   addressLine1: string;
   addressLine2?: string | null;
   city: string;
-  district: string;
+  district?: string | null;
   ward: string;
   postalCode?: string | null;
+  latitude: number;
+  longitude: number;
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface ProfileResponse {
-  user: User;
-  addresses: ProfileAddress[];
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  phone?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
+  role: string;
 }
 
 export interface UpdateProfileDto {
   name?: string;
-  phone?: string;
-  image?: string;
-  birthday?: string;
-  gender?: string;
+  phone?: string | null;
+  birthday?: string | null;
+  gender?: string | null;
 }
 
 export interface CreateAddressDto {
   fullName: string;
   phone: string;
   addressLine1: string;
-  addressLine2?: string;
+  addressLine2?: string | null;
   city: string;
-  district: string;
+  district?: string | null;
   ward: string;
-  postalCode?: string;
+  postalCode?: string | null;
+  latitude: number;
+  longitude: number;
   isDefault?: boolean;
 }
 
