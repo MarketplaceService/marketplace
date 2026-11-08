@@ -1,8 +1,9 @@
 "use client";
 
 import { useCurrentUser, useSignOut } from "@/hooks/use-auth";
-import { Bell, Handshake, ShieldCheck } from "lucide-react";
+import { Bell, Handshake } from "lucide-react";
 import Link from "next/link";
+import { BrandLogo } from "./brand-logo";
 import { HeaderMobileNav } from "./header-mobile-nav";
 import { BECOME_PROVIDER_ITEM, HEADER_NAV_ITEMS } from "./header-nav-items";
 import { HeaderAction, NavLink, notifyComingSoon } from "./header-nav-link";
@@ -20,18 +21,8 @@ export function Header() {
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-1">
           <HeaderMobileNav showBecomeProvider={showBecomeProvider} />
-          <Link
-            href="/"
-            className="group flex items-center gap-2.5"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition duration-150 ease-in-out group-hover:bg-primary/85">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <span className="font-display text-xl font-bold tracking-tight">
-              <span className="text-foreground">Trust</span>
-              <span className="text-primary">Fix</span>
-            </span>
-          </Link>
+          <BrandLogo href="/" size="md" />
+
         </div>
 
         <nav className="hidden items-center gap-8 lg:flex">

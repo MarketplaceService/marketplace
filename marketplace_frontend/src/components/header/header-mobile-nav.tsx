@@ -8,6 +8,7 @@ import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../ui/sheet";
 import { BECOME_PROVIDER_ITEM, HEADER_NAV_ITEMS } from "./header-nav-items";
 import { HeaderAction, isActivePath } from "./header-nav-link";
+import { BrandLogo } from "./brand-logo";
 
 const ITEM_CLASS_NAME =
   "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors";
@@ -40,13 +41,16 @@ export function HeaderMobileNav({
       </SheetTrigger>
 
       <SheetContent side="left">
-        <SheetHeader>
-          <SheetTitle>Menu</SheetTitle>
+        <SheetHeader className="border-b border-border pb-3">
+          <SheetTitle>
+            <BrandLogo size="sm" onClick={close} />
+          </SheetTitle>
         </SheetHeader>
 
         <nav className="flex flex-col gap-1 px-2">
           {HEADER_NAV_ITEMS.map((item) => {
             const active = isActivePath(pathname, item.href);
+            const Icon = item.icon;
 
             return (
               <HeaderAction
@@ -61,6 +65,7 @@ export function HeaderMobileNav({
                     : "text-foreground hover:bg-muted",
                 )}
               >
+                {Icon && <Icon className="h-4 w-4 shrink-0" />}
                 {item.label}
               </HeaderAction>
             );
