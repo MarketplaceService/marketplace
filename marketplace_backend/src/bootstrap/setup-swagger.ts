@@ -4,7 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 export function setUpSwagger(app: NestExpressApplication): void {
   //   if (process.env.NODE_ENV === 'production') return;
   const config = new DocumentBuilder()
-    .setTitle('Ecommerce API')
+    .setTitle('Servigo API')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

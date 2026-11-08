@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { PartnerRegisterView } from "@/components/provider/partner-register-view";
 
 export const metadata: Metadata = {
-  title: "Đăng ký trở thành Nhà cung cấp | TrustFix",
+  title: "Đăng ký trở thành Nhà cung cấp | Servigo",
   description:
-    "Gia nhập mạng lưới kỹ thuật viên và nhà cung cấp dịch vụ sửa chữa chuyên nghiệp TrustFix",
+    "Gia nhập mạng lưới kỹ thuật viên và nhà cung cấp dịch vụ sửa chữa chuyên nghiệp Servigo",
 };
 
 export default function PartnerRegisterPage() {

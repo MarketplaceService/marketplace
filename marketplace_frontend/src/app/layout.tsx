@@ -16,10 +16,11 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "TrustFix",
-    template: "%s | TrustFix - Trang thương mại điện tử",
+    default: "Servigo",
+    template: "%s | Servigo - Nền tảng đặt lịch dịch vụ & sửa chữa tại nhà",
   },
-  description: "Mua sắm trực tuyến nhanh chóng và an toàn",
+  description:
+    "Kết nối chuyên gia và nhà cung cấp dịch vụ sửa chữa, bảo trì uy tín, nhanh chóng và an toàn",
 };
 
 export default function RootLayout({

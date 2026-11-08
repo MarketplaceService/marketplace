@@ -327,7 +327,7 @@ export function PartnerRegisterView() {
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Hồ sơ của bạn đã được tiếp nhận vào hàng đợi kiểm duyệt của Ban Quản trị TrustFix. Quá trình thẩm định thông tin và tài liệu thường diễn ra trong vòng{" "}
+                  Hồ sơ của bạn đã được tiếp nhận vào hàng đợi kiểm duyệt của Ban Quản trị Servigo. Quá trình thẩm định thông tin và tài liệu thường diễn ra trong vòng{" "}
                   <strong className="text-foreground">24 – 48 giờ làm việc</strong>. Bạn sẽ nhận được thông báo ngay khi hồ sơ được phê duyệt.
                 </p>
               </div>
@@ -404,7 +404,7 @@ export function PartnerRegisterView() {
               <p className="text-xs text-muted-foreground">
                 Mã hồ sơ:{" "}
                 <span className="font-mono text-foreground">
-                  #{profile?.id?.slice(0, 8) ?? "TF-KYC-PENDING"}
+                  #{profile?.id?.slice(0, 8) ?? "SG-KYC-PENDING"}
                 </span>{" "}
                 • Đã gửi hồ sơ thành công
               </p>
@@ -448,7 +448,7 @@ export function PartnerRegisterView() {
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Ban Quản trị TrustFix đã xem xét hồ sơ của bạn nhưng chưa thể phê duyệt do một số thông tin hoặc tài liệu chưa đạt yêu cầu theo quy chuẩn.
+                  Ban Quản trị Servigo đã xem xét hồ sơ của bạn nhưng chưa thể phê duyệt do một số thông tin hoặc tài liệu chưa đạt yêu cầu theo quy chuẩn.
                 </p>
               </div>
             </div>
@@ -464,7 +464,7 @@ export function PartnerRegisterView() {
               </p>
               <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>
-                  Người thẩm định: <strong>{profile?.approvedBy || "Ban Quản trị TrustFix"}</strong>
+                  Người thẩm định: <strong>{profile?.approvedBy || "Ban Quản trị Servigo"}</strong>
                 </span>
                 <span>•</span>
                 <span>
@@ -506,7 +506,7 @@ export function PartnerRegisterView() {
             Chúc mừng! Bạn đã là Nhà cung cấp chính thức
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground leading-relaxed">
-            Hồ sơ đối tác của bạn đã được Ban Quản trị phê duyệt. Tài khoản của bạn hiện đã được cấp quyền Nhà cung cấp trên sàn TrustFix.
+            Hồ sơ đối tác của bạn đã được Ban Quản trị phê duyệt. Tài khoản của bạn hiện đã được cấp quyền Nhà cung cấp trên sàn Servigo.
           </p>
           <div className="mt-6 flex justify-center gap-4">
             <Link
@@ -516,7 +516,7 @@ export function PartnerRegisterView() {
               Hồ sơ của tôi
             </Link>
             <Link
-              href="/"
+              href="/provider"
               className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 shadow-sm"
             >
               Bắt đầu nhận dịch vụ
@@ -547,7 +547,7 @@ export function PartnerRegisterView() {
                     {user?.name || "Khách hàng"}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {user?.email || "user@trustfix.test"}
+                    {user?.email || "user@servigo.test"}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1126,7 +1126,7 @@ export function PartnerRegisterView() {
                   <span className="font-bold text-foreground">
                     Cam kết tính chính xác của hồ sơ:
                   </span>{" "}
-                  Tôi xác nhận các thông tin và tài liệu cung cấp ở trên là chính xác, đồng thời đồng ý tuân thủ quy định dành cho Nhà cung cấp trên nền tảng TrustFix.
+                  Tôi xác nhận các thông tin và tài liệu cung cấp ở trên là chính xác, đồng thời đồng ý tuân thủ quy định dành cho Nhà cung cấp trên nền tảng Servigo.
                 </div>
               </label>
             </div>
