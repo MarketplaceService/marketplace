@@ -68,4 +68,3 @@ export class ProviderProfile extends BaseUuidEntity {
   @OneToMany(() => ProviderServiceArea, (area) => area.provider)
   serviceAreas: ProviderServiceArea[];
 }
-

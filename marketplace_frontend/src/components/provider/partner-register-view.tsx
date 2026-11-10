@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCurrentUser } from "@/hooks/use-auth";
 import {
   useCheckServiceArea,
@@ -38,15 +39,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 // Import dynamic map component with SSR disabled
-const ServiceAreaMapPicker = dynamic(
-  () => import("./service-area-map-picker"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-80 w-full animate-pulse rounded-xl bg-muted" />
-    ),
-  },
-);
+const ServiceAreaMapPicker = dynamic(() => import("./service-area-map-picker"), {
+  ssr: false,
+  loading: () => <div className="h-80 w-full animate-pulse rounded-xl bg-muted" />,
+});
 
 export const STANDARD_CATEGORIES = [
   { id: "cat-dien-lanh", name: "1. Điện lạnh (Điều hòa, máy giặt, tủ lạnh)" },
@@ -55,7 +51,10 @@ export const STANDARD_CATEGORIES = [
   { id: "cat-bep-giadung", name: "4. Thiết bị bếp & Gia dụng (Bếp từ, lò vi sóng)" },
   { id: "cat-chieu-sang", name: "5. Điện dân dụng & Chiếu sáng (Đèn LED, aptomat)" },
   { id: "cat-it-mang", name: "6. Máy tính & Mạng (PC, Wifi, Camera an ninh)" },
-  { id: "cat-thong-tac", name: "7. Thông tắc & Chống thấm (Cống nghẹt, chống thấm)" },
+  {
+    id: "cat-thong-tac",
+    name: "7. Thông tắc & Chống thấm (Cống nghẹt, chống thấm)",
+  },
   { id: "cat-ve-sinh", name: "8. Vệ sinh công nghiệp (Sofa, nệm, văn phòng)" },
   { id: "cat-khac", name: "9. Khác (Tự nhập ngành nghề...)" },
 ];
@@ -187,9 +186,7 @@ export function PartnerRegisterView() {
             tested: true,
             eligible: isEligible,
             message: `${sampleLabel} → Cách tâm ${d.toFixed(2)} km: ${
-              isEligible
-                ? "HỢP LỆ (trong vùng phục vụ)"
-                : "NGOÀI VÙNG PHỤC VỤ"
+              isEligible ? "HỢP LỆ (trong vùng phục vụ)" : "NGOÀI VÙNG PHỤC VỤ"
             }`,
           });
         },
@@ -242,8 +239,7 @@ export function PartnerRegisterView() {
     const finalCategory =
       categoryId === "cat-khac"
         ? customCategory.trim()
-        : STANDARD_CATEGORIES.find((c) => c.id === categoryId)?.name ||
-          categoryId;
+        : STANDARD_CATEGORIES.find((c) => c.id === categoryId)?.name || categoryId;
 
     registerMutation.mutate({
       displayName: displayName.trim(),
@@ -292,7 +288,10 @@ export function PartnerRegisterView() {
       {/* Breadcrumb & Tiêu đề */}
       <div className="mb-6">
         <div className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground transition-colors">
+          <Link
+            href="/"
+            className="hover:text-foreground transition-colors"
+          >
             Trang chủ
           </Link>
           <ChevronRight className="h-3.5 w-3.5" />
@@ -302,7 +301,8 @@ export function PartnerRegisterView() {
           Đăng Ký Nhà Cung Cấp
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Cung cấp thông tin chuyên môn, tài liệu xác minh danh tính và thiết lập vùng nhận dịch vụ.
+          Cung cấp thông tin chuyên môn, tài liệu xác minh danh tính và thiết lập
+          vùng nhận dịch vụ.
         </p>
       </div>
 
@@ -327,8 +327,11 @@ export function PartnerRegisterView() {
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Hồ sơ của bạn đã được tiếp nhận vào hàng đợi kiểm duyệt của Ban Quản trị Servigo. Quá trình thẩm định thông tin và tài liệu thường diễn ra trong vòng{" "}
-                  <strong className="text-foreground">24 – 48 giờ làm việc</strong>. Bạn sẽ nhận được thông báo ngay khi hồ sơ được phê duyệt.
+                  Hồ sơ của bạn đã được tiếp nhận vào hàng đợi kiểm duyệt của Ban
+                  Quản trị Servigo. Quá trình thẩm định thông tin và tài liệu thường
+                  diễn ra trong vòng{" "}
+                  <strong className="text-foreground">24 – 48 giờ làm việc</strong>.
+                  Bạn sẽ nhận được thông báo ngay khi hồ sơ được phê duyệt.
                 </p>
               </div>
             </div>
@@ -378,8 +381,14 @@ export function PartnerRegisterView() {
                 {[
                   { title: "CCCD / CMND Mặt trước", type: "ID_CARD_FRONT" },
                   { title: "CCCD / CMND Mặt sau", type: "ID_CARD_BACK" },
-                  { title: "Chứng chỉ nghề / Bằng cấp kỹ thuật", type: "CERTIFICATE" },
-                  { title: "Ảnh chụp chân dung & Đồ nghề tác nghiệp", type: "TOOLKIT_PHOTO" },
+                  {
+                    title: "Chứng chỉ nghề / Bằng cấp kỹ thuật",
+                    type: "CERTIFICATE",
+                  },
+                  {
+                    title: "Ảnh chụp chân dung & Đồ nghề tác nghiệp",
+                    type: "TOOLKIT_PHOTO",
+                  },
                 ].map((doc, idx) => (
                   <div
                     key={idx}
@@ -448,7 +457,9 @@ export function PartnerRegisterView() {
                   </span>
                 </div>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  Ban Quản trị Servigo đã xem xét hồ sơ của bạn nhưng chưa thể phê duyệt do một số thông tin hoặc tài liệu chưa đạt yêu cầu theo quy chuẩn.
+                  Ban Quản trị Servigo đã xem xét hồ sơ của bạn nhưng chưa thể phê
+                  duyệt do một số thông tin hoặc tài liệu chưa đạt yêu cầu theo quy
+                  chuẩn.
                 </p>
               </div>
             </div>
@@ -460,15 +471,22 @@ export function PartnerRegisterView() {
                 <span>Lý do từ chối từ Ban Quản trị:</span>
               </div>
               <p className="text-sm font-medium leading-relaxed text-foreground">
-                "{profile?.rejectionReason || "Ảnh chụp giấy tờ chưa đủ độ nét, vui lòng cập nhật lại tài liệu và gửi lại hồ sơ để được phê duyệt."}"
+                &quot;
+                {profile?.rejectionReason ||
+                  "Ảnh chụp giấy tờ chưa đủ độ nét, vui lòng cập nhật lại tài liệu và gửi lại hồ sơ để được phê duyệt."}
+                &quot;
               </p>
               <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>
-                  Người thẩm định: <strong>{profile?.approvedBy || "Ban Quản trị Servigo"}</strong>
+                  Người thẩm định:{" "}
+                  <strong>{profile?.approvedBy || "Ban Quản trị Servigo"}</strong>
                 </span>
                 <span>•</span>
                 <span>
-                  Thời gian: {profile?.approvedAt ? new Date(profile.approvedAt).toLocaleString("vi-VN") : "Gần đây"}
+                  Thời gian:{" "}
+                  {profile?.approvedAt
+                    ? new Date(profile.approvedAt).toLocaleString("vi-VN")
+                    : "Gần đây"}
                 </span>
               </div>
             </div>
@@ -506,7 +524,8 @@ export function PartnerRegisterView() {
             Chúc mừng! Bạn đã là Nhà cung cấp chính thức
           </h2>
           <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground leading-relaxed">
-            Hồ sơ đối tác của bạn đã được Ban Quản trị phê duyệt. Tài khoản của bạn hiện đã được cấp quyền Nhà cung cấp trên sàn Servigo.
+            Hồ sơ đối tác của bạn đã được Ban Quản trị phê duyệt. Tài khoản của bạn
+            hiện đã được cấp quyền Nhà cung cấp trên sàn Servigo.
           </p>
           <div className="mt-6 flex justify-center gap-4">
             <Link
@@ -534,9 +553,17 @@ export function PartnerRegisterView() {
           <section className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-5 sm:flex-row sm:items-center sm:p-6">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary/30 bg-primary/10 text-primary font-bold text-lg shadow-2xs">
-                  {user?.name ? user.name[0].toUpperCase() : "K"}
-                </div>
+                <Avatar className="h-14 w-14 border-2 border-primary/30 shadow-2xs">
+                  {user?.image && (
+                    <AvatarImage
+                      src={user.image}
+                      alt={user.name}
+                    />
+                  )}
+                  <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
+                    {user?.name ? user.name[0].toUpperCase() : "K"}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-white ring-2 ring-white">
                   <User className="h-3 w-3" />
                 </span>
@@ -551,14 +578,21 @@ export function PartnerRegisterView() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Hồ sơ Nhà cung cấp sẽ được liên kết trực tiếp với tài khoản này. Sau khi Admin thẩm định và phê duyệt, vai trò sẽ được nâng thành{" "}
-                  <strong className="text-primary font-semibold">Nhà cung cấp</strong>.
+                  Hồ sơ Nhà cung cấp sẽ được liên kết trực tiếp với tài khoản này.
+                  Sau khi Admin thẩm định và phê duyệt, vai trò sẽ được nâng thành{" "}
+                  <strong className="text-primary font-semibold">
+                    Nhà cung cấp
+                  </strong>
+                  .
                 </p>
               </div>
             </div>
           </section>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-8"
+          >
             {/* ------------------------------------------------------------- */}
             {/* SECTION 1: THÔNG TIN NHÀ CUNG CẤP                             */}
             {/* ------------------------------------------------------------- */}
@@ -573,7 +607,8 @@ export function PartnerRegisterView() {
                       Thông Tin Nhà Cung Cấp
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Tên thương hiệu hoạt động, kinh nghiệm làm việc và ngành nghề chính
+                      Tên thương hiệu hoạt động, kinh nghiệm làm việc và ngành nghề
+                      chính
                     </p>
                   </div>
                 </div>
@@ -586,7 +621,8 @@ export function PartnerRegisterView() {
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-foreground">
-                      Tên hiển thị Nhà cung cấp <span className="text-destructive">*</span>
+                      Tên hiển thị Nhà cung cấp{" "}
+                      <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="text"
@@ -597,13 +633,15 @@ export function PartnerRegisterView() {
                       className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
                     />
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      Tên này sẽ hiển thị công khai trên danh bạ và trang chi tiết dịch vụ.
+                      Tên này sẽ hiển thị công khai trên danh bạ và trang chi tiết
+                      dịch vụ.
                     </p>
                   </div>
 
                   <div>
                     <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-foreground">
-                      Số điện thoại nhận việc <span className="text-destructive">*</span>
+                      Số điện thoại nhận việc{" "}
+                      <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="tel"
@@ -620,7 +658,8 @@ export function PartnerRegisterView() {
                       className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground tabular-nums"
                     />
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      Chỉ nhập chữ số liên hệ trực tiếp khi khách hàng đặt lịch dịch vụ.
+                      Chỉ nhập chữ số liên hệ trực tiếp khi khách hàng đặt lịch dịch
+                      vụ.
                     </p>
                   </div>
                 </div>
@@ -651,7 +690,8 @@ export function PartnerRegisterView() {
 
                   <div>
                     <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-foreground">
-                      Ngành nghề dịch vụ chính <span className="text-destructive">*</span>
+                      Ngành nghề dịch vụ chính{" "}
+                      <span className="text-destructive">*</span>
                     </label>
                     <select
                       required
@@ -661,7 +701,10 @@ export function PartnerRegisterView() {
                     >
                       <option value="">-- Chọn ngành nghề dịch vụ --</option>
                       {STANDARD_CATEGORIES.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
+                        <option
+                          key={cat.id}
+                          value={cat.id}
+                        >
                           {cat.name}
                         </option>
                       ))}
@@ -670,7 +713,8 @@ export function PartnerRegisterView() {
                     {categoryId === "cat-khac" && (
                       <div className="mt-2.5 animate-in fade-in zoom-in-95">
                         <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                          Nhập ngành nghề khác của bạn <span className="text-destructive">*</span>
+                          Nhập ngành nghề khác của bạn{" "}
+                          <span className="text-destructive">*</span>
                         </label>
                         <input
                           type="text"
@@ -700,7 +744,8 @@ export function PartnerRegisterView() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
                     <div className="sm:col-span-5">
                       <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                        Tên dịch vụ ban đầu <span className="text-destructive">*</span>
+                        Tên dịch vụ ban đầu{" "}
+                        <span className="text-destructive">*</span>
                       </label>
                       <input
                         type="text"
@@ -941,7 +986,9 @@ export function PartnerRegisterView() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <MapPin className="h-4 w-4 text-primary" />
-                    <span>Bấm trên bản đồ hoặc kéo marker để thay đổi tọa độ tâm</span>
+                    <span>
+                      Bấm trên bản đồ hoặc kéo marker để thay đổi tọa độ tâm
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -969,7 +1016,8 @@ export function PartnerRegisterView() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-muted-foreground uppercase">
-                      Ghi chú / Tên gợi nhớ vùng <span className="text-destructive">*</span>
+                      Ghi chú / Tên gợi nhớ vùng{" "}
+                      <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="text"
@@ -982,7 +1030,8 @@ export function PartnerRegisterView() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-muted-foreground uppercase">
-                      Tọa độ Vĩ độ (Latitude) <span className="text-destructive">*</span>
+                      Tọa độ Vĩ độ (Latitude){" "}
+                      <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="number"
@@ -994,7 +1043,8 @@ export function PartnerRegisterView() {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-muted-foreground uppercase">
-                      Tọa độ Kinh độ (Longitude) <span className="text-destructive">*</span>
+                      Tọa độ Kinh độ (Longitude){" "}
+                      <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="number"
@@ -1060,11 +1110,13 @@ export function PartnerRegisterView() {
                 <div className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-primary" />
                   <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Kiểm tra địa chỉ khách hàng nằm trong vùng phục vụ (Haversine Formula)
+                    Kiểm tra địa chỉ khách hàng nằm trong vùng phục vụ (Haversine
+                    Formula)
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Công cụ tính khoảng cách thực tế từ tọa độ khách hàng đến tâm vùng phục vụ. Bấm thử các vị trí mẫu để kiểm tra tính hợp lệ:
+                  Công cụ tính khoảng cách thực tế từ tọa độ khách hàng đến tâm vùng
+                  phục vụ. Bấm thử các vị trí mẫu để kiểm tra tính hợp lệ:
                 </p>
 
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
@@ -1126,7 +1178,9 @@ export function PartnerRegisterView() {
                   <span className="font-bold text-foreground">
                     Cam kết tính chính xác của hồ sơ:
                   </span>{" "}
-                  Tôi xác nhận các thông tin và tài liệu cung cấp ở trên là chính xác, đồng thời đồng ý tuân thủ quy định dành cho Nhà cung cấp trên nền tảng Servigo.
+                  Tôi xác nhận các thông tin và tài liệu cung cấp ở trên là chính
+                  xác, đồng thời đồng ý tuân thủ quy định dành cho Nhà cung cấp trên
+                  nền tảng Servigo.
                 </div>
               </label>
             </div>

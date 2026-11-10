@@ -57,6 +57,23 @@ const authSessionQuery = queryOptions<AuthSession>({
 const refreshAuthSession = (queryClient: QueryClient) =>
   queryClient.fetchQuery({ ...authSessionQuery, staleTime: 0 }).catch(noop);
 
+const SIGNED_OUT_SESSION: AuthSession = {
+  user: null,
+  isGuest: false,
+  isAuthenticated: false,
+};
+
+// Mọi query trong cache đều là dữ liệu của người đang đăng nhập, nên đổi người dùng thì xóa hết.
+// Không invalidate hay setQueryData lên session cũ trước khi xóa: trang đang mở sẽ render lại,
+// gọi API khi cookie đã mất và bị axios đưa về trang đăng nhập kèm redirect.
+export const resetUserCache = (
+  queryClient: QueryClient,
+  session: AuthSession = SIGNED_OUT_SESSION,
+) => {
+  queryClient.removeQueries();
+  queryClient.setQueryData(authSessionQuery.queryKey, session);
+};
+
 interface AuthToastMessages {
   success?: string;
   error?: string;
@@ -72,6 +89,7 @@ export const useSignUp = (
     mutationFn: (data: SignUpDto) => authSerivce.signUp(data),
 
     onSuccess: async (response) => {
+      resetUserCache(queryClient);
       await refreshAuthSession(queryClient);
 
       if (response.token) {
@@ -119,6 +137,7 @@ export const useSignIn = (messages?: AuthToastMessages, redirectTo?: string) => 
       authSerivce.signIn(data),
 
     onSuccess: async () => {
+      resetUserCache(queryClient);
       const session = (await refreshAuthSession(queryClient)) as
         | AuthSession
         | undefined;
@@ -209,17 +228,8 @@ export const useSignOut = (messages?: { success?: string }) => {
   return useMutation({
     mutationFn: () => authSerivce.signOut(),
 
-    onSuccess: async () => {
-      queryClient.setQueryData(["auth", "session"], {
-        user: null,
-        isGuest: false,
-        isAuthenticated: false,
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ["auth", "session"] });
-
-      void queryClient.invalidateQueries({ queryKey: ["cart"] });
-
+    onSuccess: () => {
+      resetUserCache(queryClient);
       toast.success(messages?.success ?? "Signed out");
       router.push("/auth/signin");
     },
