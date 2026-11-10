@@ -2,7 +2,7 @@ import { PartnerApprovalDetailView } from "@/components/admin/partner-approval-d
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Thẩm định chi tiết hồ sơ đối tác | Quản trị TrustFix",
+  title: "Thẩm định chi tiết hồ sơ đối tác | Quản trị Servigo",
 };
 
 export default async function AdminProviderDetailPage({

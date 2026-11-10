@@ -96,7 +96,7 @@ export class EmailService {
 
         <p>
             Trân trọng,<br>
-            Đội ngũ Ecommerce Store
+            Đội ngũ Servigo
         </p>
     </div>
     `;
@@ -127,7 +127,7 @@ export class EmailService {
 
             <p>
                 Trân trọng,<br>
-                Đội ngũ Ecommerce Store
+                Đội ngũ Servigo
             </p>
         </div>
     `;

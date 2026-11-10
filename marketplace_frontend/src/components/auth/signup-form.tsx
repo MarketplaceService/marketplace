@@ -115,7 +115,7 @@ const SignUpForm = ({ className, ...props }: React.ComponentProps<"div">) => {
                 )}
               </Field>
               <Field>
-                <FieldLabel htmlFor="confirmPassword">Xác nhân mật khẩu</FieldLabel>
+                <FieldLabel htmlFor="confirmPassword">Xác nhận mật khẩu</FieldLabel>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -146,7 +146,7 @@ const SignUpForm = ({ className, ...props }: React.ComponentProps<"div">) => {
                 Đã có tài khoản?{" "}
                 <a
                   href="/auth/signin"
-                  className="font-medium text-primary hover: underlined"
+                  className="font-medium text-primary hover:underline"
                 >
                   Đăng nhập
                 </a>

@@ -45,7 +45,7 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
   const signInSchema = useMemo(
     () =>
       z.object({
-        email: z.email("Email không hợp lê"),
+        email: z.email("Email không hợp lệ"),
         password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
         rememberMe: z.boolean(),
       }),
@@ -85,7 +85,7 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
               <div className="flex flex-col items-center gap-2 text-center">
                 <h1 className="text-2xl font-bold">Chào mừng trở lại</h1>
                 <p className="text-muted-foreground text-balance">
-                  Đăng nhập vào tài khoản TrustFix
+                  Đăng nhập vào tài khoản Servigo
                 </p>
               </div>
               <Field>
@@ -162,7 +162,7 @@ export function SignInForm({ className, ...props }: React.ComponentProps<"div">)
                 Chưa có tài khoản?{" "}
                 <a
                   href="/auth/signup"
-                  className="font-medium text-primary hover: underline"
+                  className="font-medium text-primary hover:underline"
                 >
                   Đăng ký
                 </a>

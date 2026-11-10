@@ -1,8 +1,11 @@
+"use client";
+
 import { roleLabel } from "@/lib/user-role";
 import { cn } from "@/lib/utils";
 import { User } from "@/types/api.types";
-import { LayoutDashboard, Loader2, LogOut, UserRound } from "lucide-react";
+import { ArrowLeftRight, LayoutDashboard, Loader2, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { buttonVariants } from "../ui/button";
 import {
@@ -30,6 +33,8 @@ export function UserMenu({
   signInHref,
   accountHref,
 }: UserMenuProps) {
+  const pathname = usePathname();
+  const isDashboardArea = pathname.startsWith("/admin") || pathname.startsWith("/provider");
   if (loading) {
     return <div className="h-[38px] w-24 animate-pulse rounded-full bg-muted" />;
   }
@@ -62,7 +67,7 @@ export function UserMenu({
             {user.name?.charAt(0).toUpperCase() || "U"}
           </AvatarFallback>
         </Avatar>
-        <span className="hidden flex-col text-left xl:flex">
+        <span className="hidden flex-col text-left sm:flex">
           <span className="max-w-32 truncate text-[13px] leading-tight font-semibold text-foreground transition-colors group-hover:text-primary">
             {user.name}
           </span>
@@ -83,7 +88,23 @@ export function UserMenu({
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
 
-        {user.role === "admin" && (
+        <DropdownMenuSeparator />
+
+        {isDashboardArea && (
+          <DropdownMenuItem render={<Link href="/" />}>
+            <ArrowLeftRight />
+            Về trang Khách hàng
+          </DropdownMenuItem>
+        )}
+
+        {!pathname.startsWith("/provider") && user.role === "provider" && (
+          <DropdownMenuItem render={<Link href="/provider" />}>
+            <LayoutDashboard />
+            Kênh Nhà cung cấp
+          </DropdownMenuItem>
+        )}
+
+        {!pathname.startsWith("/admin") && user.role === "admin" && (
           <DropdownMenuItem render={<Link href="/admin" />}>
             <LayoutDashboard />
             Quản trị hệ thống
@@ -94,6 +115,7 @@ export function UserMenu({
           <UserRound />
           Tài khoản
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
           disabled={isSigningOut}
