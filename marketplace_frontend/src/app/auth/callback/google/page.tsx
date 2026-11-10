@@ -1,5 +1,6 @@
 "use client";
 
+import { resetUserCache } from "@/hooks/use-auth";
 import axiosInstance from "@/lib/axios";
 import { User } from "@/types/api.types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -57,11 +58,7 @@ function GoogleCallbackPageInner() {
       if (cancelled) return;
 
       if (user) {
-        queryClient.setQueryData(["auth", "session"], {
-          user,
-          isGuest: false,
-          isAuthenticated: true,
-        });
+        resetUserCache(queryClient, { user, isGuest: false, isAuthenticated: true });
         setStatus("success");
         if (user.emailVerified === false) {
           toast.info("Vui lòng kiểm tra email để xác minh tài khoản.");

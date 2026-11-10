@@ -1,3 +1,4 @@
+import { mutationErrorToast } from "@/lib/api/api-error";
 import {
   providerServices,
   type CheckServiceAreaPayload,
@@ -33,11 +34,7 @@ export function useRegisterProvider() {
       queryClient.invalidateQueries({ queryKey: ["admin", "providers"] });
       toast.success("Hồ sơ đăng ký đã được gửi thành công và đang chờ xét duyệt!");
     },
-    onError: (error: any) => {
-      const msg =
-        error.response?.data?.message || "Có lỗi xảy ra khi nộp hồ sơ đăng ký";
-      toast.error(msg);
-    },
+    onError: mutationErrorToast("Có lỗi xảy ra khi nộp hồ sơ đăng ký"),
   });
 }
 
@@ -79,11 +76,7 @@ export function useAdminApproveProvider() {
       queryClient.setQueryData(PROVIDER_KEYS.adminDetail(updated.id), updated);
       toast.success("Đã phê duyệt hồ sơ và nâng quyền Thợ thành công!");
     },
-    onError: (error: any) => {
-      const msg =
-        error.response?.data?.message || "Có lỗi xảy ra khi phê duyệt hồ sơ";
-      toast.error(msg);
-    },
+    onError: mutationErrorToast("Có lỗi xảy ra khi phê duyệt hồ sơ"),
   });
 }
 
@@ -98,11 +91,7 @@ export function useAdminRejectProvider() {
       queryClient.setQueryData(PROVIDER_KEYS.adminDetail(updated.id), updated);
       toast.success("Đã từ chối hồ sơ kèm lý do");
     },
-    onError: (error: any) => {
-      const msg =
-        error.response?.data?.message || "Có lỗi xảy ra khi từ chối hồ sơ";
-      toast.error(msg);
-    },
+    onError: mutationErrorToast("Có lỗi xảy ra khi từ chối hồ sơ"),
   });
 }
 

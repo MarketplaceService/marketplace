@@ -5,6 +5,7 @@ import { UpdateProfileDto } from "@/types/api.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { resetUserCache } from "./use-auth";
 
 const PROFILE_QUERY_KEY = ["profile"];
 
@@ -56,7 +57,7 @@ export const useDeleteAccount = () => {
 
     onSuccess: async () => {
       await authSerivce.signOut();
-      queryClient.clear();
+      resetUserCache(queryClient);
       toast.success("Tài khoản đã được xóa");
       router.push("/auth/signin");
     },

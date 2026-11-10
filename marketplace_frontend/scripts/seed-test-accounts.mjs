@@ -19,6 +19,12 @@ const TEST_ACCOUNTS = [
     role: "provider",
     phone: "0900000002",
   },
+  {
+    name: "Khách hàng Mẫu",
+    email: "customer@trustfix.test",
+    role: "customer",
+    phone: "0900000003",
+  },
 ];
 
 const { DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME, TEST_ACCOUNT_PASSWORD } =
