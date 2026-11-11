@@ -77,7 +77,38 @@ export default function ServiceAreaMapPicker({
     const start: L.LatLngTuple = [latitude, longitude];
     const map = L.map(container, MAP_OPTIONS).setView(start, 13);
 
-    const baseMap = maplibreGL({ style: MAP_STYLE }).addTo(map).getMaplibreMap();
+    const glLayer = maplibreGL({ style: MAP_STYLE });
+    let rafId = 0;
+    const rawLayer = glLayer as unknown as {
+      _map: L.Map | null;
+      _glMap: MapLibreMap | null;
+      _resizeContainer: () => void;
+      _zoomEnd: () => void;
+      _transitionEnd: () => void;
+    };
+    const origZoomEnd = rawLayer._zoomEnd.bind(rawLayer);
+    rawLayer._zoomEnd = () => {
+      if (rawLayer._map && rawLayer._glMap) origZoomEnd();
+    };
+    rawLayer._transitionEnd = () => {
+      if (rafId) L.Util.cancelAnimFrame(rafId);
+      rafId = L.Util.requestAnimFrame(() => {
+        rafId = 0;
+        if (!rawLayer._map || !rawLayer._glMap) return;
+        const zoom = rawLayer._map.getZoom();
+        const center = rawLayer._map.getCenter();
+        const offset = rawLayer._map.latLngToContainerPoint(
+          rawLayer._map.getBounds().getNorthWest(),
+        );
+        rawLayer._resizeContainer();
+        const canvas = (rawLayer._glMap as unknown as { _actualCanvas?: HTMLElement })._actualCanvas;
+        if (canvas) L.DomUtil.setTransform(canvas, offset, 1);
+        rawLayer._glMap.once("moveend", () => rawLayer._zoomEnd());
+        rawLayer._glMap.jumpTo({ center: [center.lng, center.lat], zoom: zoom - 1 });
+      });
+    };
+
+    const baseMap = glLayer.addTo(map).getMaplibreMap();
     baseMap.once("style.load", () => showLatinNames(baseMap));
 
     const marker = L.marker(start, {
@@ -110,7 +141,11 @@ export default function ServiceAreaMapPicker({
       });
     }
 
-    const resizeObserver = new ResizeObserver(() => map.invalidateSize());
+    const resizeObserver = new ResizeObserver(() => {
+      if (container.isConnected && container.clientWidth > 0 && container.clientHeight > 0) {
+        map.invalidateSize();
+      }
+    });
     resizeObserver.observe(container);
 
     mapRef.current = map;
@@ -119,6 +154,8 @@ export default function ServiceAreaMapPicker({
 
     return () => {
       resizeObserver.disconnect();
+      if (rafId) L.Util.cancelAnimFrame(rafId);
+      glLayer.remove();
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
