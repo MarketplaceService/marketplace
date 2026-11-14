@@ -3,12 +3,14 @@ import {
   providerServices,
   type CheckServiceAreaPayload,
   type RegisterProviderPayload,
+  type UpdateServiceAreaPayload,
 } from "@/services/provider.services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export const PROVIDER_KEYS = {
   myProfile: ["provider", "me"] as const,
+  publicProfile: (id: string) => ["providers", id] as const,
   adminList: (filters?: { search?: string; category?: string; status?: string }) =>
     ["admin", "providers", filters] as const,
   adminDetail: (id: string) => ["admin", "providers", id] as const,
@@ -35,6 +37,29 @@ export function useRegisterProvider() {
       toast.success("Hồ sơ đăng ký đã được gửi thành công và đang chờ xét duyệt!");
     },
     onError: mutationErrorToast("Có lỗi xảy ra khi nộp hồ sơ đăng ký"),
+  });
+}
+
+/** Lỗi do trang Lịch & Vùng phục vụ tự báo theo từng phần khi lưu, nên hook không hiện toast */
+export function useUpdateServiceArea() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateServiceAreaPayload) =>
+      providerServices.updateServiceArea(payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(PROVIDER_KEYS.myProfile, data);
+      void queryClient.invalidateQueries({ queryKey: ["providers"] });
+    },
+  });
+}
+
+export function usePublicProvider(id: string) {
+  return useQuery({
+    queryKey: PROVIDER_KEYS.publicProfile(id),
+    queryFn: () => providerServices.getPublicProfile(id),
+    enabled: !!id,
+    retry: false,
   });
 }
 

@@ -1,47 +1,20 @@
 "use client";
 
-import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { setWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
+import { LocateButton } from "../map/locate-button";
+import {
+  BASE_MAP_OPTIONS,
+  createBaseLayer,
+  HAS_WEBGL,
+  LOCATE_ZOOM,
+  watchBaseMap,
+} from "../map/map-config";
 
-// DNS của Viettel trả về 127.0.0.1 cho openstreetmap.org nên không dùng tile gốc của OSM,
-// còn tile raster của CARTO hiện bắt buộc có API key
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const MAP_ZOOM = 15;
-
-// Dữ liệu OSM ghi tên tiếng Trung ở Hoàng Sa, Trường Sa và Biển Đông nên chỉ cho xem đất liền
-// và đảo gần bờ. Zoom 7 là mức thấp nhất mà bản đồ rộng 640px vẫn nằm trọn trong khung này.
-const MAP_OPTIONS: L.MapOptions = {
-  maxBounds: [
-    [8.2, 101.9],
-    [23.6, 109.7],
-  ],
-  maxBoundsViscosity: 1,
-  bounceAtZoomLimits: false,
-  minZoom: 7,
-  maxZoom: 19,
-};
-
-setWorkerUrl(
-  new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
-);
-
-// MapLibre ném lỗi ngay khi khởi tạo nếu thiếu WebGL2, làm hỏng cả trang.
-// Chỉ kiểm tra một lần vì trình duyệt chỉ giữ được khoảng 16 WebGL context.
-const HAS_WEBGL = document.createElement("canvas").getContext("webgl2") !== null;
-
-// Style ưu tiên tên tiếng Anh và kèm chữ bản địa. name:latin giữ nguyên tên tiếng Việt,
-// còn nhãn chỉ có chữ Trung như tên bãi ngầm ngoài khơi thì không có trường này nên bị ẩn.
-function showLatinNames(map: MapLibreMap) {
-  for (const layer of map.getStyle().layers) {
-    if (layer.type === "symbol" && String(layer.layout?.["text-field"]).includes("name")) {
-      map.setLayoutProperty(layer.id, "text-field", ["get", "name:latin"]);
-    }
-  }
-}
+const MAP_OPTIONS: L.MapOptions = { ...BASE_MAP_OPTIONS, maxZoom: 19 };
 
 const markerIcon = L.divIcon({
   className: "",
@@ -54,12 +27,15 @@ interface AddressMapPickerProps {
   latitude: number;
   longitude: number;
   onChange: (latitude: number, longitude: number) => void;
+  /** Gọi sau khi người dùng bấm nút định vị và ghim đã tới vị trí hiện tại */
+  onLocated?: (latitude: number, longitude: number) => void;
 }
 
 export default function AddressMapPicker({
   latitude,
   longitude,
   onChange,
+  onLocated,
 }: AddressMapPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -77,8 +53,8 @@ export default function AddressMapPicker({
     const start: L.LatLngTuple = [latitude, longitude];
     const map = L.map(container, MAP_OPTIONS).setView(start, MAP_ZOOM);
 
-    const baseMap = maplibreGL({ style: MAP_STYLE }).addTo(map).getMaplibreMap();
-    baseMap.once("style.load", () => showLatinNames(baseMap));
+    const baseMap = createBaseLayer().addTo(map).getMaplibreMap();
+    watchBaseMap(baseMap);
 
     const marker = L.marker(start, { draggable: true, icon: markerIcon }).addTo(map);
 
@@ -119,6 +95,12 @@ export default function AddressMapPicker({
     map.panTo([latitude, longitude]);
   }, [latitude, longitude]);
 
+  const handleLocated = (lat: number, lng: number) => {
+    mapRef.current?.setView([lat, lng], LOCATE_ZOOM);
+    onChange(lat, lng);
+    onLocated?.(lat, lng);
+  };
+
   if (!HAS_WEBGL) {
     return (
       <div className="flex h-[220px] w-full items-center justify-center rounded-lg border border-border bg-muted p-4 text-center text-sm text-muted-foreground">
@@ -128,9 +110,15 @@ export default function AddressMapPicker({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="isolate h-[220px] w-full overflow-hidden rounded-lg border border-border bg-muted"
-    />
+    <div className="relative">
+      <div
+        ref={containerRef}
+        className="isolate h-[220px] w-full overflow-hidden rounded-lg border border-border bg-muted"
+      />
+      <LocateButton
+        onLocated={handleLocated}
+        className="absolute top-2 right-2 z-10"
+      />
+    </div>
   );
 }

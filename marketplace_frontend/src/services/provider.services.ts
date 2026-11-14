@@ -150,5 +150,39 @@ export const providerServices = {
     );
     return data;
   },
+
+  updateServiceArea: async (payload: UpdateServiceAreaPayload) => {
+    const { data } = await axiosInstance.patch<ProviderStatusResponse>(
+      "/provider/service-area",
+      payload,
+    );
+    return data;
+  },
+
+  getPublicProfile: async (id: string) => {
+    const { data } = await axiosInstance.get<PublicProviderProfile>(`/providers/${id}`);
+    return data;
+  },
 };
+
+export interface UpdateServiceAreaPayload {
+  areaName?: string;
+  centerLatitude: number;
+  centerLongitude: number;
+  /** 2–20 km */
+  radiusKm: number;
+}
+
+/** Hồ sơ công khai của thợ. Không có tọa độ tâm vùng phục vụ vì đó có thể là nhà riêng */
+export interface PublicProviderProfile {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  /** Form đăng ký lưu tên ngành nghề vào đây, ví dụ "1. Điện lạnh (...)" */
+  category: string | null;
+  experienceYears: number | null;
+  verifiedAt: string | null;
+  serviceArea: { areaName: string | null; radiusKm: number } | null;
+}
 

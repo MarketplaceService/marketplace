@@ -6,11 +6,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/app/user/entities/user.entity';
+import { apiNotFound } from 'src/shared/helpers/api-i18n';
 import { UserRole } from 'src/shared/types/user-role.enum';
 import { VerificationStatus } from 'src/shared/types/verification-status.enum';
 import { DataSource, Repository } from 'typeorm';
 import { CheckServiceAreaDto } from './dto/service-area-and-approval.dto';
 import { RegisterProviderDto } from './dto/register-provider.dto';
+import { UpdateServiceAreaDto } from './dto/update-service-area.dto';
 import { ProviderDocument } from './entities/provider-document.entity';
 import { ProviderProfile } from './entities/provider-profile.entity';
 import { ProviderServiceArea } from './entities/provider-service-area.entity';
@@ -156,6 +158,55 @@ export class ProviderService {
 
       return this.getMyProfile(userId);
     });
+  }
+
+  async updateMyServiceArea(userId: string, dto: UpdateServiceAreaDto) {
+    const profile = await this.profileRepo.findOne({ where: { userId } });
+    if (!profile) {
+      apiNotFound('errors.provider.profileNotFound');
+    }
+
+    const area =
+      (await this.areaRepo.findOne({
+        where: { providerId: profile.id, isActive: true },
+        order: { createdAt: 'ASC' },
+      })) ?? this.areaRepo.create({ providerId: profile.id, isActive: true });
+
+    area.areaName =
+      dto.areaName?.trim() || area.areaName || 'Vùng phục vụ chính';
+    area.centerLatitude = dto.centerLatitude;
+    area.centerLongitude = dto.centerLongitude;
+    area.radiusKm = dto.radiusKm;
+    await this.areaRepo.save(area);
+
+    return this.getMyProfile(userId);
+  }
+
+  // Chỉ trả các trường công khai. Tọa độ tâm vùng phục vụ có thể là nhà riêng của thợ nên không trả
+  async getPublicProfile(id: string) {
+    const profile = await this.profileRepo.findOne({
+      where: { id, verificationStatus: VerificationStatus.APPROVED },
+      relations: { user: true, serviceAreas: true },
+    });
+
+    if (!profile?.user || profile.user.deletedAt) {
+      apiNotFound('errors.provider.notFound');
+    }
+
+    const area = profile.serviceAreas.find((item) => item.isActive) ?? null;
+
+    return {
+      id: profile.id,
+      displayName: profile.displayName,
+      avatarUrl: profile.user.image,
+      bio: profile.bio,
+      category: profile.categoryId,
+      experienceYears: profile.experienceYears,
+      verifiedAt: profile.approvedAt,
+      serviceArea: area
+        ? { areaName: area.areaName, radiusKm: Number(area.radiusKm) }
+        : null,
+    };
   }
 
   async checkServiceArea(dto: CheckServiceAreaDto, currentUserId?: string) {
