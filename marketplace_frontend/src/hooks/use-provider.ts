@@ -1,3 +1,4 @@
+import { DISCOVERY_KEYS } from "@/hooks/use-discovery";
 import { mutationErrorToast } from "@/lib/api/api-error";
 import {
   providerServices,
@@ -73,6 +74,7 @@ export function useAdminApproveProvider() {
     mutationFn: (id: string) => providerServices.adminApprove(id),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "providers"] });
+      queryClient.invalidateQueries({ queryKey: DISCOVERY_KEYS.all });
       queryClient.setQueryData(PROVIDER_KEYS.adminDetail(updated.id), updated);
       toast.success("Đã phê duyệt hồ sơ và nâng quyền Thợ thành công!");
     },

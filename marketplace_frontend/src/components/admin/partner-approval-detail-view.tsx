@@ -38,6 +38,12 @@ const ServiceAreaMapPicker = dynamic(
   },
 );
 
+const PRICE_UNIT_LABELS: Record<string, string> = {
+  FIXED: "Trọn gói",
+  HOURLY: "Theo giờ",
+  FROM: "Từ mức giá",
+};
+
 interface PartnerApprovalDetailViewProps {
   providerId: string;
   onClose?: () => void;
@@ -140,6 +146,7 @@ export function PartnerApprovalDetailView({
     areaName: "Vùng trung tâm TP.HCM",
     isActive: true,
   };
+  const initialService = profile.services?.[0];
 
   const docItems = [
     {
@@ -302,7 +309,7 @@ export function PartnerApprovalDetailView({
                 Ngành nghề chính
               </span>
               <p className="mt-0.5 text-sm font-semibold text-foreground">
-                {profile.categoryId || "Cấp thoát nước"}
+                {profile.categoryName || profile.categoryId || "Chưa cập nhật"}
               </p>
             </div>
           </div>
@@ -314,17 +321,23 @@ export function PartnerApprovalDetailView({
                 Dịch vụ khởi tạo ban đầu
               </span>
               <p className="mt-0.5 font-medium text-foreground">
-                Sửa chữa sự cố rò rỉ nước âm tường &amp; thay van khóa
+                {initialService?.title ||
+                  "Chưa thiết lập dịch vụ riêng (hệ thống tự tạo dịch vụ mặc định khi duyệt)"}
               </p>
             </div>
-            <div className="text-left sm:text-right shrink-0">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Biểu giá cơ sở
-              </span>
-              <p className="mt-0.5 font-bold tabular-nums text-primary">
-                200.000 đ (Theo giờ) • 60 phút
-              </p>
-            </div>
+            {initialService && (
+              <div className="text-left sm:text-right shrink-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Biểu giá cơ sở
+                </span>
+                <p className="mt-0.5 font-bold tabular-nums text-primary">
+                  {Number(initialService.basePrice).toLocaleString("vi-VN")} đ (
+                  {PRICE_UNIT_LABELS[initialService.priceUnit] ??
+                    initialService.priceUnit}
+                  ) • {initialService.durationMinutes} phút
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Giới thiệu năng lực */}

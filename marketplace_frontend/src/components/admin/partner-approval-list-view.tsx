@@ -1,5 +1,6 @@
 "use client";
 
+import { useCategories } from "@/hooks/use-discovery";
 import { useAdminProviders } from "@/hooks/use-provider";
 import type { ProviderProfileData } from "@/services/provider.services";
 import {
@@ -28,15 +29,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PartnerApprovalDetailView } from "./partner-approval-detail-view";
 
-const CATEGORIES = [
-  "Sửa điện lạnh",
-  "Sửa điện dân dụng",
-  "Cấp thoát nước",
-  "Sửa máy tính - điện thoại",
-  "Vệ sinh nhà cửa",
-  "Cải tạo & Sơn sửa",
-  "Lắp đặt thiết bị",
-  "Sửa khóa & Cửa cuốn",
+const FALLBACK_CATEGORIES = [
+  { id: "sua-dien-lanh", name: "Sửa điện lạnh" },
+  { id: "sua-dien-nuoc", name: "Sửa điện nước" },
+  { id: "sua-khoa-cua-cuon", name: "Sửa khóa & Cửa cuốn" },
+  { id: "thong-tac-ve-sinh", name: "Thông tắc vệ sinh" },
+  { id: "ve-sinh-nha-cua", name: "Vệ sinh nhà cửa" },
+  { id: "thiet-bi-gia-dung", name: "Thiết bị gia dụng" },
+  { id: "son-sua-chong-tham", name: "Sơn sửa & Chống thấm" },
+  { id: "do-go-noi-that", name: "Đồ gỗ & Nội thất" },
 ];
 
 export function PartnerApprovalListView() {
@@ -48,6 +49,12 @@ export function PartnerApprovalListView() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
     null,
   );
+
+  const { data: apiCategories } = useCategories();
+  const categoryOptions =
+    apiCategories && apiCategories.length > 0
+      ? apiCategories.map((c) => ({ id: c.id, name: c.name }))
+      : FALLBACK_CATEGORIES;
 
   const { data, isLoading, refetch } = useAdminProviders({
     search: searchTerm || undefined,
@@ -186,9 +193,9 @@ export function PartnerApprovalListView() {
               className="h-10 min-w-[200px] rounded-lg border border-border bg-background px-3 text-xs text-foreground focus:border-primary focus:outline-none cursor-pointer"
             >
               <option value="">Ngành nghề: Tất cả</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              {categoryOptions.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
                 </option>
               ))}
             </select>
@@ -305,7 +312,7 @@ export function PartnerApprovalListView() {
                       {/* Cột 3: Ngành nghề & Vùng */}
                       <td className="px-5 py-4">
                         <p className="font-medium text-foreground">
-                          {item.categoryId || "Sửa điện lạnh"}
+                          {item.categoryName || item.categoryId || "Chưa cập nhật"}
                         </p>
                         <p className="text-muted-foreground text-[11px]">
                           Bán kính: {area?.radiusKm ? `${area.radiusKm} km` : "5.0 km"}

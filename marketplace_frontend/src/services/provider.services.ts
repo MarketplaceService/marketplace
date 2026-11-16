@@ -17,6 +17,18 @@ export interface ProviderServiceAreaItem {
   isActive: boolean;
 }
 
+export interface ProviderInitialServiceItem {
+  id: string;
+  categoryId: string;
+  title: string;
+  description: string;
+  basePrice: number;
+  priceUnit: "FIXED" | "HOURLY" | "FROM";
+  durationMinutes: number;
+  status: string;
+  createdAt?: string;
+}
+
 export interface ProviderProfileData {
   id: string;
   userId: string;
@@ -25,14 +37,17 @@ export interface ProviderProfileData {
   experienceYears: number | null;
   phone: string | null;
   categoryId: string | null;
+  categoryName?: string | null;
+  isOnline?: boolean;
   verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
   rejectionReason: string | null;
-  approvedBy: string | null;
+  approvedBy?: string | null;
   approvedAt: string | null;
   createdAt: string;
   updatedAt: string;
   documents?: ProviderDocumentItem[];
   serviceAreas?: ProviderServiceAreaItem[];
+  services?: ProviderInitialServiceItem[];
   user?: {
     id: string;
     name: string;
@@ -60,6 +75,12 @@ export interface RegisterProviderPayload {
     centerLongitude: number;
     radiusKm: number;
     isActive?: boolean;
+  };
+  initialService?: {
+    title: string;
+    basePrice: number;
+    priceUnit: "FIXED" | "HOURLY" | "FROM";
+    durationMinutes: number;
   };
 }
 
