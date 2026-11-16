@@ -1,4 +1,5 @@
 import { User } from 'src/app/user/entities/user.entity';
+import { Service } from 'src/app/service/entities/service.entity';
 import { BaseUuidEntity } from 'src/config/database/base-uuid.entity';
 import { VerificationStatus } from 'src/shared/types/verification-status.enum';
 import {
@@ -7,7 +8,6 @@ import {
   Entity,
   Index,
   JoinColumn,
-  ManyToOne,
   OneToMany,
   OneToOne,
 } from 'typeorm';
@@ -33,8 +33,8 @@ export class ProviderProfile extends BaseUuidEntity {
   @Column({ type: 'text', nullable: true })
   phone: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
-  categoryId: string | null;
+  @Column({ type: 'boolean', name: 'is_online', default: true })
+  isOnline: boolean;
 
   @Column({
     type: 'enum',
@@ -42,10 +42,6 @@ export class ProviderProfile extends BaseUuidEntity {
     default: VerificationStatus.PENDING,
   })
   verificationStatus: VerificationStatus;
-
-  @Index('idx_provider_approved_by')
-  @Column({ type: 'uuid', nullable: true })
-  approvedBy: string | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   approvedAt: Date | null;
@@ -58,13 +54,12 @@ export class ProviderProfile extends BaseUuidEntity {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'approved_by' })
-  approver: User | null;
-
   @OneToMany(() => ProviderDocument, (doc) => doc.provider)
   documents: ProviderDocument[];
 
   @OneToMany(() => ProviderServiceArea, (area) => area.provider)
   serviceAreas: ProviderServiceArea[];
+
+  @OneToMany(() => Service, (service) => service.provider)
+  services: Service[];
 }

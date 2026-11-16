@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -10,6 +11,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PriceUnit } from 'src/shared/types/price-unit.enum';
 
 export class DocumentItemDto {
   @IsString()
@@ -46,6 +48,23 @@ export class InitialServiceAreaDto {
   isActive?: boolean;
 }
 
+export class InitialServiceDto {
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @IsNumber()
+  @Min(0)
+  basePrice: number;
+
+  @IsEnum(PriceUnit)
+  priceUnit: PriceUnit;
+
+  @IsNumber()
+  @Min(15)
+  durationMinutes: number;
+}
+
 export class RegisterProviderDto {
   @IsString()
   @IsNotEmpty()
@@ -77,5 +96,10 @@ export class RegisterProviderDto {
   @ValidateNested()
   @Type(() => InitialServiceAreaDto)
   serviceArea?: InitialServiceAreaDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InitialServiceDto)
+  initialService?: InitialServiceDto;
 }
 
