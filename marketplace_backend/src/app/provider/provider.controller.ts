@@ -1,16 +1,11 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Req,
-} from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequireRoles } from 'src/core/decorators/role-with-guard.decorator';
 import type { AuthenticatedRequest } from 'src/core/guards/auth.guard';
 import { UserRole } from 'src/shared/types/user-role.enum';
 import { CheckServiceAreaDto } from './dto/service-area-and-approval.dto';
 import { RegisterProviderDto } from './dto/register-provider.dto';
+import { UpdateServiceAreaDto } from './dto/update-service-area.dto';
 import { ProviderService } from './provider.service';
 
 @ApiTags('Đối tác / Thợ (provider)')
@@ -35,6 +30,17 @@ export class ProviderController {
     @Body() dto: RegisterProviderDto,
   ) {
     return this.providerService.register(req.user.id, dto);
+  }
+
+  @Patch('service-area')
+  @ApiBearerAuth()
+  @RequireRoles(UserRole.PROVIDER)
+  @ApiOperation({ summary: 'Sửa tâm và bán kính vùng phục vụ của thợ' })
+  async updateServiceArea(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateServiceAreaDto,
+  ) {
+    return this.providerService.updateMyServiceArea(req.user.id, dto);
   }
 
   @Post('service-areas/check')

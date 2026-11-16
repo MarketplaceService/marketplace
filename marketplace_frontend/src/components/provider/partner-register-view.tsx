@@ -1,5 +1,6 @@
 "use client";
 
+import { AddressAutocomplete } from "@/components/map/address-autocomplete";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useCategories } from "@/hooks/use-discovery";
@@ -8,6 +9,7 @@ import {
   useMyProviderProfile,
   useRegisterProvider,
 } from "@/hooks/use-provider";
+import { useServiceAreaCenter } from "@/hooks/use-service-area-center";
 import {
   AlertCircle,
   BadgeCheck,
@@ -23,7 +25,6 @@ import {
   ImageIcon,
   Info,
   Loader2,
-  LocateFixed,
   MapPin,
   Send,
   ShieldAlert,
@@ -110,23 +111,14 @@ export function PartnerRegisterView() {
     message?: string;
   }>({ tested: false });
 
-  // Geolocation
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Trình duyệt không hỗ trợ định vị");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = parseFloat(pos.coords.latitude.toFixed(6));
-        const lng = parseFloat(pos.coords.longitude.toFixed(6));
-        setCenterLat(lat);
-        setCenterLng(lng);
-        toast.success(`Đã lấy vị trí hiện tại: ${lat}, ${lng}`);
-      },
-      () => toast.error("Không thể lấy vị trí hiện tại của bạn"),
-    );
-  };
+  // Tìm tâm vùng phục vụ bằng địa chỉ hoặc nút định vị trên bản đồ
+  const centerSearch = useServiceAreaCenter({
+    onCenterChange: (lat, lng) => {
+      setCenterLat(lat);
+      setCenterLng(lng);
+    },
+    onAreaNameChange: setAreaName,
+  });
 
   // Helper upload file (Data URL preview)
   const handleFileChange = (
@@ -981,22 +973,30 @@ export function PartnerRegisterView() {
 
               {/* Map container */}
               <div className="mb-6 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <span>
-                      Bấm trên bản đồ hoặc kéo marker để thay đổi tọa độ tâm
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleGetLocation}
-                    className="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer"
+                <div>
+                  <label
+                    htmlFor="service-area-center-search"
+                    className="mb-1 block text-xs font-semibold text-muted-foreground uppercase"
                   >
-                    <LocateFixed className="h-4 w-4" />
-                    <span>Lấy vị trí hiện tại</span>
-                  </button>
+                    Tìm địa chỉ trung tâm phục vụ
+                  </label>
+                  <AddressAutocomplete
+                    id="service-area-center-search"
+                    value={centerSearch.searchText}
+                    onValueChange={centerSearch.setSearchText}
+                    onPlaceSelect={centerSearch.selectPlace}
+                    near={{ latitude: centerLat, longitude: centerLng }}
+                    placeholder="VD: 142 Hoàng Quốc Việt, Cầu Giấy, Hà Nội"
+                  />
                 </div>
+
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span>
+                    Bấm trên bản đồ, kéo marker, hoặc bấm nút định vị ở góc bản đồ để
+                    thay đổi tọa độ tâm
+                  </span>
+                </p>
 
                 <ServiceAreaMapPicker
                   latitude={centerLat}
@@ -1006,6 +1006,7 @@ export function PartnerRegisterView() {
                     setCenterLat(lat);
                     setCenterLng(lng);
                   }}
+                  onLocated={(lat, lng) => void centerSearch.describeLocation(lat, lng)}
                 />
               </div>
 

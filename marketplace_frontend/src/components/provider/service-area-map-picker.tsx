@@ -1,40 +1,20 @@
 "use client";
 
-import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { setWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
+import type { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
+import { LocateButton } from "../map/locate-button";
+import {
+  BASE_MAP_OPTIONS,
+  createBaseLayer,
+  HAS_WEBGL,
+  watchBaseMap,
+} from "../map/map-config";
 
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-
-const MAP_OPTIONS: L.MapOptions = {
-  maxBounds: [
-    [8.2, 101.9],
-    [23.6, 109.7],
-  ],
-  maxBoundsViscosity: 1,
-  bounceAtZoomLimits: false,
-  minZoom: 6,
-  maxZoom: 18,
-};
-
-setWorkerUrl(
-  new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
-);
-
-const HAS_WEBGL =
-  typeof document !== "undefined" &&
-  document.createElement("canvas").getContext("webgl2") !== null;
-
-function showLatinNames(map: MapLibreMap) {
-  for (const layer of map.getStyle().layers) {
-    if (layer.type === "symbol" && String(layer.layout?.["text-field"]).includes("name")) {
-      map.setLayoutProperty(layer.id, "text-field", ["get", "name:latin"]);
-    }
-  }
-}
+const MAP_OPTIONS: L.MapOptions = { ...BASE_MAP_OPTIONS, maxZoom: 18 };
+const CIRCLE_PADDING: L.PointExpression = [24, 24];
 
 const pinIcon = L.divIcon({
   className: "",
@@ -50,6 +30,8 @@ interface ServiceAreaMapPickerProps {
   longitude: number;
   radiusKm: number;
   onChangeCenter: (lat: number, lng: number) => void;
+  /** Gọi sau khi người dùng bấm nút định vị và tâm đã tới vị trí hiện tại */
+  onLocated?: (lat: number, lng: number) => void;
   interactive?: boolean;
 }
 
@@ -58,12 +40,14 @@ export default function ServiceAreaMapPicker({
   longitude,
   radiusKm,
   onChangeCenter,
+  onLocated,
   interactive = true,
 }: ServiceAreaMapPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const circleRef = useRef<L.Circle | null>(null);
+  const radiusRef = useRef(radiusKm);
   const onChangeCenterRef = useRef(onChangeCenter);
 
   useEffect(() => {
@@ -77,7 +61,8 @@ export default function ServiceAreaMapPicker({
     const start: L.LatLngTuple = [latitude, longitude];
     const map = L.map(container, MAP_OPTIONS).setView(start, 13);
 
-    const glLayer = maplibreGL({ style: MAP_STYLE });
+    // Chặn lớp MapLibre gọi getZoom sau khi bản đồ đã bị gỡ (PR #147)
+    const glLayer = createBaseLayer();
     let rafId = 0;
     const rawLayer = glLayer as unknown as {
       _map: L.Map | null;
@@ -109,7 +94,7 @@ export default function ServiceAreaMapPicker({
     };
 
     const baseMap = glLayer.addTo(map).getMaplibreMap();
-    baseMap.once("style.load", () => showLatinNames(baseMap));
+    watchBaseMap(baseMap);
 
     const marker = L.marker(start, {
       draggable: interactive,
@@ -123,6 +108,9 @@ export default function ServiceAreaMapPicker({
       weight: 2,
       radius: radiusKm * 1000,
     }).addTo(map);
+
+    // Hiện trọn vòng tròn bán kính ngay từ đầu
+    map.fitBounds(circle.getBounds(), { padding: CIRCLE_PADDING, animate: false });
 
     if (interactive) {
       marker.on("dragend", () => {
@@ -175,8 +163,21 @@ export default function ServiceAreaMapPicker({
     marker.setLatLng(pos);
     circle.setLatLng(pos);
     circle.setRadius(radiusKm * 1000);
-    map.panTo(pos);
+
+    if (radiusRef.current !== radiusKm) {
+      // Đổi bán kính thì thu phóng cho vừa vòng tròn
+      radiusRef.current = radiusKm;
+      map.fitBounds(circle.getBounds(), { padding: CIRCLE_PADDING });
+    } else {
+      map.panTo(pos);
+    }
   }, [latitude, longitude, radiusKm]);
+
+  const handleLocated = (lat: number, lng: number) => {
+    const center = { lat: parseFloat(lat.toFixed(6)), lng: parseFloat(lng.toFixed(6)) };
+    onChangeCenter(center.lat, center.lng);
+    onLocated?.(center.lat, center.lng);
+  };
 
   if (!HAS_WEBGL) {
     return (
@@ -187,10 +188,17 @@ export default function ServiceAreaMapPicker({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="isolate h-80 w-full overflow-hidden rounded-xl border border-border shadow-inner"
-    />
+    <div className="relative">
+      <div
+        ref={containerRef}
+        className="isolate h-80 w-full overflow-hidden rounded-xl border border-border shadow-inner"
+      />
+      {interactive && (
+        <LocateButton
+          onLocated={handleLocated}
+          className="absolute top-2 right-2 z-10"
+        />
+      )}
+    </div>
   );
 }
-

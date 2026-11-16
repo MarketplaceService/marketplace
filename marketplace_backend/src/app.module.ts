@@ -16,6 +16,8 @@ import { EmailModule } from './app/email/email.module';
 import { AddressModule } from './app/address/address.module';
 import { ProviderModule } from './app/provider/provider.module';
 import { ServiceModule } from './app/service/service.module';
+import { SchedulingModule } from './app/scheduling/scheduling.module';
+import { GeocodingModule } from './app/geocoding/geocoding.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 const envFile =
@@ -41,6 +43,8 @@ const envFile =
     AddressModule,
     ProviderModule,
     ServiceModule,
+    SchedulingModule,
+    GeocodingModule,
     ScheduleModule.forRoot(),
   ],
   providers: [
