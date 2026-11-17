@@ -73,8 +73,8 @@ export default function ProviderLayout({
     },
     {
       label: "Lịch & Vùng phục vụ",
+      href: "/provider/schedule",
       icon: Calendar,
-      disabled: true,
     },
     {
       label: "Nghiệm thu công việc",

@@ -8,6 +8,7 @@ import { ProviderProfile } from './entities/provider-profile.entity';
 import { ProviderServiceArea } from './entities/provider-service-area.entity';
 import { ProviderController } from './provider.controller';
 import { ProviderService } from './provider.service';
+import { PublicProviderController } from './public-provider.controller';
 
 @Module({
   imports: [
@@ -19,7 +20,11 @@ import { ProviderService } from './provider.service';
     ]),
     AuthModule,
   ],
-  controllers: [ProviderController, AdminProviderController],
+  controllers: [
+    ProviderController,
+    AdminProviderController,
+    PublicProviderController,
+  ],
   providers: [ProviderService],
   exports: [ProviderService],
 })

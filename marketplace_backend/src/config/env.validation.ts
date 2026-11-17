@@ -40,6 +40,9 @@ export const envSchema = z.looseObject({
   SUPABASE_SECRET_KEY: z.string().trim().min(1),
   SUPABASE_BUCKET_NAME: z.string().trim().min(1),
   SUPABASE_ANON_KEY: z.string().trim().optional(),
+
+  //* MapVina (REST API key cho tìm địa chỉ). Bỏ trống thì app vẫn chạy, chỉ không có gợi ý địa chỉ
+  MAPVINA_API_KEY: z.string().trim().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
