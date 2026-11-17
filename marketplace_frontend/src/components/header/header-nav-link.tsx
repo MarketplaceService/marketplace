@@ -64,10 +64,10 @@ export function NavLink({ item }: { item: HeaderNavItem }) {
       href={item.href}
       active={active}
       className={cn(
-        "text-sm whitespace-nowrap transition-colors duration-150",
+        "border-b-2 py-1 text-sm whitespace-nowrap transition-colors duration-150",
         active
-          ? "border-b-2 border-primary pb-1 font-semibold text-primary"
-          : "text-muted-foreground hover:text-foreground",
+          ? "border-primary font-semibold text-primary"
+          : "border-transparent text-muted-foreground hover:text-foreground",
       )}
     >
       {item.label}

@@ -2,7 +2,7 @@
 
 import { useCurrentUser, useSignOut } from "@/hooks/use-auth";
 import { Bell, Handshake } from "lucide-react";
-import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BrandLogo } from "./brand-logo";
 import { HeaderMobileNav } from "./header-mobile-nav";
 import { BECOME_PROVIDER_ITEM, HEADER_NAV_ITEMS } from "./header-nav-items";
@@ -10,11 +10,17 @@ import { HeaderAction, NavLink, notifyComingSoon } from "./header-nav-link";
 import { UserMenu } from "./header-user-menu";
 
 export function Header() {
+  const pathname = usePathname();
   const { data: user, isLoading: loading } = useCurrentUser();
   const { mutate: signOut, isPending: isSigningOut } = useSignOut({
     success: "Đã đăng xuất",
   });
   const showBecomeProvider = user?.role === "customer";
+
+  // Trang chủ (/) dành cho khách vãng lai dùng Guest Header thiết kế riêng
+  if (pathname === "/" && !user) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-40 h-16 w-full shrink-0 border-b border-border bg-card/95 shadow-sm backdrop-blur-md">
