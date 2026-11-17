@@ -44,6 +44,8 @@ export class ProviderController {
   }
 
   @Post('service-areas/check')
+  @ApiBearerAuth()
+  @RequireRoles(UserRole.CUSTOMER, UserRole.PROVIDER, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Kiểm tra tọa độ khách hàng có nằm trong vùng phục vụ (Haversine)',
   })

@@ -317,13 +317,15 @@ export class ProviderService {
   async getPublicProfile(id: string) {
     const profile = await this.profileRepo.findOne({
       where: { id, verificationStatus: VerificationStatus.APPROVED },
-      relations: { user: true, serviceAreas: true },
+      relations: { user: true, serviceAreas: true, services: true },
+      order: { services: { createdAt: 'ASC' } },
     });
 
     if (!profile?.user || profile.user.deletedAt) {
       apiNotFound('errors.provider.notFound');
     }
 
+    const [enriched] = await this.attachCategoryNames([profile]);
     const area = profile.serviceAreas.find((item) => item.isActive) ?? null;
 
     return {
@@ -331,7 +333,7 @@ export class ProviderService {
       displayName: profile.displayName,
       avatarUrl: profile.user.image,
       bio: profile.bio,
-      category: profile.categoryId,
+      category: enriched.categoryName,
       experienceYears: profile.experienceYears,
       verifiedAt: profile.approvedAt,
       serviceArea: area
@@ -341,6 +343,31 @@ export class ProviderService {
   }
 
   async checkServiceArea(dto: CheckServiceAreaDto, currentUserId?: string) {
+    if (
+      dto.centerLatitude !== undefined &&
+      dto.centerLongitude !== undefined &&
+      dto.radiusKm !== undefined
+    ) {
+      const distance = calculateHaversineKm(
+        dto.latitude,
+        dto.longitude,
+        dto.centerLatitude,
+        dto.centerLongitude,
+      );
+      const radiusKm = Number(dto.radiusKm);
+      const distanceKm = parseFloat(distance.toFixed(2));
+      const eligible = distance <= radiusKm;
+      return {
+        eligible,
+        distanceKm,
+        radiusKm,
+        areaName: null,
+        message: eligible
+          ? `Nằm trong vùng phục vụ (${distanceKm.toFixed(2)} km <= ${radiusKm} km)`
+          : `Nằm ngoài vùng phục vụ (${distanceKm.toFixed(2)} km > ${radiusKm} km)`,
+      };
+    }
+
     let providerId = dto.providerId;
     if (!providerId && currentUserId) {
       const profile = await this.profileRepo.findOne({
@@ -462,11 +489,14 @@ export class ProviderService {
     }
 
     if (filters.search) {
-      const term = `%${filters.search}%`;
-      qb.andWhere(
-        '(profile.displayName ILIKE :term OR profile.phone ILIKE :term OR user.name ILIKE :term OR user.email ILIKE :term)',
-        { term },
-      );
+      const normalized = filters.search.trim().replace(/^#+/, '');
+      if (normalized) {
+        const term = `%${normalized}%`;
+        qb.andWhere(
+          '(profile.displayName ILIKE :term OR profile.phone ILIKE :term OR user.name ILIKE :term OR user.email ILIKE :term OR CAST(profile.id AS text) ILIKE :term)',
+          { term },
+        );
+      }
     }
 
     qb.skip(skip).take(limit);
@@ -569,7 +599,7 @@ export class ProviderService {
     }
 
     profile.verificationStatus = VerificationStatus.REJECTED;
-    profile.approvedAt = new Date();
+    profile.approvedAt = null;
     profile.rejectionReason = reason;
 
     await this.profileRepo.save(profile);

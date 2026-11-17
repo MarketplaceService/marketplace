@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Service } from './entities/service.entity';
 import { ServiceCategory } from './entities/service-category.entity';
 import { ServiceStatus } from 'src/shared/types/service-status.enum';
@@ -139,13 +139,7 @@ export class ServiceService {
       });
 
     // Lọc theo keyword
-    if (dto.keyword && dto.keyword.trim() !== '') {
-      const term = `%${dto.keyword.trim()}%`;
-      qb.andWhere(
-        '(service.title ILIKE :term OR service.description ILIKE :term OR provider.displayName ILIKE :term)',
-        { term },
-      );
-    }
+    this.applyKeywordFilter(qb, dto.keyword);
 
     // Lọc theo category (hỗ trợ cả UUID và Slug)
     if (dto.category && dto.category.trim() !== '') {
@@ -227,6 +221,7 @@ export class ServiceService {
           avatar: service.provider.user?.image ?? null,
           phone: service.provider.phone,
           areaName: activeArea?.areaName ?? null,
+          isOnline: service.provider.isOnline ?? true,
         },
       };
     });
@@ -268,13 +263,7 @@ export class ServiceService {
       })
       .andWhere('serviceAreas.isActive = :areaActive', { areaActive: true });
 
-    if (dto.keyword && dto.keyword.trim() !== '') {
-      const term = `%${dto.keyword.trim()}%`;
-      qb.andWhere(
-        '(service.title ILIKE :term OR service.description ILIKE :term OR provider.displayName ILIKE :term)',
-        { term },
-      );
-    }
+    this.applyKeywordFilter(qb, dto.keyword);
 
     if (dto.category && dto.category.trim() !== '') {
       const catVal = dto.category.trim();
@@ -495,5 +484,22 @@ export class ServiceService {
         serviceAreas: activeAreas,
       },
     };
+  }
+
+  /**
+   * Tìm kiếm tiếng Việt không dấu trên các trường hiển thị công khai trên card
+   * (bỏ description để tránh kết quả khớp ngầm với chuỗi không hiện ra ngoài).
+   */
+  private applyKeywordFilter(
+    qb: SelectQueryBuilder<Service>,
+    keyword?: string,
+  ): void {
+    const trimmed = keyword?.trim();
+    if (!trimmed) return;
+    const term = `%${trimmed}%`;
+    qb.andWhere(
+      '(unaccent(service.title) ILIKE unaccent(:term) OR unaccent(category.name) ILIKE unaccent(:term) OR unaccent(provider.displayName) ILIKE unaccent(:term))',
+      { term },
+    );
   }
 }

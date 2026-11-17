@@ -146,6 +146,7 @@ describe('ServiceService Unit Tests', () => {
             displayName: 'Lê Văn Minh',
             experienceYears: 6,
             phone: '0981111001',
+            isOnline: false,
             user: { image: 'https://avatar.png' },
             serviceAreas: [
               {
@@ -187,6 +188,11 @@ describe('ServiceService Unit Tests', () => {
       expect(result.items[0].title).toBe('Sửa điều hòa Daikin');
       expect(result.items[0].provider.displayName).toBe('Lê Văn Minh');
       expect(result.items[0].provider.areaName).toBe('Quận 9, TP.HCM');
+      expect(result.items[0].provider.isOnline).toBe(false);
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        '(unaccent(service.title) ILIKE unaccent(:term) OR unaccent(category.name) ILIKE unaccent(:term) OR unaccent(provider.displayName) ILIKE unaccent(:term))',
+        { term: '%điều hòa%' },
+      );
     });
   });
 

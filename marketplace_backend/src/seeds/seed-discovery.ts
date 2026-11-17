@@ -2,6 +2,7 @@ import dataSource from '../config/database/data-source';
 import { User } from '../app/user/entities/user.entity';
 import { ProviderProfile } from '../app/provider/entities/provider-profile.entity';
 import { ProviderServiceArea } from '../app/provider/entities/provider-service-area.entity';
+import { ProviderAvailability } from '../app/scheduling/entities/provider-availability.entity';
 import { ServiceCategory } from '../app/service/entities/service-category.entity';
 import { Service } from '../app/service/entities/service.entity';
 import { UserRole } from '../shared/types/user-role.enum';
@@ -70,6 +71,7 @@ const PROVIDERS_DATA = [
     categorySlug: 'sua-dien-lanh',
     bio: 'Kỹ sư nhiệt lạnh Bách Khoa hơn 6 năm kinh nghiệm tại Quận 9, chuyên điều hòa Daikin, Panasonic, Mitsubishi...',
     experienceYears: 6,
+    isOnline: true,
     areaName: 'Trạm Hiệp Phú - Lê Văn Việt, Quận 9',
     centerLatitude: 10.8456,
     centerLongitude: 106.7719, // Tâm Ngã tư Thủ Đức - Hiệp Phú (0.0km)
@@ -84,6 +86,7 @@ const PROVIDERS_DATA = [
     categorySlug: 'sua-dien-nuoc',
     bio: 'Thợ điện nước tay nghề cao 8 năm tại các khu dân cư và chung cư Quận 9, TP. Thủ Đức.',
     experienceYears: 8,
+    isOnline: true,
     areaName: 'Trạm Tăng Nhơn Phú A - Man Thiện, Quận 9',
     centerLatitude: 10.8485,
     centerLongitude: 106.7843, // ~1.4km từ tâm Quận 9
@@ -98,6 +101,7 @@ const PROVIDERS_DATA = [
     categorySlug: 'sua-khoa-cua-cuon',
     bio: 'Chuyên mở khóa, thay khóa cửa cuốn, vân tay, thẻ từ thông minh nhanh chóng 24/7 tại Quận 9.',
     experienceYears: 5,
+    isOnline: true,
     areaName: 'Trạm Phước Long B - Đỗ Xuân Hợp, Quận 9',
     centerLatitude: 10.8235,
     centerLongitude: 106.7758, // ~2.5km từ tâm Quận 9
@@ -112,6 +116,7 @@ const PROVIDERS_DATA = [
     categorySlug: 've-sinh-nha-cua',
     bio: 'Chuyên nghiệp, cẩn thận, trung thực. Đã phục vụ hơn 500 hộ gia đình tại Quận 9 & TP. Thủ Đức.',
     experienceYears: 4,
+    isOnline: true,
     areaName: 'Trạm Tăng Nhơn Phú B - Dương Đình Hội, Quận 9',
     centerLatitude: 10.8268,
     centerLongitude: 106.7888, // ~2.8km từ tâm Quận 9
@@ -126,6 +131,7 @@ const PROVIDERS_DATA = [
     categorySlug: 'thong-tac-ve-sinh',
     bio: 'Đội trưởng thông tắc công nghệ lò xo không đục phá tại Quận 9, xử lý triệt để mùi hôi bảo hành dài hạn.',
     experienceYears: 7,
+    isOnline: true,
     areaName: 'Trạm Long Thạnh Mỹ - Khu Công Nghệ Cao, Quận 9',
     centerLatitude: 10.8548,
     centerLongitude: 106.8091, // ~4.2km từ tâm Quận 9
@@ -140,6 +146,7 @@ const PROVIDERS_DATA = [
     categorySlug: 'son-sua-chong-tham',
     bio: 'Chuyên gia chống thấm sân thượng, tường ẩm mốc và sơn sửa nhà ở trọn gói khu vực Quận 9, TP. Thủ Đức.',
     experienceYears: 7,
+    isOnline: true,
     areaName: 'Trạm Tân Phú - Suối Tiên, Quận 9',
     centerLatitude: 10.866,
     centerLongitude: 106.8025, // ~4.0km từ tâm Quận 9
@@ -154,6 +161,7 @@ const PROVIDERS_DATA = [
     categorySlug: 'do-go-noi-that',
     bio: 'Thợ mộc đóng sửa tủ bếp, giường tủ gỗ công nghiệp & tự nhiên, thay phụ kiện bản lề giảm chấn tại Quận 9.',
     experienceYears: 6,
+    isOnline: true,
     areaName: 'Trạm Phú Hữu - Liên Phường, Quận 9',
     centerLatitude: 10.8065,
     centerLongitude: 106.792, // ~4.9km từ tâm Quận 9
@@ -168,6 +176,7 @@ const PROVIDERS_DATA = [
     categorySlug: 'thiet-bi-gia-dung',
     bio: 'Thợ sửa máy giặt, tủ lạnh, lò vi sóng các hãng LG, Electrolux, Bosch tại Vinhomes Grand Park, Quận 9.',
     experienceYears: 9,
+    isOnline: false,
     areaName: 'Trạm Long Bình - Vinhomes Grand Park, Quận 9',
     centerLatitude: 10.842,
     centerLongitude: 106.8358, // ~7.0km từ tâm Quận 9
@@ -180,10 +189,16 @@ async function seed() {
   await dataSource.initialize();
   console.log('✅ Đã kết nối PostgreSQL thành công.');
 
+  // Đảm bảo cột is_online tồn tại nếu DB chưa chạy phần ALTER TABLE bổ sung
+  await dataSource.query(
+    'ALTER TABLE "provider_profile" ADD COLUMN IF NOT EXISTS "is_online" boolean NOT NULL DEFAULT true',
+  );
+
   const categoryRepo = dataSource.getRepository(ServiceCategory);
   const userRepo = dataSource.getRepository(User);
   const profileRepo = dataSource.getRepository(ProviderProfile);
   const areaRepo = dataSource.getRepository(ProviderServiceArea);
+  const availabilityRepo = dataSource.getRepository(ProviderAvailability);
   const serviceRepo = dataSource.getRepository(Service);
 
   // 1. Upsert 8 danh mục chuẩn Servigo
@@ -236,6 +251,7 @@ async function seed() {
         bio: pData.bio,
         experienceYears: pData.experienceYears,
         phone: pData.phone,
+        isOnline: pData.isOnline,
         verificationStatus: VerificationStatus.APPROVED,
         approvedAt: new Date(),
       });
@@ -244,6 +260,7 @@ async function seed() {
       profile.bio = pData.bio;
       profile.experienceYears = pData.experienceYears;
       profile.phone = pData.phone;
+      profile.isOnline = pData.isOnline;
       profile.verificationStatus = VerificationStatus.APPROVED;
       profile.approvedAt = profile.approvedAt || new Date();
     }
@@ -428,6 +445,31 @@ async function seed() {
   console.log(
     `✅ Đã tạo thành công ${SERVICES_DATA.length} dịch vụ ACTIVE mẫu.`,
   );
+
+  // 4. Bổ sung lịch làm việc mẫu (Thứ 2 - Chủ nhật, 08:00 - 18:00) cho thợ chưa có lịch
+  let seededSchedules = 0;
+  for (const profile of providerProfileMap.values()) {
+    const existingCount = await availabilityRepo.count({
+      where: { providerId: profile.id },
+    });
+    if (existingCount > 0) continue;
+
+    const blocks = Array.from({ length: 7 }, (_, dayOfWeek) =>
+      availabilityRepo.create({
+        providerId: profile.id,
+        dayOfWeek,
+        startTime: '08:00:00',
+        endTime: '18:00:00',
+        isActive: true,
+      }),
+    );
+    await availabilityRepo.save(blocks);
+    seededSchedules += 1;
+  }
+  console.log(
+    `📅 Đã bổ sung lịch làm việc mẫu cho ${seededSchedules} nhà cung cấp.`,
+  );
+
   console.log('🎉 Seed discovery data hoàn tất 100%!');
   await dataSource.destroy();
 }

@@ -15,13 +15,13 @@ export class UpdateServiceAreaDto {
   @MaxLength(255)
   areaName?: string;
 
-  @ApiProperty({ example: 21.0368 })
+  @ApiProperty({ example: 10.8456 })
   @IsNumber()
   @Min(-90)
   @Max(90)
   centerLatitude: number;
 
-  @ApiProperty({ example: 105.7826 })
+  @ApiProperty({ example: 106.7719 })
   @IsNumber()
   @Min(-180)
   @Max(180)
