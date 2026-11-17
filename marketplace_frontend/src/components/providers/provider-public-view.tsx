@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePublicProvider } from "@/hooks/use-provider";
-import { BadgeCheck, ChevronRight, MapPin, ShieldCheck, Wrench } from "lucide-react";
+import { BadgeCheck, ChevronRight, MapPin, Wrench } from "lucide-react";
 import Link from "next/link";
 import { formatKm } from "../provider/schedule/service-area-card";
 import { SlotPicker } from "./slot-picker";
@@ -11,7 +11,13 @@ import { SlotPicker } from "./slot-picker";
 const categoryLabel = (category: string | null) =>
   category?.replace(/^\d+\.\s*/, "").trim() || null;
 
-export function ProviderPublicView({ providerId }: { providerId: string }) {
+export function ProviderPublicView({
+  providerId,
+  serviceId,
+}: {
+  providerId: string;
+  serviceId?: string;
+}) {
   const { data: provider, isLoading, isError } = usePublicProvider(providerId);
 
   if (isLoading) {
@@ -65,7 +71,7 @@ export function ProviderPublicView({ providerId }: { providerId: string }) {
         <span className="font-medium text-foreground">{provider.displayName}</span>
       </nav>
 
-      <section className="grid grid-cols-1 gap-6 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6 lg:grid-cols-[1fr_320px]">
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
           <div className="relative shrink-0 self-start">
             <Avatar className="size-24 border-2 border-primary/30 shadow-xs">
@@ -125,20 +131,9 @@ export function ProviderPublicView({ providerId }: { providerId: string }) {
             )}
           </div>
         </div>
-
-        <div className="space-y-2 self-start rounded-xl border border-primary/20 bg-primary/5 p-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <ShieldCheck className="size-4 text-primary" />
-            Cam kết minh bạch Servigo
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Báo giá niêm yết rõ ràng trước khi đặt lịch, đối chiếu hình ảnh Trước &amp; Sau sửa chữa
-            khi nghiệm thu.
-          </p>
-        </div>
       </section>
 
-      <SlotPicker providerId={provider.id} />
+      <SlotPicker providerId={provider.id} serviceId={serviceId} />
     </div>
   );
 }

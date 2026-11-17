@@ -35,6 +35,7 @@ export interface ServiceListItem {
     avatar: string | null;
     phone: string | null;
     areaName: string | null;
+    isOnline: boolean;
   };
 }
 

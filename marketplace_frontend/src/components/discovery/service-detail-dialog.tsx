@@ -1,6 +1,8 @@
 "use client";
 
+import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { useServiceDetail } from "@/hooks/use-discovery";
+import type { ServiceDetailItem } from "@/types/discovery.types";
 import {
   ArrowRight,
   Clock,
@@ -21,6 +23,8 @@ interface ServiceDetailDialogProps {
   serviceId: string | null;
   open: boolean;
   onClose: () => void;
+  fallbackService?: ServiceDetailItem | null;
+  hideBookingAction?: boolean;
 }
 
 function formatCurrency(amount: number): string {
@@ -44,10 +48,15 @@ export function ServiceDetailDialog({
   serviceId,
   open,
   onClose,
+  fallbackService = null,
+  hideBookingAction = false,
 }: ServiceDetailDialogProps) {
   const { data: service, isLoading, isError } = useServiceDetail(
-    open ? serviceId : null,
+    open && !fallbackService ? serviceId : null,
   );
+  const activeService = fallbackService ?? service;
+  const showLoading = !fallbackService && isLoading;
+  const showError = !fallbackService && (isError || !service);
 
   // Đóng modal khi nhấn phím Escape
   useEffect(() => {
@@ -93,7 +102,7 @@ export function ServiceDetailDialog({
           {/* Header Modal */}
           <div className="flex items-start justify-between pb-3 border-b border-border">
             <div className="flex-1 pr-3">
-              {isLoading ? (
+              {showLoading ? (
                 <div className="space-y-2">
                   <div className="h-4 w-24 bg-muted rounded-full animate-pulse" />
                   <div className="h-6 w-3/4 bg-muted rounded animate-pulse" />
@@ -101,10 +110,10 @@ export function ServiceDetailDialog({
               ) : (
                 <>
                   <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 mb-1.5">
-                    {service?.category?.name || "Dịch vụ dân sinh"}
+                    {activeService?.category?.name || "Dịch vụ dân sinh"}
                   </span>
                   <h3 className="font-serif text-xl font-bold text-foreground">
-                    {service?.title || "Chi tiết dịch vụ"}
+                    {activeService?.title || "Chi tiết dịch vụ"}
                   </h3>
                 </>
               )}
@@ -119,7 +128,7 @@ export function ServiceDetailDialog({
             </button>
           </div>
 
-          {isLoading ? (
+          {showLoading ? (
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-3.5 p-3 rounded-xl bg-muted/50 border border-border">
                 <div className="w-12 h-12 rounded-full bg-muted animate-pulse shrink-0" />
@@ -135,7 +144,7 @@ export function ServiceDetailDialog({
               </div>
               <div className="grid grid-cols-3 gap-3 h-16 bg-muted/40 rounded-xl animate-pulse" />
             </div>
-          ) : isError || !service ? (
+          ) : showError || !activeService ? (
             <div className="py-8 text-center space-y-2">
               <p className="text-sm text-destructive font-medium">
                 Không thể tải thông tin dịch vụ. Vui lòng thử lại sau.
@@ -151,37 +160,49 @@ export function ServiceDetailDialog({
           ) : (
             <>
               {/* Thông tin Nhà cung cấp phụ trách */}
-              <div className="flex items-center gap-3.5 p-3 rounded-xl bg-muted/40 border border-border">
-                <Avatar className="size-12 shrink-0 ring-1 ring-border">
-                  <AvatarImage
-                    src={service.provider?.avatar ?? undefined}
-                    alt={service.provider?.displayName}
-                  />
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                    {service.provider?.displayName?.charAt(0) || "T"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-foreground text-sm truncate">
-                      {service.provider?.displayName}
-                    </span>
-                    <span className="inline-flex items-center gap-0.5 text-xs text-amber-500 font-bold shrink-0">
-                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                      <span>5.0</span>
-                    </span>
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-3 rounded-xl bg-muted/40 border border-border">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <Avatar className="size-12 shrink-0 ring-1 ring-border">
+                    <AvatarImage
+                      src={activeService.provider?.avatar ?? undefined}
+                      alt={activeService.provider?.displayName}
+                    />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                      {activeService.provider?.displayName?.charAt(0) || "T"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-foreground text-sm truncate">
+                        {activeService.provider?.displayName}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 text-xs text-amber-500 font-bold shrink-0">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>5.0</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        Đã xác minh
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {activeService.provider?.experienceYears || 0} năm kinh nghiệm
+                      {activeService.provider?.serviceAreas?.[0]?.areaName && (
+                        <> • {activeService.provider.serviceAreas[0].areaName}</>
+                      )}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {service.provider?.experienceYears || 0} năm kinh nghiệm
-                    {service.provider?.serviceAreas?.[0]?.areaName && (
-                      <> • {service.provider.serviceAreas[0].areaName}</>
-                    )}
-                  </p>
                 </div>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  Đã xác minh
-                </span>
+                {!hideBookingAction && activeService.provider?.id && (
+                  <button
+                    type="button"
+                    onClick={notifyComingSoon}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary/30 bg-background hover:bg-primary/5 text-primary text-xs font-semibold transition shrink-0 cursor-pointer"
+                  >
+                    <span>Xem hồ sơ</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               {/* Mô tả công việc chi tiết */}
@@ -190,7 +211,7 @@ export function ServiceDetailDialog({
                   Mô tả công việc chi tiết
                 </h4>
                 <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
-                  {service.description ||
+                  {activeService.description ||
                     "Nhà cung cấp chưa cập nhật mô tả chi tiết cho dịch vụ này."}
                 </p>
               </div>
@@ -202,7 +223,7 @@ export function ServiceDetailDialog({
                     Giá cơ bản
                   </span>
                   <p className="font-bold text-primary text-sm">
-                    {formatCurrency(service.basePrice)}
+                    {formatCurrency(activeService.basePrice)}
                   </p>
                 </div>
                 <div className="space-y-0.5">
@@ -210,7 +231,7 @@ export function ServiceDetailDialog({
                     Hình thức tính giá
                   </span>
                   <p className="font-semibold text-foreground text-sm">
-                    {getPriceUnitLabel(service.priceUnit)}
+                    {getPriceUnitLabel(activeService.priceUnit)}
                   </p>
                 </div>
                 <div className="space-y-0.5 col-span-2 sm:col-span-1">
@@ -219,7 +240,7 @@ export function ServiceDetailDialog({
                   </span>
                   <p className="font-semibold text-foreground text-sm flex items-center justify-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>{service.durationMinutes} phút</span>
+                    <span>{activeService.durationMinutes} phút</span>
                   </p>
                 </div>
               </div>
@@ -256,14 +277,16 @@ export function ServiceDetailDialog({
                 >
                   Đóng
                 </button>
-                <Link
-                  href={`/providers/${service.provider?.id}?serviceId=${service.id}`}
-                  onClick={onClose}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold shadow-xs transition cursor-pointer"
-                >
-                  <span>Chọn khung giờ đặt lịch</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+                {!hideBookingAction && (
+                  <Link
+                    href={`/providers/${activeService.provider?.id}?serviceId=${activeService.id}`}
+                    onClick={onClose}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold shadow-xs transition cursor-pointer"
+                  >
+                    <span>Chọn khung giờ đặt lịch</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                )}
               </div>
             </>
           )}

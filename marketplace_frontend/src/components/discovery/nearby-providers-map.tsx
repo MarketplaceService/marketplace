@@ -1,56 +1,27 @@
 "use client";
 
+import {
+  BASE_MAP_OPTIONS,
+  createBaseLayer,
+  HAS_WEBGL,
+  watchBaseMap,
+} from "@/components/map/map-config";
 import type { NearbyServiceItem } from "@/types/discovery.types";
-import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
-  ArrowRight,
   LocateFixed,
   Minus,
   Plus,
-  X,
 } from "lucide-react";
-import { setWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
+import type { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+import { useEffect, useRef } from "react";
 
 const MAP_OPTIONS: L.MapOptions = {
-  maxBounds: [
-    [8.2, 101.9],
-    [23.6, 109.7],
-  ],
-  maxBoundsViscosity: 1,
-  bounceAtZoomLimits: false,
-  minZoom: 6,
+  ...BASE_MAP_OPTIONS,
   maxZoom: 18,
 };
-
-setWorkerUrl(
-  new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
-);
-
-const HAS_WEBGL =
-  typeof document !== "undefined" &&
-  document.createElement("canvas").getContext("webgl2") !== null;
-
-function showLatinNames(map: MapLibreMap) {
-  for (const layer of map.getStyle().layers) {
-    if (
-      layer.type === "symbol" &&
-      String(layer.layout?.["text-field"]).includes("name")
-    ) {
-      map.setLayoutProperty(layer.id, "text-field", ["get", "name:latin"]);
-    }
-  }
-}
-
-function formatVND(amount: number) {
-  return new Intl.NumberFormat("vi-VN").format(amount) + "đ";
-}
 
 function escapeHtml(str: string): string {
   return str
@@ -92,7 +63,6 @@ export interface NearbyProvidersMapProps {
   selectedServiceId: string | null;
   selectionTrigger?: number;
   onSelectService: (serviceId: string) => void;
-  onOpenDetail?: (serviceId: string) => void;
   onChangeCenter?: (lat: number, lng: number) => void;
   onRequestMyLocation?: () => void;
 }
@@ -106,7 +76,6 @@ export default function NearbyProvidersMap({
   selectedServiceId,
   selectionTrigger = 0,
   onSelectService,
-  onOpenDetail,
   onChangeCenter,
   onRequestMyLocation,
 }: NearbyProvidersMapProps) {
@@ -128,8 +97,6 @@ export default function NearbyProvidersMap({
     onSelectServiceRef.current = onSelectService;
   }, [onSelectService]);
 
-  const [popoverDismissedId, setPopoverDismissedId] = useState<string | null>(null);
-
   // Khởi tạo bản đồ 1 lần duy nhất khi mount
   useEffect(() => {
     const container = containerRef.current;
@@ -141,7 +108,7 @@ export default function NearbyProvidersMap({
       zoomControl: false,
     }).setView(start, 13);
 
-    const glLayer = maplibreGL({ style: MAP_STYLE });
+    const glLayer = createBaseLayer();
     let rafId = 0;
     const rawLayer = glLayer as unknown as {
       _map: L.Map | null;
@@ -180,7 +147,7 @@ export default function NearbyProvidersMap({
     };
 
     const baseMap = glLayer.addTo(map).getMaplibreMap();
-    baseMap.once("style.load", () => showLatinNames(baseMap));
+    watchBaseMap(baseMap);
 
     // Marker Vị trí khách hàng
     const userMarker = L.marker(start, {
@@ -298,19 +265,33 @@ export default function NearbyProvidersMap({
     markersLayer.clearLayers();
     markerPosMapRef.current.clear();
 
+    // Nhóm dịch vụ trùng tọa độ để rải đều theo vòng tròn (~120m), tránh đè ghim
+    const coordCounts = new Map<string, number>();
+    const coordSlot = new Map<string, number>();
+    for (const item of items) {
+      const key = `${item.location.latitude.toFixed(5)}:${item.location.longitude.toFixed(5)}`;
+      coordCounts.set(key, (coordCounts.get(key) ?? 0) + 1);
+    }
+
     items.forEach((item, index) => {
       const isSelected = item.service.id === selectedServiceId;
       const baseLat = item.location.latitude;
       const baseLng = item.location.longitude;
+      const coordKey = `${baseLat.toFixed(5)}:${baseLng.toFixed(5)}`;
+      const groupTotal = coordCounts.get(coordKey) ?? 1;
+      const slotIndex = coordSlot.get(coordKey) ?? 0;
+      coordSlot.set(coordKey, slotIndex + 1);
 
-      // Tránh việc nhiều dịch vụ trùng tọa độ tuyệt đối làm đè marker lên nhau
-      const jitterLat = ((index % 3) - 1) * 0.00035;
-      const jitterLng = ((index % 2) - 0.5) * 0.00045;
-      const pos: L.LatLngTuple = [baseLat + jitterLat, baseLng + jitterLng];
-
-      const feeText = item.distance.isFreeShipping
-        ? "Miễn phí"
-        : `+${formatVND(item.distance.distanceFee)}`;
+      let pos: L.LatLngTuple = [baseLat, baseLng];
+      if (groupTotal > 1) {
+        const angle = (2 * Math.PI * slotIndex) / groupTotal;
+        const radiusDegLat = 0.0011; // ~122m
+        const cosLat = Math.max(0.2, Math.cos((baseLat * Math.PI) / 180));
+        pos = [
+          baseLat + radiusDegLat * Math.sin(angle),
+          baseLng + (radiusDegLat / cosLat) * Math.cos(angle),
+        ];
+      }
 
       const avatarUrl =
         item.provider.avatar ||
@@ -353,7 +334,7 @@ export default function NearbyProvidersMap({
                     : "#b45309"
               };
             ">
-              ${item.distance.distanceKm}km (${feeText})
+              ${item.distance.distanceKm}km
             </span>
           </div>
 
@@ -404,7 +385,6 @@ export default function NearbyProvidersMap({
 
       marker.on("click", (e) => {
         L.DomEvent.stopPropagation(e);
-        setPopoverDismissedId(null);
         onSelectServiceRef.current(item.service.id);
       });
 
@@ -413,10 +393,9 @@ export default function NearbyProvidersMap({
     });
   }, [items, selectedServiceId]);
 
-  // Chỉ pan tới marker và mở lại popover khi người dùng chủ động click chọn thẻ hoặc marker
+  // Chỉ pan tới marker khi người dùng chủ động click chọn thẻ hoặc marker
   useEffect(() => {
     if (selectionTrigger === 0 || !selectedServiceId) return;
-    setPopoverDismissedId(null);
     const map = mapRef.current;
     const pos = markerPosMapRef.current.get(selectedServiceId);
     if (map && pos) {
@@ -432,102 +411,10 @@ export default function NearbyProvidersMap({
     );
   }
 
-  const selectedItem = items.find((i) => i.service.id === selectedServiceId);
-  const showPopover = Boolean(selectedItem && selectedItem.service.id !== popoverDismissedId);
-
   return (
     <div className="relative h-full w-full overflow-hidden select-none">
       {/* Container Leaflet map */}
       <div ref={containerRef} className="isolate h-full w-full" />
-
-      {/* Overlay Popover Chi Tiết Cước Phí (S18.2) */}
-      {showPopover && selectedItem && (
-        <div className="absolute bottom-6 left-4 right-4 sm:left-6 sm:right-auto sm:w-84 max-w-sm z-30 pointer-events-auto bg-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-primary/30 p-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-start justify-between gap-3 pb-3 border-b border-border">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-border shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={
-                    selectedItem.provider.avatar ||
-                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
-                  }
-                  alt={selectedItem.provider.displayName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-sm text-foreground truncate">
-                  {selectedItem.provider.displayName}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {selectedItem.service.title}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPopoverDismissedId(selectedItem.service.id)}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-              title="Đóng thông tin"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="py-2.5 space-y-1.5 text-xs">
-            <div className="flex justify-between text-muted-foreground">
-              <span>Khoảng cách thực tế:</span>
-              <span className="font-semibold text-foreground">
-                {selectedItem.distance.distanceKm} km
-              </span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Giá dịch vụ cơ bản:</span>
-              <span className="font-semibold text-foreground">
-                {formatVND(selectedItem.service.basePrice)}
-              </span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Phụ phí di chuyển:</span>
-              <span
-                className={`font-semibold ${
-                  selectedItem.distance.isFreeShipping
-                    ? "text-emerald-600"
-                    : "text-amber-700"
-                }`}
-              >
-                {selectedItem.distance.isFreeShipping
-                  ? "Miễn phí (≤ 3km)"
-                  : `+${formatVND(selectedItem.distance.distanceFee)}`}
-              </span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-border font-bold text-foreground">
-              <span>Tổng chi phí tạm tính:</span>
-              <span className="text-primary text-sm font-bold">
-                {formatVND(selectedItem.distance.estimatedTotal)}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => onOpenDetail?.(selectedItem.service.id)}
-              className="py-2 px-3 rounded-xl border border-border bg-background hover:bg-muted text-foreground text-xs font-semibold flex items-center justify-center transition cursor-pointer"
-            >
-              Chi tiết dịch vụ
-            </button>
-            <Link
-              href={`/providers/${selectedItem.provider.id}?serviceId=${selectedItem.service.id}`}
-              className="py-2 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center justify-center gap-1 shadow-sm transition active:scale-98"
-            >
-              <span>Xem hồ sơ &amp; Đặt lịch</span>
-              <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* Chú thích bản đồ (Góc dưới trái) */}
       <div className="absolute bottom-6 left-6 z-20 hidden md:block">

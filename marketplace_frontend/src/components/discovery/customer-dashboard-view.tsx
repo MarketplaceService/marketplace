@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { useCategories, useSearchServices } from "@/hooks/use-discovery";
 import type { ServiceListItem } from "@/types/discovery.types";
 import {
@@ -9,13 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Filter,
   KeyRound,
   LucideIcon,
   MapPin,
   PaintRoller,
   Pipette,
-  Radar,
   Refrigerator,
   RotateCcw,
   Search,
@@ -24,8 +23,8 @@ import {
   Star,
   Truck,
   Wrench,
+  X,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
@@ -175,14 +174,6 @@ export function CustomerDashboardView({ user }: CustomerDashboardViewProps) {
     setSelectedServiceId(null);
   };
 
-  const mapHref = useMemo(() => {
-    const query = new URLSearchParams();
-    if (category !== "all") query.set("category", category);
-    if (debouncedKeyword) query.set("keyword", debouncedKeyword);
-    const qs = query.toString();
-    return qs ? `/map?${qs}` : "/map";
-  }, [category, debouncedKeyword]);
-
   const displayName = user.name || user.email?.split("@")[0] || "bạn";
   const items = servicesData?.items || [];
   const totalPages = servicesData?.totalPages || 1;
@@ -206,36 +197,30 @@ export function CustomerDashboardView({ user }: CustomerDashboardViewProps) {
 
           {/* Khung tìm kiếm & bộ lọc đa điều kiện chuẩn S17.2 */}
           <div className="bg-card rounded-2xl border border-border p-4 sm:p-5 shadow-xs space-y-4">
-            {/* Hàng 1: Từ khóa & Nút hành động */}
-            <div className="flex flex-col md:flex-row items-center gap-3">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  value={keywordInput}
-                  onChange={(e) => setKeywordInput(e.target.value)}
-                  placeholder="Tìm theo tên dịch vụ, sự cố hoặc tên nhà cung cấp..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition"
-                />
-              </div>
-
-              <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+            {/* Hàng 1: Từ khóa (tự động lọc theo debounce) */}
+            <div className="relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                placeholder="Tìm theo tên dịch vụ, sự cố hoặc tên nhà cung cấp..."
+                className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition"
+              />
+              {keywordInput && (
                 <button
                   type="button"
-                  onClick={() => setDebouncedKeyword(keywordInput.trim())}
-                  className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shadow-xs transition duration-150 cursor-pointer"
+                  onClick={() => {
+                    setKeywordInput("");
+                    setDebouncedKeyword("");
+                    setPage(1);
+                  }}
+                  aria-label="Xóa từ khóa"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                 >
-                  <Filter className="w-4 h-4" />
-                  <span>Lọc dịch vụ</span>
+                  <X className="w-4 h-4" />
                 </button>
-                <Link
-                  href={mapHref}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-primary/30 text-primary hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-medium transition duration-150 cursor-pointer"
-                >
-                  <Radar className="w-4 h-4" />
-                  <span>Mở bản đồ quét quanh đây</span>
-                </Link>
-              </div>
+              )}
             </div>
 
             {/* Hàng 2: Dropdown Danh mục, Khoảng giá, Kinh nghiệm & Sắp xếp */}
@@ -253,7 +238,7 @@ export function CustomerDashboardView({ user }: CustomerDashboardViewProps) {
                   }}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition cursor-pointer"
                 >
-                  <option value="all">Tất cả danh mục (8 ngành)</option>
+                  <option value="all">Tất cả danh mục</option>
                   {categoriesList.map((cat) => (
                     <option key={cat.slug} value={cat.slug}>
                       {cat.name}
@@ -543,13 +528,14 @@ export function CustomerDashboardView({ user }: CustomerDashboardViewProps) {
                     >
                       Chi tiết dịch vụ
                     </button>
-                    <Link
-                      href={`/providers/${item.provider.id}?serviceId=${item.id}`}
+                    <button
+                      type="button"
+                      onClick={notifyComingSoon}
                       className="w-full py-2 px-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold text-center shadow-xs transition inline-flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <span>Xem hồ sơ</span>
                       <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    </button>
                   </div>
                 </div>
               ))}

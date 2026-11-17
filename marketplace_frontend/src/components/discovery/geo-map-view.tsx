@@ -1,19 +1,17 @@
 "use client";
 
+import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { useAddresses } from "@/hooks/use-addresses";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useCategories, useNearbyServices } from "@/hooks/use-discovery";
 import type { NearbyServiceItem } from "@/types/discovery.types";
 import {
-  ArrowRight,
-  Check,
   Loader2,
   LocateFixed,
   MapPinOff,
   Navigation,
   RefreshCw,
   Search,
-  ShieldCheck,
   Star,
   X,
 } from "lucide-react";
@@ -63,6 +61,22 @@ export default function GeoMapView() {
   const initialCategory = searchParams.get("category") || "";
   const initialKeyword = searchParams.get("keyword") || "";
 
+  return (
+    <GeoMapViewInner
+      key={`${initialCategory}::${initialKeyword}`}
+      initialCategory={initialCategory}
+      initialKeyword={initialKeyword}
+    />
+  );
+}
+
+function GeoMapViewInner({
+  initialCategory,
+  initialKeyword,
+}: {
+  initialCategory: string;
+  initialKeyword: string;
+}) {
   // 1. Quản lý trạng thái Vị trí tâm quét
   const [customCenter, setCustomCenter] = useState<{
     lat: number;
@@ -70,9 +84,10 @@ export default function GeoMapView() {
     label: string;
   } | null>(null);
 
-  // 2. Thông tin User & Địa chỉ mặc định (Ưu tiên 1)
+  // 2. Thông tin User & Địa chỉ mặc định (Chỉ gọi với Customer/Provider để tránh 403 khi Admin mở /map)
   const { data: user } = useCurrentUser();
-  const { data: addresses } = useAddresses(Boolean(user));
+  const canUseAddresses = user?.role === "customer" || user?.role === "provider";
+  const { data: addresses } = useAddresses(canUseAddresses);
 
   const defaultAddress = useMemo(() => {
     if (!addresses || addresses.length === 0) return null;
@@ -141,13 +156,6 @@ export default function GeoMapView() {
   const [selectionTrigger, setSelectionTrigger] = useState<number>(0);
   const [detailServiceId, setDetailServiceId] = useState<string | null>(null);
 
-  // Đồng bộ URL query params khi người dùng điều hướng lại sang /map
-  useEffect(() => {
-    setCategory(initialCategory);
-    setKeyword(initialKeyword);
-    setDebouncedKeyword(initialKeyword.trim());
-  }, [initialCategory, initialKeyword]);
-
   // Debounce tìm kiếm từ khóa
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -198,7 +206,7 @@ export default function GeoMapView() {
     ) {
       return selectedServiceIdState;
     }
-    return items[0]?.service.id ?? null;
+    return null;
   }, [items, selectedServiceIdState]);
 
   // Xử lý chọn dịch vụ từ thẻ hoặc từ pin bản đồ
@@ -229,29 +237,24 @@ export default function GeoMapView() {
       <aside className="w-full lg:w-[420px] h-[52%] lg:h-full order-2 lg:order-1 flex flex-col bg-card border-t lg:border-t-0 lg:border-r border-border shrink-0 z-20 shadow-sm overflow-hidden">
         {/* Khối Bộ lọc */}
         <div className="p-4 sm:p-5 border-b border-border space-y-3.5 bg-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-semibold text-lg sm:text-xl text-foreground tracking-tight">
-                Nhà cung cấp gần bạn
-              </h1>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                <span className="truncate max-w-[200px]" title={centerLabel}>
-                  {centerLabel}
-                </span>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={handleRequestMyLocation}
-                  className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
-                >
-                  <LocateFixed className="h-3 w-3" />
-                  <span>Cập nhật GPS</span>
-                </button>
-              </div>
+          <div>
+            <h1 className="font-semibold text-lg sm:text-xl text-foreground tracking-tight">
+              Nhà cung cấp gần bạn
+            </h1>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+              <span className="truncate max-w-[200px]" title={centerLabel}>
+                {centerLabel}
+              </span>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={handleRequestMyLocation}
+                className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
+              >
+                <LocateFixed className="h-3 w-3" />
+                <span>Cập nhật GPS</span>
+              </button>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
-              {isLoading ? "Đang tải..." : `${items.length} kết quả`}
-            </span>
           </div>
 
           {/* Ô tìm kiếm từ khóa S17.2 */}
@@ -283,7 +286,7 @@ export default function GeoMapView() {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full text-xs border border-border rounded-lg px-3 py-2 bg-card text-foreground focus:outline-none focus:border-primary cursor-pointer"
             >
-              <option value="">Tất cả danh mục (8 ngành nghề)</option>
+              <option value="">Tất cả danh mục</option>
               {categoryOptions.map((cat) => (
                 <option key={cat.slug} value={cat.slug}>
                   {cat.name}
@@ -412,6 +415,7 @@ export default function GeoMapView() {
               const isSelected = item.service.id === selectedServiceId;
               const isFreeShipping = item.distance.isFreeShipping;
               const feeFormatted = formatVND(item.distance.distanceFee);
+              const providerProfileHref = `/providers/${item.provider.id}?serviceId=${item.service.id}`;
 
               return (
                 <article
@@ -426,7 +430,15 @@ export default function GeoMapView() {
                 >
                   <div className="flex items-start gap-3">
                     {/* Avatar thợ */}
-                    <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        notifyComingSoon();
+                      }}
+                      title="Xem hồ sơ thợ"
+                      className="shrink-0 hover:opacity-90 transition cursor-pointer"
+                    >
                       <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-muted">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -438,16 +450,22 @@ export default function GeoMapView() {
                           alt={item.provider.displayName}
                         />
                       </div>
-                      <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-amber-600 text-white rounded-full flex items-center justify-center text-[10px] shadow-xs">
-                        <Check className="h-2.5 w-2.5 stroke-[3]" />
-                      </span>
-                    </div>
+                    </button>
 
                     {/* Nội dung thông tin thợ & dịch vụ */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <h3 className="font-semibold text-foreground text-sm truncate">
-                          {item.provider.displayName}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              notifyComingSoon();
+                            }}
+                            className="hover:text-primary hover:underline cursor-pointer text-left truncate max-w-full"
+                          >
+                            {item.provider.displayName}
+                          </button>
                         </h3>
                         <div className="flex items-center gap-1 text-xs text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/70 font-semibold shrink-0">
                           <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
@@ -456,7 +474,7 @@ export default function GeoMapView() {
                       </div>
 
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {item.service.category?.name || "Dịch vụ"} • {item.service.title}
+                        {item.service.title}
                       </p>
 
                       <div className="flex flex-wrap items-center gap-1.5 mt-2 text-xs">
@@ -464,30 +482,28 @@ export default function GeoMapView() {
                           <Navigation className="h-3.5 w-3.5 text-primary" />
                           <span>Cách {item.distance.distanceKm} km</span>
                         </span>
-                        <span className="text-muted-foreground/60">•</span>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
-                            isFreeShipping
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-amber-50 text-amber-800 border-amber-200"
-                          }`}
-                        >
-                          {isFreeShipping
-                            ? "Miễn phí (≤ 3km)"
-                            : `+${feeFormatted}`}
-                        </span>
+                        {!isFreeShipping && (
+                          <>
+                            <span className="text-muted-foreground/60">•</span>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold border bg-amber-50 text-amber-800 border-amber-200">
+                              +{feeFormatted}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Phần giá & Nút đặt lịch */}
-                  <div className="mt-3.5 pt-3 border-t border-border flex items-center justify-between gap-2">
-                    <div>
-                      <span className="text-[11px] text-muted-foreground block">
-                        Giá gốc: {formatVND(item.service.basePrice)}
-                      </span>
+                  <div className="mt-3.5 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      {!isFreeShipping && (
+                        <span className="text-[11px] text-muted-foreground block">
+                          Giá gốc: {formatVND(item.service.basePrice)}
+                        </span>
+                      )}
                       <div className="flex items-baseline gap-1">
-                        <span className="text-xs text-muted-foreground">Tạm tính:</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">Tạm tính:</span>
                         <span className="font-bold text-foreground text-sm">
                           {formatVND(item.distance.estimatedTotal)}
                         </span>
@@ -506,12 +522,11 @@ export default function GeoMapView() {
                         Chi tiết
                       </button>
                       <Link
-                        href={`/providers/${item.provider.id}?serviceId=${item.service.id}`}
+                        href={providerProfileHref}
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground text-xs font-semibold shadow-xs transition"
+                        className="inline-flex items-center px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 active:scale-95 text-primary-foreground text-xs font-semibold shadow-xs transition whitespace-nowrap"
                       >
-                        <span>Xem hồ sơ &amp; Đặt lịch</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        Đặt lịch
                       </Link>
                     </div>
                   </div>
@@ -519,15 +534,6 @@ export default function GeoMapView() {
               );
             })
           )}
-        </div>
-
-        {/* Chân trang cột trái */}
-        <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between text-xs text-muted-foreground shrink-0">
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <span>Thợ đã xác minh CCCD &amp; tay nghề</span>
-          </div>
-          <span className="font-medium text-primary">Minh bạch giá cả</span>
         </div>
       </aside>
 
@@ -589,7 +595,6 @@ export default function GeoMapView() {
           selectedServiceId={selectedServiceId}
           selectionTrigger={selectionTrigger}
           onSelectService={handleSelectService}
-          onOpenDetail={(serviceId) => setDetailServiceId(serviceId)}
           onChangeCenter={(lat, lng) => {
             setCustomCenter({
               lat,

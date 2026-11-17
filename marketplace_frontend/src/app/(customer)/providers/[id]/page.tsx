@@ -9,9 +9,11 @@ export const metadata: Metadata = {
 // Trang công khai: proxy.ts chỉ chặn đường dẫn /provider/..., không chặn /providers/...
 export default async function ProviderPublicPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ serviceId?: string }>;
 }) {
-  const { id } = await params;
-  return <ProviderPublicView providerId={id} />;
+  const [{ id }, { serviceId }] = await Promise.all([params, searchParams]);
+  return <ProviderPublicView providerId={id} serviceId={serviceId} />;
 }
