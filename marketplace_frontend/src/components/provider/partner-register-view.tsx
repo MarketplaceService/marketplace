@@ -19,16 +19,9 @@ import {
   Edit3,
   FileCheck2,
   FileText,
-  Handshake,
-  HelpCircle,
-  Home,
-  ImageIcon,
-  Info,
   Loader2,
   MapPin,
   Send,
-  ShieldAlert,
-  ShieldCheck,
   Trash2,
   Upload,
   User,
@@ -97,10 +90,10 @@ export function PartnerRegisterView() {
   const [doc3, setDoc3] = useState<UploadedDoc | null>(null);
   const [doc4, setDoc4] = useState<UploadedDoc | null>(null);
 
-  // Service Area states
+  // Service Area states (mặc định tâm Quận 9, TP.HCM)
   const [areaName, setAreaName] = useState("");
-  const [centerLat, setCenterLat] = useState(10.776889);
-  const [centerLng, setCenterLng] = useState(106.700897);
+  const [centerLat, setCenterLat] = useState(10.8456);
+  const [centerLng, setCenterLng] = useState(106.7719);
   const [radiusKm, setRadiusKm] = useState(5.0);
   const [isActive, setIsActive] = useState(true);
 
@@ -127,8 +120,8 @@ export function PartnerRegisterView() {
   ) => {
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Dung lượng tệp vượt quá giới hạn 10MB");
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Dung lượng tệp vượt quá giới hạn 2MB");
       return;
     }
 
@@ -153,7 +146,13 @@ export function PartnerRegisterView() {
   // Check sample addresses
   const handleCheckSample = (lat: number, lng: number, sampleLabel: string) => {
     checkAreaMutation.mutate(
-      { latitude: lat, longitude: lng },
+      {
+        latitude: lat,
+        longitude: lng,
+        centerLatitude: centerLat,
+        centerLongitude: centerLng,
+        radiusKm,
+      },
       {
         onSuccess: (res) => {
           setCheckResult({
@@ -240,33 +239,39 @@ export function PartnerRegisterView() {
       return;
     }
 
-    registerMutation.mutate({
-      displayName: displayName.trim(),
-      phone: phoneClean,
-      experienceYears: Number(experienceYears),
-      categoryId,
-      bio: bio.trim(),
-      documents: [
-        { documentType: "ID_CARD_FRONT", fileUrl: doc1.url },
-        { documentType: "ID_CARD_BACK", fileUrl: doc2.url },
-        { documentType: "CERTIFICATE", fileUrl: doc3.url },
-        { documentType: "TOOLKIT_PHOTO", fileUrl: doc4.url },
-      ],
-      serviceArea: {
-        areaName: areaName.trim() || "Vùng phục vụ chính",
-        centerLatitude: centerLat,
-        centerLongitude: centerLng,
-        radiusKm,
-        isActive,
+    registerMutation.mutate(
+      {
+        displayName: displayName.trim(),
+        phone: phoneClean,
+        experienceYears: Number(experienceYears),
+        categoryId,
+        bio: bio.trim(),
+        documents: [
+          { documentType: "ID_CARD_FRONT", fileUrl: doc1.url },
+          { documentType: "ID_CARD_BACK", fileUrl: doc2.url },
+          { documentType: "CERTIFICATE", fileUrl: doc3.url },
+          { documentType: "TOOLKIT_PHOTO", fileUrl: doc4.url },
+        ],
+        serviceArea: {
+          areaName: areaName.trim() || "Vùng phục vụ chính",
+          centerLatitude: centerLat,
+          centerLongitude: centerLng,
+          radiusKm,
+          isActive,
+        },
+        initialService: {
+          title: serviceTitle.trim(),
+          basePrice: Number(basePrice),
+          priceUnit,
+          durationMinutes: Number(durationMinutes),
+        },
       },
-      initialService: {
-        title: serviceTitle.trim(),
-        basePrice: Number(basePrice),
-        priceUnit,
-        durationMinutes: Number(durationMinutes),
+      {
+        onSuccess: () => {
+          setIsEditingAfterReject(false);
+        },
       },
-    });
-    setIsEditingAfterReject(false);
+    );
   };
 
   if (isLoading) {
@@ -484,13 +489,13 @@ export function PartnerRegisterView() {
               <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>
                   Người thẩm định:{" "}
-                  <strong>{profile?.approvedBy || "Ban Quản trị Servigo"}</strong>
+                  <strong>Ban Quản trị Servigo</strong>
                 </span>
                 <span>•</span>
                 <span>
                   Thời gian:{" "}
-                  {profile?.approvedAt
-                    ? new Date(profile.approvedAt).toLocaleString("vi-VN")
+                  {profile?.updatedAt
+                    ? new Date(profile.updatedAt).toLocaleString("vi-VN")
                     : "Gần đây"}
                 </span>
               </div>
@@ -506,7 +511,53 @@ export function PartnerRegisterView() {
               </Link>
               <button
                 type="button"
-                onClick={() => setIsEditingAfterReject(true)}
+                onClick={() => {
+                  if (profile) {
+                    const initialService = profile.services?.[0];
+                    const area = profile.serviceAreas?.[0];
+                    const toUploadedDoc = (
+                      documentType: string,
+                      fallbackName: string,
+                    ): UploadedDoc | null => {
+                      const found = profile.documents?.find(
+                        (d) => d.documentType === documentType,
+                      );
+                      if (!found?.fileUrl) return null;
+                      const isPdf =
+                        found.fileUrl.startsWith("data:application/pdf") ||
+                        /\.pdf(\?|$)/i.test(found.fileUrl);
+                      return {
+                        name: `${fallbackName}.${isPdf ? "pdf" : "jpg"}`,
+                        url: found.fileUrl,
+                        type: isPdf ? "application/pdf" : "image/jpeg",
+                      };
+                    };
+
+                    setDisplayName(profile.displayName || "");
+                    setPhone(profile.phone || "");
+                    setExperienceYears(profile.experienceYears ?? "");
+                    setBio(profile.bio || "");
+                    setCategoryId(initialService?.categoryId || profile.categoryId || "");
+                    if (initialService) {
+                      setServiceTitle(initialService.title || "");
+                      setBasePrice(Number(initialService.basePrice));
+                      setPriceUnit(initialService.priceUnit || "FIXED");
+                      setDurationMinutes(initialService.durationMinutes || 60);
+                    }
+                    if (area) {
+                      setAreaName(area.areaName || "");
+                      setCenterLat(Number(area.centerLatitude));
+                      setCenterLng(Number(area.centerLongitude));
+                      setRadiusKm(Number(area.radiusKm));
+                      setIsActive(Boolean(area.isActive));
+                    }
+                    setDoc1(toUploadedDoc("ID_CARD_FRONT", "cccd_mat_truoc"));
+                    setDoc2(toUploadedDoc("ID_CARD_BACK", "cccd_mat_sau"));
+                    setDoc3(toUploadedDoc("CERTIFICATE", "chung_chi_nghe"));
+                    setDoc4(toUploadedDoc("TOOLKIT_PHOTO", "anh_do_nghe"));
+                  }
+                  setIsEditingAfterReject(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all active:scale-[0.99]"
               >
                 <Edit3 className="h-4 w-4" />
@@ -830,7 +881,7 @@ export function PartnerRegisterView() {
                       Tài Liệu Xác Minh (KYC)
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Tải lên tệp ảnh hoặc PDF rõ nét, dung lượng tối đa 10MB mỗi tệp
+                      Tải lên tệp ảnh hoặc PDF rõ nét, dung lượng tối đa 2MB mỗi tệp
                     </p>
                   </div>
                 </div>
@@ -878,7 +929,9 @@ export function PartnerRegisterView() {
                   >
                     <div className="flex items-start sm:items-center gap-3.5">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary overflow-hidden">
-                        {item.doc?.url && item.doc.type?.startsWith("image/") ? (
+                        {item.doc?.url &&
+                        (item.doc.type?.startsWith("image/") ||
+                          item.doc.url.startsWith("data:image/")) ? (
                           <img
                             src={item.doc.url}
                             alt={item.title}
@@ -911,7 +964,7 @@ export function PartnerRegisterView() {
                             </span>
                           ) : (
                             <span className="text-muted-foreground italic">
-                              Chưa có tệp nào được chọn (JPG, PNG, PDF tối đa 10MB)
+                              Chưa có tệp nào được chọn (JPG, PNG, PDF tối đa 2MB)
                             </span>
                           )}
                         </p>
@@ -986,7 +1039,7 @@ export function PartnerRegisterView() {
                     onValueChange={centerSearch.setSearchText}
                     onPlaceSelect={centerSearch.selectPlace}
                     near={{ latitude: centerLat, longitude: centerLng }}
-                    placeholder="VD: 142 Hoàng Quốc Việt, Cầu Giấy, Hà Nội"
+                    placeholder="VD: Lê Văn Việt, Quận 9, TP. Hồ Chí Minh"
                   />
                 </div>
 

@@ -53,7 +53,7 @@ export default function ProviderDashboardPage() {
           </div>
           <div className="text-2xl font-bold text-foreground">Đang trực tuyến</div>
           <p className="text-xs text-muted-foreground mt-1">
-            Bán kính quét: 12 km xung quanh Quận Cầu Giấy
+            Bán kính quét: 12 km xung quanh Quận 9
           </p>
         </div>
 

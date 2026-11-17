@@ -88,6 +88,9 @@ export interface CheckServiceAreaPayload {
   latitude: number;
   longitude: number;
   providerId?: string;
+  centerLatitude?: number;
+  centerLongitude?: number;
+  radiusKm?: number;
 }
 
 export interface CheckServiceAreaResponse {

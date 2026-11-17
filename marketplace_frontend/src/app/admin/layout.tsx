@@ -8,7 +8,6 @@ import { useAdminProviders } from "@/hooks/use-provider";
 import {
   Flag,
   Gavel,
-  ShieldCheck,
   TrendingUp,
   UserCheck,
   Users,
@@ -37,11 +36,6 @@ export default function AdminLayout({
     {
       label: "Xử lý tranh chấp",
       icon: Gavel,
-      disabled: true,
-    },
-    {
-      label: "Duyệt dịch vụ",
-      icon: ShieldCheck,
       disabled: true,
     },
     {
