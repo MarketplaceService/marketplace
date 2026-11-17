@@ -1,6 +1,6 @@
 "use client";
 
-import { resetUserCache } from "@/hooks/use-auth";
+import { getDefaultRedirectPath, resetUserCache } from "@/hooks/use-auth";
 import axiosInstance from "@/lib/axios";
 import { User } from "@/types/api.types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -65,8 +65,7 @@ function GoogleCallbackPageInner() {
         } else {
           toast.success("Đăng nhập thành công! Đang chuyển hướng...");
         }
-        const destination =
-          redirectParam || (user.role === "admin" ? "/admin" : "/product/catalog");
+        const destination = redirectParam || getDefaultRedirectPath(user.role);
         redirectTimer = setTimeout(() => router.push(destination), 600);
         return;
       }

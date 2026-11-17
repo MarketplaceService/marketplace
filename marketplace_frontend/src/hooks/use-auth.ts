@@ -79,6 +79,12 @@ interface AuthToastMessages {
   error?: string;
 }
 
+export function getDefaultRedirectPath(role?: string): string {
+  if (role === "admin") return "/admin";
+  if (role === "provider") return "/provider";
+  return "/";
+}
+
 export const useSignUp = (
   messages?: AuthToastMessages & { verifyEmail?: string },
 ) => {
@@ -95,7 +101,7 @@ export const useSignUp = (
       if (response.token) {
         toast.success(messages?.success ?? "Account created successfully");
 
-        router.push("/product/catalog");
+        router.push(getDefaultRedirectPath(response.user?.role));
         return;
       }
 
@@ -152,12 +158,7 @@ export const useSignIn = (messages?: AuthToastMessages, redirectTo?: string) => 
         return;
       }
 
-      if (user?.role === "admin") {
-        router.push("/admin");
-        return;
-      }
-
-      router.push("/product/catalog");
+      router.push(getDefaultRedirectPath(user?.role));
     },
 
     onError: mutationErrorToast(messages?.error ?? "Sign in failed"),
