@@ -1,42 +1,32 @@
 "use client";
 
+import { useCategories } from "@/hooks/use-discovery";
 import { useAdminProviders } from "@/hooks/use-provider";
-import type { ProviderProfileData } from "@/services/provider.services";
 import {
-  AlertCircle,
   BadgeCheck,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
   Eye,
   FileCheck,
-  Filter,
-  FolderCheck,
   FolderOpen,
   Loader2,
-  MapPin,
-  Phone,
   RefreshCw,
   Search,
-  User,
-  Wrench,
   XCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
-import { toast } from "sonner";
 import { PartnerApprovalDetailView } from "./partner-approval-detail-view";
 
-const CATEGORIES = [
-  "Sửa điện lạnh",
-  "Sửa điện dân dụng",
-  "Cấp thoát nước",
-  "Sửa máy tính - điện thoại",
-  "Vệ sinh nhà cửa",
-  "Cải tạo & Sơn sửa",
-  "Lắp đặt thiết bị",
-  "Sửa khóa & Cửa cuốn",
+const FALLBACK_CATEGORIES = [
+  { id: "sua-dien-lanh", name: "Sửa điện lạnh" },
+  { id: "sua-dien-nuoc", name: "Sửa điện nước" },
+  { id: "sua-khoa-cua-cuon", name: "Sửa khóa & Cửa cuốn" },
+  { id: "thong-tac-ve-sinh", name: "Thông tắc vệ sinh" },
+  { id: "ve-sinh-nha-cua", name: "Vệ sinh nhà cửa" },
+  { id: "thiet-bi-gia-dung", name: "Thiết bị gia dụng" },
+  { id: "son-sua-chong-tham", name: "Sơn sửa & Chống thấm" },
+  { id: "do-go-noi-that", name: "Đồ gỗ & Nội thất" },
 ];
 
 export function PartnerApprovalListView() {
@@ -48,6 +38,12 @@ export function PartnerApprovalListView() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
     null,
   );
+
+  const { data: apiCategories } = useCategories();
+  const categoryOptions =
+    apiCategories && apiCategories.length > 0
+      ? apiCategories.map((c) => ({ id: c.id, name: c.name }))
+      : FALLBACK_CATEGORIES;
 
   const { data, isLoading, refetch } = useAdminProviders({
     search: searchTerm || undefined,
@@ -170,7 +166,7 @@ export function PartnerApprovalListView() {
                 setSearchTerm(e.target.value);
                 setPage(1);
               }}
-              placeholder="Tìm theo tên hiển thị, họ tên, email, SĐT, mã #TF-PRO..."
+              placeholder="Tìm theo tên hiển thị, họ tên, email, SĐT, mã hồ sơ #01a1d4f3..."
               className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
             />
           </div>
@@ -186,9 +182,9 @@ export function PartnerApprovalListView() {
               className="h-10 min-w-[200px] rounded-lg border border-border bg-background px-3 text-xs text-foreground focus:border-primary focus:outline-none cursor-pointer"
             >
               <option value="">Ngành nghề: Tất cả</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              {categoryOptions.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
                 </option>
               ))}
             </select>
@@ -241,13 +237,13 @@ export function PartnerApprovalListView() {
           <table className="w-full text-left text-xs">
             <thead className="border-b border-border bg-muted/50 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-5 py-3.5">Nhà cung cấp</th>
-                <th className="px-5 py-3.5">Số điện thoại & Kinh nghiệm</th>
-                <th className="px-5 py-3.5">Ngành nghề & Vùng phục vụ</th>
-                <th className="px-5 py-3.5">Tài liệu xác minh</th>
-                <th className="px-5 py-3.5">Ngày đăng ký</th>
-                <th className="px-5 py-3.5">Trạng thái</th>
-                <th className="px-5 py-3.5 text-right">Thao tác</th>
+                <th className="px-2.5 py-3">Nhà cung cấp</th>
+                <th className="px-2.5 py-3">Liên hệ &amp; KN</th>
+                <th className="px-2.5 py-3">Chuyên môn</th>
+                <th className="px-2.5 py-3">Tài liệu</th>
+                <th className="px-2.5 py-3">Ngày ĐK</th>
+                <th className="px-2.5 py-3">Trạng thái</th>
+                <th className="px-2.5 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -273,17 +269,17 @@ export function PartnerApprovalListView() {
                       className="hover:bg-muted/30 transition-colors"
                     >
                       {/* Cột 1: Nhà cung cấp */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm ring-1 ring-border">
+                      <td className="px-2.5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs ring-1 ring-border">
                             {item.displayName ? item.displayName[0].toUpperCase() : "P"}
                           </div>
-                          <div>
-                            <p className="font-semibold text-foreground text-sm">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground text-xs truncate max-w-[130px]">
                               {item.displayName}
                             </p>
-                            <p className="text-muted-foreground text-[11px]">
-                              {item.user?.name || "Kỹ thuật viên"} • {item.user?.email}
+                            <p className="text-muted-foreground text-[11px] truncate max-w-[130px]">
+                              {item.user?.email || item.user?.name || "Kỹ thuật viên"}
                             </p>
                             <span className="font-mono text-[10px] text-muted-foreground">
                               #{item.id.slice(0, 8)}
@@ -293,42 +289,42 @@ export function PartnerApprovalListView() {
                       </td>
 
                       {/* Cột 2: SĐT & Kinh nghiệm */}
-                      <td className="px-5 py-4">
+                      <td className="px-2.5 py-3.5 whitespace-nowrap">
                         <p className="font-semibold text-foreground tabular-nums">
                           {item.phone || "—"}
                         </p>
                         <p className="text-muted-foreground text-[11px]">
-                          {item.experienceYears ?? 0} năm kinh nghiệm
+                          {item.experienceYears ?? 0} năm KN
                         </p>
                       </td>
 
                       {/* Cột 3: Ngành nghề & Vùng */}
-                      <td className="px-5 py-4">
-                        <p className="font-medium text-foreground">
-                          {item.categoryId || "Sửa điện lạnh"}
+                      <td className="px-2.5 py-3.5">
+                        <p className="font-medium text-foreground truncate max-w-[130px]">
+                          {item.categoryName || item.categoryId || "Chưa cập nhật"}
                         </p>
-                        <p className="text-muted-foreground text-[11px]">
-                          Bán kính: {area?.radiusKm ? `${area.radiusKm} km` : "5.0 km"}
+                        <p className="text-muted-foreground text-[11px] whitespace-nowrap">
+                          {area?.radiusKm ? `${area.radiusKm} km` : "5.0 km"}
                         </p>
                       </td>
 
                       {/* Cột 4: Tài liệu KYC */}
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                          <FileCheck className="h-3.5 w-3.5" />
-                          <span>{item.documents?.length || 4}/4 tài liệu</span>
+                      <td className="px-2.5 py-3.5 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                          <FileCheck className="h-3 w-3 shrink-0" />
+                          <span>{item.documents?.length ?? 0}/4</span>
                         </span>
                       </td>
 
                       {/* Cột 5: Ngày đăng ký */}
-                      <td className="px-5 py-4 text-muted-foreground tabular-nums">
+                      <td className="px-2.5 py-3.5 whitespace-nowrap text-muted-foreground tabular-nums">
                         {item.createdAt ? new Date(item.createdAt).toLocaleDateString("vi-VN") : "Hôm nay"}
                       </td>
 
                       {/* Cột 6: Trạng thái */}
-                      <td className="px-5 py-4">
+                      <td className="px-2.5 py-3.5 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${
+                          className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold border ${
                             item.verificationStatus === "APPROVED"
                               ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                               : item.verificationStatus === "REJECTED"
@@ -345,14 +341,14 @@ export function PartnerApprovalListView() {
                       </td>
 
                       {/* Cột 7: Thao tác */}
-                      <td className="px-5 py-4 text-right">
+                      <td className="px-2.5 py-3.5 text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => setSelectedProviderId(item.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors shadow-2xs"
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors shadow-2xs cursor-pointer"
                         >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>Xem & xét duyệt</span>
+                          <Eye className="h-3.5 w-3.5 shrink-0" />
+                          <span>Xét duyệt</span>
                         </button>
                       </td>
                     </tr>
@@ -474,6 +470,9 @@ export function PartnerApprovalListView() {
           onClick={() => setSelectedProviderId(null)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Thẩm định hồ sơ đối tác"
             className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl bg-card border border-border shadow-2xl animate-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >

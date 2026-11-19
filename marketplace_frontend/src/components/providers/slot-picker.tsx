@@ -2,6 +2,8 @@
 
 import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { useServiceDetail } from "@/hooks/use-discovery";
 import { useAvailableSlots } from "@/hooks/use-schedule";
 import { cn } from "@/lib/utils";
 import {
@@ -21,13 +23,13 @@ import {
   Clock,
   LockKeyhole,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 // Backend chỉ trả khung giờ trong 30 ngày tới
 const MAX_DAYS_AHEAD = 30;
 const DAYS_PER_PAGE = 7;
-// Chưa có module dịch vụ nên dùng slot 60 phút; sau này lấy theo thời lượng của dịch vụ đã chọn
-const SLOT_MINUTES = 60;
+const DEFAULT_SLOT_MINUTES = 60;
 
 const STATUS_LEGEND: { status: SlotStatus; label: string; dotClass: string }[] = [
   { status: "AVAILABLE", label: "Còn trống", dotClass: "bg-primary" },
@@ -35,29 +37,61 @@ const STATUS_LEGEND: { status: SlotStatus; label: string; dotClass: string }[] =
   { status: "BOOKED", label: "Đã kín", dotClass: "bg-muted-foreground/50" },
 ];
 
-export function SlotPicker({ providerId }: { providerId: string }) {
+export function SlotPicker({
+  providerId,
+  serviceId,
+}: {
+  providerId: string;
+  serviceId?: string;
+}) {
+  const router = useRouter();
+  const { data: currentUser, isLoading: isAuthLoading } = useCurrentUser();
   const [today] = useState(() => todayInVietnam());
   const lastDay = addDays(today, MAX_DAYS_AHEAD);
   const [pageStart, setPageStart] = useState(today);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  // Chỉ lưu khung giờ chọn nháp ở client; chỉ khóa/giữ lịch khi người dùng đã đăng nhập và đặt lịch
+  const [selectedStartAt, setSelectedStartAt] = useState<string | null>(null);
+
+  const { data: selectedService } = useServiceDetail(serviceId ?? null);
+  // Chỉ dùng thời lượng của dịch vụ khi dịch vụ đúng là của thợ đang xem
+  const durationMinutes =
+    selectedService?.provider?.id === providerId && selectedService.durationMinutes > 0
+      ? selectedService.durationMinutes
+      : DEFAULT_SLOT_MINUTES;
 
   const days = Array.from({ length: DAYS_PER_PAGE }, (_, index) => addDays(pageStart, index)).filter(
     (date) => date <= lastDay,
   );
 
-  const { data, isLoading, isError } = useAvailableSlots(providerId, selectedDate, SLOT_MINUTES);
+  const { data, isLoading, isError } = useAvailableSlots(
+    providerId,
+    selectedDate,
+    durationMinutes,
+  );
   const slots = data?.slots ?? [];
+  const selectedSlot =
+    slots.find((slot) => slot.startAt === selectedStartAt && slot.status === "AVAILABLE") ?? null;
 
   const selectDate = (date: string) => {
     setSelectedDate(date);
-    setSelectedSlot(null);
+    setSelectedStartAt(null);
   };
 
   const movePage = (direction: 1 | -1) => {
     const nextStart = addDays(pageStart, direction * DAYS_PER_PAGE);
     setPageStart(nextStart);
     selectDate(nextStart);
+  };
+
+  const handleContinue = () => {
+    if (!selectedSlot || isAuthLoading) return;
+    if (!currentUser) {
+      const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+      router.push(`/auth/signin?redirect=${redirect}`);
+      return;
+    }
+    notifyComingSoon();
   };
 
   const selectedDayLabel = `${DAY_NAMES[dayOfWeekOf(selectedDate)]}, ${formatDateOnly(selectedDate)}`;
@@ -150,7 +184,7 @@ export function SlotPicker({ providerId }: { providerId: string }) {
           </p>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="size-3.5" />
-            Thời lượng: {SLOT_MINUTES} phút
+            Thời lượng: {durationMinutes} phút
           </span>
         </div>
 
@@ -178,7 +212,7 @@ export function SlotPicker({ providerId }: { providerId: string }) {
                 key={slot.startAt}
                 slot={slot}
                 isSelected={selectedSlot?.startAt === slot.startAt}
-                onSelect={() => setSelectedSlot(slot)}
+                onSelect={() => setSelectedStartAt(slot.startAt)}
               />
             ))}
           </div>
@@ -203,11 +237,11 @@ export function SlotPicker({ providerId }: { providerId: string }) {
         <Button
           type="button"
           size="lg"
-          disabled={!selectedSlot}
-          onClick={notifyComingSoon}
+          disabled={!selectedSlot || isAuthLoading}
+          onClick={handleContinue}
           className="px-4"
         >
-          Tiếp tục đặt lịch
+          {!isAuthLoading && !currentUser ? "Đăng nhập để đặt lịch" : "Tiếp tục đặt lịch"}
         </Button>
       </div>
     </section>

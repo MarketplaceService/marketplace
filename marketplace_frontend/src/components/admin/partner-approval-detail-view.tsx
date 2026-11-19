@@ -11,15 +11,12 @@ import {
   BadgeCheck,
   Check,
   CheckCircle2,
-  Clock,
-  Eye,
   FileCheck2,
+  FileText,
   Hourglass,
   Loader2,
   MapPin,
   RefreshCw,
-  RotateCcw,
-  ShieldAlert,
   User,
   X,
   XCircle,
@@ -37,6 +34,15 @@ const ServiceAreaMapPicker = dynamic(
     ),
   },
 );
+
+const PRICE_UNIT_LABELS: Record<string, string> = {
+  FIXED: "Trọn gói",
+  HOURLY: "Theo giờ",
+  FROM: "Từ mức giá",
+};
+
+const isPdfDocument = (url?: string | null) =>
+  Boolean(url && (url.startsWith("data:application/pdf") || /\.pdf(\?|$)/i.test(url)));
 
 interface PartnerApprovalDetailViewProps {
   providerId: string;
@@ -92,7 +98,7 @@ export function PartnerApprovalDetailView({
   const isApproved = profile.verificationStatus === "APPROVED";
   const isRejected = profile.verificationStatus === "REJECTED";
 
-  const adminName = currentUser?.name || "Lê Quang Dũng";
+  const adminName = currentUser?.name || "Quản trị viên";
   const adminCode = currentUser?.id
     ? `#SV-ADM-${currentUser.id.slice(0, 4).toUpperCase()}`
     : "#SV-ADM-01";
@@ -134,45 +140,38 @@ export function PartnerApprovalDetailView({
   };
 
   const serviceArea = profile.serviceAreas?.[0] ?? {
-    centerLatitude: 10.776889,
-    centerLongitude: 106.700897,
+    centerLatitude: 10.8456,
+    centerLongitude: 106.7719,
     radiusKm: 7.0,
-    areaName: "Vùng trung tâm TP.HCM",
+    areaName: "Vùng trung tâm Quận 9, TP.HCM",
     isActive: true,
   };
+  const initialService = profile.services?.[0];
 
   const docItems = [
     {
       title: "1. CCCD / CMND Mặt trước",
       tag: "Mặt trước CCCD",
       type: "ID_CARD_FRONT",
-      filename: "cccd_mat_truoc.jpg",
-      defaultImg:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuBoKNyZ9FxRC7SEYhOD23KcZPMJdpHHmMYKFTGHiAYscF-BjsidSgSTBsdCvnuqGv80WMZhYNkLcVII3oHaV4xO1mMq63cJncuubXwyBwPZNMgMGhVWSCCUabq3W8UkMWaOXwTsRNx9jqWU2_6ltq4mXM1Pq2vnkHj_PRCSbDLfdvrbBIA2jRH0rm6IaVFPhsRkaT7ECC9ZqNRcEVGtP4B3v0eQljE3t5ByOZvFraheM2wuNgqjBlaQVIS2AJ1l621BS5rj9xl6y8Rx",
+      baseName: "cccd_mat_truoc",
     },
     {
       title: "2. CCCD / CMND Mặt sau",
       tag: "Mặt sau CCCD",
       type: "ID_CARD_BACK",
-      filename: "cccd_mat_sau.jpg",
-      defaultImg:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuDKKe6FcPRW2y-tf0c9rFSlvUNUDSqEwrVtFkArRT3H7PmHFSMcWE3lQ5Gl-0lcsPpZpz4DcCGel6Iw00Kl-jMMNr4Y8c7p4SDUyx-j4IyRGEpxNNlN_MCGVOVKeJVJC3aeYJ5-Ee6siv92rSL6rTtvPY_opaJ-HxuOiXIrRMN0Y5gSkJ5wP5L_WpZzRb72UAS5mkpMx5qBYqZBLzxktG0lqSL_DKwF7W-X2IytCvk4V2EmcxhWnokYBy7gyfADtPfmNDC1E50ZGFKm",
+      baseName: "cccd_mat_sau",
     },
     {
       title: "3. Chứng chỉ nghề / Bằng cấp chuyên môn",
       tag: "Chứng chỉ nghề",
       type: "CERTIFICATE",
-      filename: "chung_chi_chuyen_nganh.pdf",
-      defaultImg:
-        "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80",
+      baseName: "chung_chi_nghe",
     },
     {
       title: "4. Ảnh chân dung & Dụng cụ tác nghiệp",
       tag: "Ảnh dụng cụ",
       type: "TOOLKIT_PHOTO",
-      filename: "anh_dung_cu_chuyen_dung.jpg",
-      defaultImg:
-        "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?auto=format&fit=crop&w=600&q=80",
+      baseName: "anh_dung_cu",
     },
   ];
 
@@ -251,7 +250,7 @@ export function PartnerApprovalDetailView({
               <span>{profile.user?.email || "chưa cập nhật"}</span>
               <span>•</span>
               <span className="font-mono text-muted-foreground">
-                #SV-PRO-{profile.id.slice(0, 4).toUpperCase()}
+                #{profile.id.slice(0, 8)}
               </span>
             </p>
           </div>
@@ -272,7 +271,11 @@ export function PartnerApprovalDetailView({
       {/* ========================================================================= */}
       {/* 2. BODY SCROLLABLE AREA                                                   */}
       {/* ========================================================================= */}
-      <div className="max-h-[calc(85vh-200px)] overflow-y-auto p-6 space-y-6 bg-muted/20">
+      <div
+        className={`p-6 space-y-6 bg-muted/20 ${
+          isModal ? "max-h-[calc(85vh-200px)] overflow-y-auto" : ""
+        }`}
+      >
         {/* PHẦN 1: THÔNG TIN HỒ SƠ & NGÀNH NGHỀ */}
         <section className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-2xs">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -302,7 +305,7 @@ export function PartnerApprovalDetailView({
                 Ngành nghề chính
               </span>
               <p className="mt-0.5 text-sm font-semibold text-foreground">
-                {profile.categoryId || "Cấp thoát nước"}
+                {profile.categoryName || profile.categoryId || "Chưa cập nhật"}
               </p>
             </div>
           </div>
@@ -314,17 +317,23 @@ export function PartnerApprovalDetailView({
                 Dịch vụ khởi tạo ban đầu
               </span>
               <p className="mt-0.5 font-medium text-foreground">
-                Sửa chữa sự cố rò rỉ nước âm tường &amp; thay van khóa
+                {initialService?.title ||
+                  "Chưa thiết lập dịch vụ riêng (hệ thống tự tạo dịch vụ mặc định khi duyệt)"}
               </p>
             </div>
-            <div className="text-left sm:text-right shrink-0">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Biểu giá cơ sở
-              </span>
-              <p className="mt-0.5 font-bold tabular-nums text-primary">
-                200.000 đ (Theo giờ) • 60 phút
-              </p>
-            </div>
+            {initialService && (
+              <div className="text-left sm:text-right shrink-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Biểu giá cơ sở
+                </span>
+                <p className="mt-0.5 font-bold tabular-nums text-primary">
+                  {Number(initialService.basePrice).toLocaleString("vi-VN")} đ (
+                  {PRICE_UNIT_LABELS[initialService.priceUnit] ??
+                    initialService.priceUnit}
+                  ) • {initialService.durationMinutes} phút
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Giới thiệu năng lực */}
@@ -344,8 +353,7 @@ export function PartnerApprovalDetailView({
               <BadgeCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
                 <span>
-                  Hồ sơ đã được phê duyệt bởi{" "}
-                  <strong>{profile.approvedBy || adminName}</strong> lúc{" "}
+                  Hồ sơ đã được phê duyệt lúc{" "}
                   <strong>
                     {profile.approvedAt
                       ? new Date(profile.approvedAt).toLocaleString("vi-VN")
@@ -371,7 +379,7 @@ export function PartnerApprovalDetailView({
               <div>
                 <span className="font-bold">Lý do từ chối hồ sơ:</span>
                 <p className="mt-0.5 text-foreground italic font-medium">
-                  "{profile.rejectionReason || "Chưa đạt yêu cầu tài liệu xác minh"}"
+                  &quot;{profile.rejectionReason || "Chưa đạt yêu cầu tài liệu xác minh"}&quot;
                 </p>
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
                   Quyền tài khoản giữ nguyên:{" "}
@@ -411,7 +419,7 @@ export function PartnerApprovalDetailView({
                 Ghi chú vùng
               </span>
               <p className="mt-0.5 font-semibold text-foreground">
-                {serviceArea.areaName || "Vùng trung tâm TP.HCM"}
+                {serviceArea.areaName || "Vùng trung tâm Quận 9, TP.HCM"}
               </p>
             </div>
             <div className="rounded-lg border border-border bg-muted/40 p-2.5">
@@ -443,7 +451,7 @@ export function PartnerApprovalDetailView({
               <span>Tài liệu xác minh danh tính (4 mục theo quy chuẩn)</span>
             </div>
             <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
-              4/4 tài liệu đính kèm
+              {profile.documents?.length ?? 0}/4 tài liệu đính kèm
             </span>
           </div>
 
@@ -452,7 +460,11 @@ export function PartnerApprovalDetailView({
               const uploadedDoc = profile.documents?.find(
                 (d) => d.documentType === doc.type,
               );
-              const previewUrl = uploadedDoc?.fileUrl || doc.defaultImg;
+              const fileUrl = uploadedDoc?.fileUrl ?? null;
+              const isPdf = isPdfDocument(fileUrl);
+              const displayFilename = fileUrl
+                ? `${doc.baseName}.${isPdf ? "pdf" : "jpg"}`
+                : "Chưa nộp";
 
               return (
                 <div
@@ -469,14 +481,18 @@ export function PartnerApprovalDetailView({
                       </span>
                       <span
                         className={`rounded px-2 py-0.5 text-[10px] font-bold border ${
-                          isApproved
+                          !fileUrl
+                            ? "bg-muted text-muted-foreground border-border"
+                            : isApproved
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : isRejected
                             ? "bg-destructive/10 text-destructive border-destructive/20"
                             : "bg-amber-50 text-amber-700 border-amber-200"
                         }`}
                       >
-                        {isApproved
+                        {!fileUrl
+                          ? "Chưa nộp"
+                          : isApproved
                           ? "Đã duyệt"
                           : isRejected
                           ? "Đã từ chối"
@@ -485,27 +501,43 @@ export function PartnerApprovalDetailView({
                     </div>
                   </div>
 
-                  {/* Image Aspect 1.58/1 */}
-                  <div className="aspect-[1.58/1] w-full overflow-hidden rounded-lg border border-border bg-muted/40 relative">
-                    <img
-                      src={previewUrl}
-                      alt={doc.title}
-                      className="h-full w-full object-cover"
-                    />
+                  {/* Preview Aspect 1.58/1 */}
+                  <div className="aspect-[1.58/1] w-full overflow-hidden rounded-lg border border-border bg-muted/40 relative flex items-center justify-center">
+                    {!fileUrl ? (
+                      <div className="flex flex-col items-center gap-1.5 text-muted-foreground px-4 text-center">
+                        <FileText className="h-7 w-7 opacity-50" />
+                        <span className="text-xs font-medium">Chưa có tài liệu đính kèm</span>
+                      </div>
+                    ) : isPdf ? (
+                      <div className="flex flex-col items-center gap-2 text-primary px-4 text-center">
+                        <FileText className="h-9 w-9" />
+                        <span className="text-xs font-semibold text-foreground">
+                          Tài liệu PDF đính kèm
+                        </span>
+                      </div>
+                    ) : (
+                      <img
+                        src={fileUrl}
+                        alt={doc.title}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
                   </div>
 
                   {/* Subline */}
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
                     <span className="font-mono truncate max-w-[170px]">
-                      {doc.filename}
+                      {displayFilename}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewDocUrl(previewUrl)}
-                      className="text-primary hover:underline font-semibold cursor-pointer"
-                    >
-                      Xem lớn
-                    </button>
+                    {fileUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDocUrl(fileUrl)}
+                        className="text-primary hover:underline font-semibold cursor-pointer"
+                      >
+                        {isPdf ? "Xem PDF" : "Xem lớn"}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -668,11 +700,19 @@ export function PartnerApprovalDetailView({
             >
               <X className="h-5 w-5" />
             </button>
-            <img
-              src={previewDocUrl}
-              alt="Chi tiết tài liệu"
-              className="max-h-[82vh] w-auto rounded-xl object-contain mx-auto"
-            />
+            {isPdfDocument(previewDocUrl) ? (
+              <iframe
+                src={previewDocUrl}
+                title="Chi tiết tài liệu PDF"
+                className="h-[80vh] w-[min(85vw,820px)] rounded-xl border-0 bg-white"
+              />
+            ) : (
+              <img
+                src={previewDocUrl}
+                alt="Chi tiết tài liệu"
+                className="max-h-[82vh] w-auto rounded-xl object-contain mx-auto"
+              />
+            )}
           </div>
         </div>
       )}

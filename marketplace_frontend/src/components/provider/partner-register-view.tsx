@@ -3,6 +3,7 @@
 import { AddressAutocomplete } from "@/components/map/address-autocomplete";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCurrentUser } from "@/hooks/use-auth";
+import { useCategories } from "@/hooks/use-discovery";
 import {
   useCheckServiceArea,
   useMyProviderProfile,
@@ -18,16 +19,9 @@ import {
   Edit3,
   FileCheck2,
   FileText,
-  Handshake,
-  HelpCircle,
-  Home,
-  ImageIcon,
-  Info,
   Loader2,
   MapPin,
   Send,
-  ShieldAlert,
-  ShieldCheck,
   Trash2,
   Upload,
   User,
@@ -46,18 +40,14 @@ const ServiceAreaMapPicker = dynamic(() => import("./service-area-map-picker"), 
 });
 
 export const STANDARD_CATEGORIES = [
-  { id: "cat-dien-lanh", name: "1. Điện lạnh (Điều hòa, máy giặt, tủ lạnh)" },
-  { id: "cat-dien-nuoc", name: "2. Điện nước (Ống nước, máy bơm, chập điện)" },
-  { id: "cat-khoa-cua", name: "3. Sửa khóa & Cửa (Smart lock, cửa cuốn, bản lề)" },
-  { id: "cat-bep-giadung", name: "4. Thiết bị bếp & Gia dụng (Bếp từ, lò vi sóng)" },
-  { id: "cat-chieu-sang", name: "5. Điện dân dụng & Chiếu sáng (Đèn LED, aptomat)" },
-  { id: "cat-it-mang", name: "6. Máy tính & Mạng (PC, Wifi, Camera an ninh)" },
-  {
-    id: "cat-thong-tac",
-    name: "7. Thông tắc & Chống thấm (Cống nghẹt, chống thấm)",
-  },
-  { id: "cat-ve-sinh", name: "8. Vệ sinh công nghiệp (Sofa, nệm, văn phòng)" },
-  { id: "cat-khac", name: "9. Khác (Tự nhập ngành nghề...)" },
+  { id: "sua-dien-lanh", name: "Sửa điện lạnh" },
+  { id: "sua-dien-nuoc", name: "Sửa điện nước" },
+  { id: "sua-khoa-cua-cuon", name: "Sửa khóa & Cửa cuốn" },
+  { id: "thong-tac-ve-sinh", name: "Thông tắc vệ sinh" },
+  { id: "ve-sinh-nha-cua", name: "Vệ sinh nhà cửa" },
+  { id: "thiet-bi-gia-dung", name: "Thiết bị gia dụng" },
+  { id: "son-sua-chong-tham", name: "Sơn sửa & Chống thấm" },
+  { id: "do-go-noi-that", name: "Đồ gỗ & Nội thất" },
 ];
 
 export interface UploadedDoc {
@@ -70,6 +60,7 @@ export interface UploadedDoc {
 export function PartnerRegisterView() {
   const { data: user } = useCurrentUser();
   const { data: providerData, isLoading } = useMyProviderProfile();
+  const { data: apiCategories } = useCategories();
   const registerMutation = useRegisterProvider();
   const checkAreaMutation = useCheckServiceArea();
 
@@ -80,14 +71,18 @@ export function PartnerRegisterView() {
   const [phone, setPhone] = useState("");
   const [experienceYears, setExperienceYears] = useState<number | "">("");
   const [categoryId, setCategoryId] = useState("");
-  const [customCategory, setCustomCategory] = useState("");
   const [bio, setBio] = useState("");
 
   // Initial service info
   const [serviceTitle, setServiceTitle] = useState("");
   const [basePrice, setBasePrice] = useState<number | "">("");
-  const [priceUnit, setPriceUnit] = useState("FIXED");
+  const [priceUnit, setPriceUnit] = useState<"FIXED" | "HOURLY" | "FROM">("FIXED");
   const [durationMinutes, setDurationMinutes] = useState<number | "">(60);
+
+  const categoryOptions =
+    apiCategories && apiCategories.length > 0
+      ? apiCategories.map((c) => ({ id: c.id, name: c.name }))
+      : STANDARD_CATEGORIES;
 
   // 4 KYC documents - để trống cho khách hàng tự tải lên
   const [doc1, setDoc1] = useState<UploadedDoc | null>(null);
@@ -95,10 +90,10 @@ export function PartnerRegisterView() {
   const [doc3, setDoc3] = useState<UploadedDoc | null>(null);
   const [doc4, setDoc4] = useState<UploadedDoc | null>(null);
 
-  // Service Area states
+  // Service Area states (mặc định tâm Quận 9, TP.HCM)
   const [areaName, setAreaName] = useState("");
-  const [centerLat, setCenterLat] = useState(10.776889);
-  const [centerLng, setCenterLng] = useState(106.700897);
+  const [centerLat, setCenterLat] = useState(10.8456);
+  const [centerLng, setCenterLng] = useState(106.7719);
   const [radiusKm, setRadiusKm] = useState(5.0);
   const [isActive, setIsActive] = useState(true);
 
@@ -125,8 +120,8 @@ export function PartnerRegisterView() {
   ) => {
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Dung lượng tệp vượt quá giới hạn 10MB");
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Dung lượng tệp vượt quá giới hạn 2MB");
       return;
     }
 
@@ -151,7 +146,13 @@ export function PartnerRegisterView() {
   // Check sample addresses
   const handleCheckSample = (lat: number, lng: number, sampleLabel: string) => {
     checkAreaMutation.mutate(
-      { latitude: lat, longitude: lng },
+      {
+        latitude: lat,
+        longitude: lng,
+        centerLatitude: centerLat,
+        centerLongitude: centerLng,
+        radiusKm,
+      },
       {
         onSuccess: (res) => {
           setCheckResult({
@@ -216,8 +217,18 @@ export function PartnerRegisterView() {
       return;
     }
 
-    if (categoryId === "cat-khac" && !customCategory.trim()) {
-      toast.error("Vui lòng nhập ngành nghề dịch vụ khác của bạn");
+    if (!serviceTitle.trim()) {
+      toast.error("Vui lòng nhập tên dịch vụ ban đầu");
+      return;
+    }
+
+    if (basePrice === "" || Number(basePrice) < 0) {
+      toast.error("Vui lòng nhập giá cơ sở hợp lệ");
+      return;
+    }
+
+    if (durationMinutes === "" || Number(durationMinutes) < 15) {
+      toast.error("Thời lượng dịch vụ tối thiểu 15 phút");
       return;
     }
 
@@ -228,32 +239,39 @@ export function PartnerRegisterView() {
       return;
     }
 
-    const finalCategory =
-      categoryId === "cat-khac"
-        ? customCategory.trim()
-        : STANDARD_CATEGORIES.find((c) => c.id === categoryId)?.name || categoryId;
-
-    registerMutation.mutate({
-      displayName: displayName.trim(),
-      phone: phoneClean,
-      experienceYears: Number(experienceYears),
-      categoryId: finalCategory,
-      bio: bio.trim(),
-      documents: [
-        { documentType: "ID_CARD_FRONT", fileUrl: doc1.url },
-        { documentType: "ID_CARD_BACK", fileUrl: doc2.url },
-        { documentType: "CERTIFICATE", fileUrl: doc3.url },
-        { documentType: "TOOLKIT_PHOTO", fileUrl: doc4.url },
-      ],
-      serviceArea: {
-        areaName: areaName.trim() || "Vùng phục vụ chính",
-        centerLatitude: centerLat,
-        centerLongitude: centerLng,
-        radiusKm,
-        isActive,
+    registerMutation.mutate(
+      {
+        displayName: displayName.trim(),
+        phone: phoneClean,
+        experienceYears: Number(experienceYears),
+        categoryId,
+        bio: bio.trim(),
+        documents: [
+          { documentType: "ID_CARD_FRONT", fileUrl: doc1.url },
+          { documentType: "ID_CARD_BACK", fileUrl: doc2.url },
+          { documentType: "CERTIFICATE", fileUrl: doc3.url },
+          { documentType: "TOOLKIT_PHOTO", fileUrl: doc4.url },
+        ],
+        serviceArea: {
+          areaName: areaName.trim() || "Vùng phục vụ chính",
+          centerLatitude: centerLat,
+          centerLongitude: centerLng,
+          radiusKm,
+          isActive,
+        },
+        initialService: {
+          title: serviceTitle.trim(),
+          basePrice: Number(basePrice),
+          priceUnit,
+          durationMinutes: Number(durationMinutes),
+        },
       },
-    });
-    setIsEditingAfterReject(false);
+      {
+        onSuccess: () => {
+          setIsEditingAfterReject(false);
+        },
+      },
+    );
   };
 
   if (isLoading) {
@@ -471,13 +489,13 @@ export function PartnerRegisterView() {
               <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                 <span>
                   Người thẩm định:{" "}
-                  <strong>{profile?.approvedBy || "Ban Quản trị Servigo"}</strong>
+                  <strong>Ban Quản trị Servigo</strong>
                 </span>
                 <span>•</span>
                 <span>
                   Thời gian:{" "}
-                  {profile?.approvedAt
-                    ? new Date(profile.approvedAt).toLocaleString("vi-VN")
+                  {profile?.updatedAt
+                    ? new Date(profile.updatedAt).toLocaleString("vi-VN")
                     : "Gần đây"}
                 </span>
               </div>
@@ -493,7 +511,53 @@ export function PartnerRegisterView() {
               </Link>
               <button
                 type="button"
-                onClick={() => setIsEditingAfterReject(true)}
+                onClick={() => {
+                  if (profile) {
+                    const initialService = profile.services?.[0];
+                    const area = profile.serviceAreas?.[0];
+                    const toUploadedDoc = (
+                      documentType: string,
+                      fallbackName: string,
+                    ): UploadedDoc | null => {
+                      const found = profile.documents?.find(
+                        (d) => d.documentType === documentType,
+                      );
+                      if (!found?.fileUrl) return null;
+                      const isPdf =
+                        found.fileUrl.startsWith("data:application/pdf") ||
+                        /\.pdf(\?|$)/i.test(found.fileUrl);
+                      return {
+                        name: `${fallbackName}.${isPdf ? "pdf" : "jpg"}`,
+                        url: found.fileUrl,
+                        type: isPdf ? "application/pdf" : "image/jpeg",
+                      };
+                    };
+
+                    setDisplayName(profile.displayName || "");
+                    setPhone(profile.phone || "");
+                    setExperienceYears(profile.experienceYears ?? "");
+                    setBio(profile.bio || "");
+                    setCategoryId(initialService?.categoryId || profile.categoryId || "");
+                    if (initialService) {
+                      setServiceTitle(initialService.title || "");
+                      setBasePrice(Number(initialService.basePrice));
+                      setPriceUnit(initialService.priceUnit || "FIXED");
+                      setDurationMinutes(initialService.durationMinutes || 60);
+                    }
+                    if (area) {
+                      setAreaName(area.areaName || "");
+                      setCenterLat(Number(area.centerLatitude));
+                      setCenterLng(Number(area.centerLongitude));
+                      setRadiusKm(Number(area.radiusKm));
+                      setIsActive(Boolean(area.isActive));
+                    }
+                    setDoc1(toUploadedDoc("ID_CARD_FRONT", "cccd_mat_truoc"));
+                    setDoc2(toUploadedDoc("ID_CARD_BACK", "cccd_mat_sau"));
+                    setDoc3(toUploadedDoc("CERTIFICATE", "chung_chi_nghe"));
+                    setDoc4(toUploadedDoc("TOOLKIT_PHOTO", "anh_do_nghe"));
+                  }
+                  setIsEditingAfterReject(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all active:scale-[0.99]"
               >
                 <Edit3 className="h-4 w-4" />
@@ -692,7 +756,7 @@ export function PartnerRegisterView() {
                       className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
                     >
                       <option value="">-- Chọn ngành nghề dịch vụ --</option>
-                      {STANDARD_CATEGORIES.map((cat) => (
+                      {categoryOptions.map((cat) => (
                         <option
                           key={cat.id}
                           value={cat.id}
@@ -702,27 +766,8 @@ export function PartnerRegisterView() {
                       ))}
                     </select>
 
-                    {categoryId === "cat-khac" && (
-                      <div className="mt-2.5 animate-in fade-in zoom-in-95">
-                        <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                          Nhập ngành nghề khác của bạn{" "}
-                          <span className="text-destructive">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={customCategory}
-                          onChange={(e) => setCustomCategory(e.target.value)}
-                          placeholder="VD: Sửa xe tận nơi, Giặt rèm nệm sofa, Cơ khí sắt..."
-                          className="h-11 w-full rounded-xl border border-primary/40 bg-background px-3.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground"
-                        />
-                      </div>
-                    )}
-
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      {categoryId === "cat-khac"
-                        ? "Vui lòng ghi rõ tên ngành nghề dịch vụ bạn cung cấp."
-                        : "Chọn 1 trong các danh mục tiêu chuẩn hoặc chọn Khác để tự nhập."}
+                      Chọn 1 trong 8 danh mục dịch vụ tiêu chuẩn của Servigo.
                     </p>
                   </div>
                 </div>
@@ -773,7 +818,11 @@ export function PartnerRegisterView() {
                       </label>
                       <select
                         value={priceUnit}
-                        onChange={(e) => setPriceUnit(e.target.value)}
+                        onChange={(e) =>
+                          setPriceUnit(
+                            e.target.value as "FIXED" | "HOURLY" | "FROM",
+                          )
+                        }
                         className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none cursor-pointer"
                       >
                         <option value="FIXED">Trọn gói</option>
@@ -832,7 +881,7 @@ export function PartnerRegisterView() {
                       Tài Liệu Xác Minh (KYC)
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Tải lên tệp ảnh hoặc PDF rõ nét, dung lượng tối đa 10MB mỗi tệp
+                      Tải lên tệp ảnh hoặc PDF rõ nét, dung lượng tối đa 2MB mỗi tệp
                     </p>
                   </div>
                 </div>
@@ -880,7 +929,9 @@ export function PartnerRegisterView() {
                   >
                     <div className="flex items-start sm:items-center gap-3.5">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary overflow-hidden">
-                        {item.doc?.url && item.doc.type?.startsWith("image/") ? (
+                        {item.doc?.url &&
+                        (item.doc.type?.startsWith("image/") ||
+                          item.doc.url.startsWith("data:image/")) ? (
                           <img
                             src={item.doc.url}
                             alt={item.title}
@@ -913,7 +964,7 @@ export function PartnerRegisterView() {
                             </span>
                           ) : (
                             <span className="text-muted-foreground italic">
-                              Chưa có tệp nào được chọn (JPG, PNG, PDF tối đa 10MB)
+                              Chưa có tệp nào được chọn (JPG, PNG, PDF tối đa 2MB)
                             </span>
                           )}
                         </p>
@@ -988,7 +1039,7 @@ export function PartnerRegisterView() {
                     onValueChange={centerSearch.setSearchText}
                     onPlaceSelect={centerSearch.selectPlace}
                     near={{ latitude: centerLat, longitude: centerLng }}
-                    placeholder="VD: 142 Hoàng Quốc Việt, Cầu Giấy, Hà Nội"
+                    placeholder="VD: Lê Văn Việt, Quận 9, TP. Hồ Chí Minh"
                   />
                 </div>
 

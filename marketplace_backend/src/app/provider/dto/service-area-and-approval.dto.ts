@@ -14,6 +14,24 @@ export class CheckServiceAreaDto {
   @IsString()
   @IsOptional()
   providerId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(-90)
+  @Max(90)
+  centerLatitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(-180)
+  @Max(180)
+  centerLongitude?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(2)
+  @Max(20)
+  radiusKm?: number;
 }
 
 export class RejectProviderDto {

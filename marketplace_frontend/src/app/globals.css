@@ -5,9 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: var(--font-jakarta), var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-lora), Georgia, serif;
+  --font-display: var(--font-jakarta), var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "Geist Mono", "Geist Mono Fallback", monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -70,132 +71,133 @@
 }
 
 :root {
-  /* ── Bảng màu chính (Brand Palette) ────────────────────────── */
-  --primary: #059669; /* Xanh ngọc - Nút chính, xác thực */
+  /* ── Bảng màu chính (Brand Palette - đồng bộ trustfix-design) ── */
+  --primary: #006948; /* Xanh ngọc đậm - Nút chính, xác thực */
   --primary-foreground: #ffffff;
 
-  --secondary: #0D9488; /* Xanh cổ vịt - Biểu đồ Radar, điểm nhấn phụ */
-  --secondary-foreground: #ffffff;
+  --secondary: #F1F5F9; /* Slate-100 - Nền nút phụ, bề mặt nhạt */
+  --secondary-foreground: #0F172A;
 
-  --tertiary: #CD645F; /* Đỏ đất - Tag nổi bật, cảnh báo, nút phụ đặc biệt */
+  --tertiary: #EF4444; /* Đỏ - Tag nổi bật, cảnh báo */
   --tertiary-foreground: #ffffff;
 
-  --neutral: #727974; /* Xám ánh xanh - Hệ nền, viền, chữ phụ */
+  --neutral: #64748B; /* Slate-500 - Chữ phụ, icon trung tính */
   --neutral-foreground: #ffffff;
 
-  /* ── Hệ nền & chữ (Surfaces & Typography) ──────────────────── */
-  --background: #fbfcfb;
-  --foreground: #1c201d;
+  /* ── Hệ nền & chữ (Surfaces & Typography - Slate) ─────────── */
+  --background: #F8FAFC;
+  --foreground: #0F172A;
   --card: #ffffff;
-  --card-foreground: #1c201d;
+  --card-foreground: #0F172A;
   --popover: #ffffff;
-  --popover-foreground: #1c201d;
+  --popover-foreground: #0F172A;
 
-  /* ── Viền & input & muted (dựa trên Neutral #727974) ──────── */
-  --muted: #f1f3f2;
-  --muted-foreground: #727974; /* chữ phụ */
-  --accent: #0D9488;
-  --accent-foreground: #ffffff;
-  --destructive: #CD645F; /* cảnh báo / đỏ đất */
+  /* ── Viền & input & muted ──────────────────────────────────── */
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #ECFDF5; /* Primary light - Hover item Select/Dropdown */
+  --accent-foreground: #006948;
+  --destructive: #EF4444;
   --destructive-foreground: #ffffff;
-  --border: #e2e5e3; /* viền */
-  --input: #e2e5e3;
-  --ring: #059669;
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #006948;
   --radius: 0.75rem;
 
   /* ── Semantic status colors ────────────────────────────────── */
-  --success: #059669;
+  /* Dùng #006948 để text-success trên nền #ECFDF5 / trắng đạt chuẩn tương phản WCAG AA */
+  --success: #006948;
   --success-foreground: #ffffff;
-  --success-subtle: #ecfdf5;
+  --success-subtle: #ECFDF5;
 
-  --warning: #f59e0b;
-  --warning-foreground: #1c201d;
+  --warning: #F59E0B;
+  --warning-foreground: #0F172A;
 
   /* Order status badges */
-  --status-pending: #f59e0b;
-  --status-confirmed: #0D9488; /* Xanh cổ vịt */
+  --status-pending: #F59E0B;
+  --status-confirmed: #0D9488;
   --status-processing: #0284c7;
-  --status-shipping: var(--primary); /* Xanh ngọc */
-  --status-delivered: var(--success);
-  --status-cancelled: var(--tertiary); /* Đỏ đất */
+  --status-shipping: var(--primary);
+  --status-delivered: #10B981;
+  --status-cancelled: var(--destructive);
 
   /* Chart & Radar & Sidebar */
-  --chart-1: #059669; /* Primary */
-  --chart-2: #0D9488; /* Secondary - Radar chart */
-  --chart-3: #CD645F; /* Tertiary */
+  --chart-1: #006948; /* Primary */
+  --chart-2: #0D9488;
+  --chart-3: #EF4444;
   --chart-4: #34d399;
-  --chart-5: #14b8a6;
-  --sidebar: #fbfcfb;
-  --sidebar-foreground: #1c201d;
-  --sidebar-primary: #059669;
+  --chart-5: #10B981;
+  --sidebar: #F8FAFC;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #006948;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0fdfa;
-  --sidebar-accent-foreground: #042f2e;
-  --sidebar-border: #e2e5e3;
-  --sidebar-ring: #059669;
+  --sidebar-accent: #ECFDF5;
+  --sidebar-accent-foreground: #006948;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #006948;
 }
 
 .dark {
   /* ── Bảng màu chính (Brand Palette - Dark Mode) ────────────── */
-  --primary: #10b981;
-  --primary-foreground: #022c22;
+  --primary: #10B981;
+  --primary-foreground: #022C22;
 
-  --secondary: #14b8a6;
-  --secondary-foreground: #022c22;
+  --secondary: #1E293B;
+  --secondary-foreground: #F8FAFC;
 
-  --tertiary: #CD645F;
+  --tertiary: #EF4444;
   --tertiary-foreground: #ffffff;
 
-  --neutral: #868e88;
-  --neutral-foreground: #ffffff;
+  --neutral: #94A3B8;
+  --neutral-foreground: #0F172A;
 
-  /* ── Hệ nền & chữ (Surfaces & Typography - Dark Mode) ──────── */
-  --background: #111413;
-  --foreground: #f2f4f3;
-  --card: #181c1a;
-  --card-foreground: #f2f4f3;
-  --popover: #181c1a;
-  --popover-foreground: #f2f4f3;
+  /* ── Hệ nền & chữ (Surfaces & Typography - Dark Slate) ─────── */
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
 
-  /* ── Viền & input & muted (dựa trên Neutral xám ánh xanh) ──── */
-  --muted: #222724;
-  --muted-foreground: #939c96;
-  --accent: #14b8a6;
-  --accent-foreground: #022c22;
-  --destructive: #CD645F;
+  /* ── Viền & input & muted ──────────────────────────────────── */
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #064E3B;
+  --accent-foreground: #ECFDF5;
+  --destructive: #EF4444;
   --destructive-foreground: #ffffff;
-  --border: #28302c;
-  --input: #28302c;
-  --ring: #10b981;
+  --border: #334155;
+  --input: #334155;
+  --ring: #10B981;
 
-  --success: #10b981;
-  --success-foreground: #022c22;
-  --success-subtle: #064e3b;
+  --success: #34D399;
+  --success-foreground: #022C22;
+  --success-subtle: #064E3B;
 
-  --warning: #fbbf24;
-  --warning-foreground: #111413;
+  --warning: #FBBF24;
+  --warning-foreground: #0F172A;
 
-  --status-pending: #fbbf24;
-  --status-confirmed: #14b8a6;
-  --status-processing: #38bdf8;
+  --status-pending: #FBBF24;
+  --status-confirmed: #14B8A6;
+  --status-processing: #38BDF8;
   --status-shipping: var(--primary);
   --status-delivered: var(--success);
-  --status-cancelled: var(--tertiary);
+  --status-cancelled: var(--destructive);
 
-  --chart-1: #10b981;
-  --chart-2: #14b8a6;
-  --chart-3: #CD645F;
-  --chart-4: #6ee7b7;
-  --chart-5: #2dd4bf;
+  --chart-1: #10B981;
+  --chart-2: #14B8A6;
+  --chart-3: #EF4444;
+  --chart-4: #6EE7B7;
+  --chart-5: #2DD4BF;
 
-  --sidebar: #141816;
-  --sidebar-foreground: #f2f4f3;
-  --sidebar-primary: #10b981;
-  --sidebar-primary-foreground: #022c22;
-  --sidebar-accent: #1c2320;
-  --sidebar-accent-foreground: #f2f4f3;
-  --sidebar-border: #28302c;
-  --sidebar-ring: #10b981;
+  --sidebar: #0F172A;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-primary: #10B981;
+  --sidebar-primary-foreground: #022C22;
+  --sidebar-accent: #064E3B;
+  --sidebar-accent-foreground: #ECFDF5;
+  --sidebar-border: #334155;
+  --sidebar-ring: #10B981;
 }
 
 @layer base {
@@ -365,5 +367,277 @@
     aspect-ratio: 16 / 9;
     height: auto;
     min-height: 12rem;
+  }
+
+  /* ── Landing v2 (Scoped tokens, animations & interactive styles) ── */
+  .landing-v2 {
+    --primary: #006948;
+    --primary-foreground: #ffffff;
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #006948;
+    --success: #10b981;
+    --warning: #f59e0b;
+    font-family: var(--font-jakarta), var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  .landing-v2 h2,
+  .landing-v2 h3,
+  .landing-v2 .font-headline-section,
+  .landing-v2 .font-headline-card {
+    font-family: var(--font-lora), Georgia, serif;
+  }
+
+  .landing-v2 .font-sans-ui {
+    font-family: var(--font-jakarta), var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .landing-v2 .font-mono {
+    font-family: var(--font-jetbrains-mono), monospace;
+  }
+
+  .landing-v2.mesh-gradient-bg {
+    background:
+      radial-gradient(circle at 15% 15%, rgba(0, 105, 72, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 85% 25%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 50% 85%, rgba(217, 119, 6, 0.04) 0%, transparent 50%),
+      #f8fafc;
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 25px -5px rgba(0, 105, 72, 0.25);
+  }
+
+  .hover\:shadow-card-hover:hover {
+    box-shadow:
+      0 20px 30px -10px rgba(0, 105, 72, 0.12),
+      0 10px 15px -5px rgba(15, 23, 42, 0.04);
+  }
+
+  .before-after-container {
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    touch-action: pan-y;
+  }
+
+  .before-after-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #ffffff;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.35);
+    cursor: ew-resize;
+    z-index: 30;
+    transform: translateX(-50%);
+  }
+
+  .before-after-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #006948;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 105, 72, 0.45);
+    border: 2px solid #ffffff;
+  }
+
+  .faq-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .faq-item[data-open="true"] .faq-body {
+    grid-template-rows: 1fr;
+  }
+
+  .faq-inner {
+    overflow: hidden;
+  }
+
+  .faq-chevron {
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .faq-item[data-open="true"] .faq-chevron {
+    transform: rotate(180deg);
+  }
+
+  .nav-pill-link.is-active {
+    background-color: #ffffff;
+    color: #006948;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+
+  .hero-dot-matrix {
+    background-image: radial-gradient(rgba(0, 105, 72, 0.16) 1px, transparent 1px);
+    background-size: 24px 24px;
+    -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000000 30%, transparent 100%);
+    mask-image: radial-gradient(ellipse 75% 65% at 50% 45%, #000000 30%, transparent 100%);
+  }
+
+  .hero-orbital-spin {
+    animation: heroOrbitSpin 72s linear infinite;
+  }
+
+  .hero-orbital-spin-reverse {
+    animation: heroOrbitSpin 96s linear infinite reverse;
+  }
+
+  .animate-float {
+    animation: landingFloat 6s ease-in-out infinite;
+  }
+
+  .hero-parallax-node {
+    transform: translate3d(
+      calc(var(--px, 0px) * var(--depth, 1)),
+      calc(var(--py, 0px) * var(--depth, 1)),
+      0
+    );
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+
+  .is-parallax-active .hero-parallax-node {
+    transition: none;
+  }
+}
+
+/* Đặt ngoài @layer để giữ ưu tiên transition 0.8s như main-landing-v2.html trước Tailwind v4 utilities */
+.card-3d-tilt {
+  transform-style: preserve-3d;
+  position: relative;
+  will-change: transform;
+}
+
+.card-3d-tilt:not(.reveal-elem):not(.is-tilting),
+.card-3d-tilt.reveal-done:not(.is-tilting) {
+  transition:
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s ease-out,
+    border-color 0.3s ease-out;
+}
+
+.card-3d-tilt.is-tilting {
+  transition:
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s ease-out,
+    border-color 0.3s ease-out;
+}
+
+.card-3d-tilt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(0, 105, 72, 0.07),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-3d-tilt:hover::before {
+  opacity: 1;
+}
+
+.reveal-elem {
+  opacity: 0;
+  transform: translateY(30px) scale(0.98);
+  transition:
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.2s ease-out,
+    border-color 0.2s ease-out;
+  will-change: opacity, transform;
+}
+
+.reveal-elem.revealed {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Sau khi reveal xong, trả hover transform/translate về 0.2s mượt */
+.reveal-elem.revealed.reveal-done:not(.card-3d-tilt) {
+  transition:
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.2s ease-out,
+    translate 0.2s ease-out,
+    box-shadow 0.2s ease-out,
+    border-color 0.2s ease-out;
+}
+
+.delay-100 {
+  transition-delay: 100ms;
+}
+
+.delay-200 {
+  transition-delay: 200ms;
+}
+
+.delay-300 {
+  transition-delay: 300ms;
+}
+
+.delay-400 {
+  transition-delay: 400ms;
+}
+
+@keyframes heroOrbitSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes landingFloat {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbital-spin,
+  .hero-orbital-spin-reverse,
+  .animate-float {
+    animation: none !important;
+  }
+  .hero-parallax-node,
+  .card-3d-tilt {
+    transform: none !important;
+    transition: none !important;
+  }
+  .reveal-elem {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
 }

@@ -22,7 +22,8 @@
     "migration:generate": "pnpm typeorm migration:generate -d src/config/database/data-source.ts",
     "migration:run": "pnpm typeorm migration:run -d src/config/database/data-source.ts",
     "migration:revert": "pnpm typeorm migration:revert -d src/config/database/data-source.ts",
-    "migration:show": "pnpm typeorm migration:show -d src/config/database/data-source.ts"
+    "migration:show": "pnpm typeorm migration:show -d src/config/database/data-source.ts",
+    "seed:discovery": "ts-node -r tsconfig-paths/register src/seeds/seed-discovery.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

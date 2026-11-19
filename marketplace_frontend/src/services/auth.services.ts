@@ -175,16 +175,12 @@ export const authSerivce = {
   signInWithGoogle: async (redirectPath?: string): Promise<void> => {
     if (typeof window === "undefined") return;
 
-    const redirect =
+    const callbackURL =
       redirectPath !== undefined && redirectPath !== ""
-        ? redirectPath
-        : "/product/catalog";
-
-    const encoded = encodeURIComponent(
-      redirect.startsWith("/") ? redirect : `/${redirect}`,
-    );
-
-    const callbackURL = `/auth/callback/google?redirect=${encoded}`;
+        ? `/auth/callback/google?redirect=${encodeURIComponent(
+            redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`,
+          )}`
+        : "/auth/callback/google";
 
     const res = await getAuthClient().signIn.social({
       provider: "google",

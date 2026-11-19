@@ -27,7 +27,7 @@ import {
 } from "./weekly-schedule-card";
 
 // Tâm mặc định giống form đăng ký thợ khi thợ chưa có vùng phục vụ
-const DEFAULT_CENTER = { latitude: 10.776889, longitude: 106.700897 };
+const DEFAULT_CENTER = { latitude: 10.8456, longitude: 106.7719 };
 const DEFAULT_RADIUS_KM = 10;
 
 const clampRadius = (radiusKm: number) =>

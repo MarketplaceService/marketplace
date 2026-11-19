@@ -85,7 +85,7 @@ export function ServiceAreaCard({ value, onChange }: ServiceAreaCardProps) {
             onValueChange={centerSearch.setSearchText}
             onPlaceSelect={centerSearch.selectPlace}
             near={{ latitude: value.latitude, longitude: value.longitude }}
-            placeholder="VD: 142 Hoàng Quốc Việt, Cầu Giấy, Hà Nội"
+            placeholder="VD: Lê Văn Việt, Quận 9, TP. Hồ Chí Minh"
           />
         </div>
 
@@ -103,7 +103,7 @@ export function ServiceAreaCard({ value, onChange }: ServiceAreaCardProps) {
             onChange={(event) =>
               onChange((current) => ({ ...current, areaName: event.target.value }))
             }
-            placeholder="VD: Cầu Giấy, Hà Nội"
+            placeholder="VD: Quận 9, TP. Hồ Chí Minh"
             className="h-9"
           />
         </div>

@@ -16,6 +16,10 @@ import { UpdateServiceAreaDto } from './dto/update-service-area.dto';
 import { ProviderDocument } from './entities/provider-document.entity';
 import { ProviderProfile } from './entities/provider-profile.entity';
 import { ProviderServiceArea } from './entities/provider-service-area.entity';
+import { Service } from 'src/app/service/entities/service.entity';
+import { ServiceCategory } from 'src/app/service/entities/service-category.entity';
+import { PriceUnit } from 'src/shared/types/price-unit.enum';
+import { ServiceStatus } from 'src/shared/types/service-status.enum';
 
 function calculateHaversineKm(
   lat1: number,
@@ -46,10 +50,102 @@ export class ProviderService {
     private readonly docRepo: Repository<ProviderDocument>,
     @InjectRepository(ProviderServiceArea)
     private readonly areaRepo: Repository<ProviderServiceArea>,
+    @InjectRepository(ServiceCategory)
+    private readonly categoryRepo: Repository<ServiceCategory>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly dataSource: DataSource,
   ) {}
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
+  }
+
+  private matchCategoryFromList(
+    categories: ServiceCategory[],
+    rawCategory?: string | null,
+  ): ServiceCategory | null {
+    const val = rawCategory?.trim();
+    if (!val) return null;
+
+    const exactIdOrSlug = categories.find(
+      (c) => c.id === val || c.slug === val,
+    );
+    if (exactIdOrSlug) return exactIdOrSlug;
+
+    const lowerVal = val.toLowerCase();
+    const exactName = categories.find((c) => c.name.toLowerCase() === lowerVal);
+    if (exactName) return exactName;
+
+    // Tương thích ngược dữ liệu text cũ dạng "1. Điện lạnh (Điều hòa, máy giặt, tủ lạnh)"
+    const cleaned = val
+      .replace(/^\d+\.\s*/, '')
+      .replace(/\s*\([^)]*\)/g, '')
+      .trim()
+      .toLowerCase();
+
+    if (!cleaned) return null;
+
+    const directCleaned = categories.find((c) => {
+      const catName = c.name.toLowerCase();
+      return (
+        catName === cleaned ||
+        catName.includes(cleaned) ||
+        cleaned.includes(catName)
+      );
+    });
+    if (directCleaned) return directCleaned;
+
+    const tokens = cleaned
+      .split(/[&,]+/)
+      .map((t) => t.replace(/^(sửa|thiết bị|công nghiệp)\s+/i, '').trim())
+      .filter((t) => t.length >= 3);
+
+    return (
+      categories.find((c) => {
+        const catName = c.name.toLowerCase();
+        return tokens.some((token) => catName.includes(token));
+      }) ?? null
+    );
+  }
+
+  private async resolveCategory(
+    categoryRepo: Repository<ServiceCategory>,
+    rawCategory?: string | null,
+  ): Promise<ServiceCategory | null> {
+    const val = rawCategory?.trim();
+    if (!val) return null;
+
+    if (this.isUuid(val)) {
+      return categoryRepo.findOne({ where: { id: val } });
+    }
+
+    const bySlug = await categoryRepo.findOne({ where: { slug: val } });
+    if (bySlug) return bySlug;
+
+    const categories = await categoryRepo.find({ where: { isActive: true } });
+    return this.matchCategoryFromList(categories, val);
+  }
+
+  private async attachCategoryNames<T extends { services?: Service[] }>(
+    profiles: T[],
+  ): Promise<
+    Array<T & { categoryId: string | null; categoryName: string | null }>
+  > {
+    if (profiles.length === 0) return [];
+    const categories = await this.categoryRepo.find();
+    return profiles.map((p) => {
+      const primaryCategoryId = p.services?.[0]?.categoryId ?? null;
+      const matched = this.matchCategoryFromList(categories, primaryCategoryId);
+      return {
+        ...p,
+        categoryId: primaryCategoryId,
+        categoryName: matched?.name ?? primaryCategoryId ?? null,
+      };
+    });
+  }
 
   async getMyProfile(userId: string) {
     const profile = await this.profileRepo.findOne({
@@ -57,11 +153,13 @@ export class ProviderService {
       relations: {
         documents: true,
         serviceAreas: true,
+        services: true,
         user: true,
       },
       order: {
         documents: { createdAt: 'ASC' },
         serviceAreas: { createdAt: 'ASC' },
+        services: { createdAt: 'ASC' },
       },
     });
 
@@ -72,9 +170,10 @@ export class ProviderService {
       };
     }
 
+    const [enriched] = await this.attachCategoryNames([profile]);
     return {
       status: profile.verificationStatus,
-      profile,
+      profile: enriched,
     };
   }
 
@@ -99,10 +198,20 @@ export class ProviderService {
       throw new ConflictException('Hồ sơ của bạn đã được phê duyệt');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    await this.dataSource.transaction(async (manager) => {
       const pRepo = manager.getRepository(ProviderProfile);
       const dRepo = manager.getRepository(ProviderDocument);
       const aRepo = manager.getRepository(ProviderServiceArea);
+      const cRepo = manager.getRepository(ServiceCategory);
+      const sRepo = manager.getRepository(Service);
+
+      const resolvedCategory = await this.resolveCategory(
+        cRepo,
+        dto.categoryId,
+      );
+      if (!resolvedCategory) {
+        throw new BadRequestException('Ngành nghề dịch vụ không tồn tại');
+      }
 
       let profile = existing;
       if (!profile) {
@@ -111,7 +220,6 @@ export class ProviderService {
           displayName: dto.displayName,
           phone: dto.phone,
           experienceYears: dto.experienceYears,
-          categoryId: dto.categoryId,
           bio: dto.bio ?? null,
           verificationStatus: VerificationStatus.PENDING,
           rejectionReason: null,
@@ -120,7 +228,6 @@ export class ProviderService {
         profile.displayName = dto.displayName;
         profile.phone = dto.phone;
         profile.experienceYears = dto.experienceYears;
-        profile.categoryId = dto.categoryId;
         profile.bio = dto.bio ?? null;
         profile.verificationStatus = VerificationStatus.PENDING;
         profile.rejectionReason = null;
@@ -156,8 +263,32 @@ export class ProviderService {
         await aRepo.save(area);
       }
 
-      return this.getMyProfile(userId);
+      // Tạo bản ghi dịch vụ khởi tạo ở trạng thái PENDING gắn với category_id trong bảng service
+      await sRepo.delete({
+        providerId: savedProfile.id,
+        status: ServiceStatus.PENDING,
+      });
+
+      const initialTitle =
+        dto.initialService?.title.trim() ||
+        `Dịch vụ ${resolvedCategory.name} chuyên nghiệp`;
+
+      const initialService = sRepo.create({
+        providerId: savedProfile.id,
+        categoryId: resolvedCategory.id,
+        title: initialTitle,
+        description:
+          dto.bio?.trim() ||
+          `Cung cấp dịch vụ ${initialTitle} tận nơi uy tín trên Servigo.`,
+        basePrice: dto.initialService?.basePrice ?? 200000,
+        priceUnit: dto.initialService?.priceUnit ?? PriceUnit.FIXED,
+        durationMinutes: dto.initialService?.durationMinutes ?? 60,
+        status: ServiceStatus.PENDING,
+      });
+      await sRepo.save(initialService);
     });
+
+    return this.getMyProfile(userId);
   }
 
   async updateMyServiceArea(userId: string, dto: UpdateServiceAreaDto) {
@@ -186,13 +317,15 @@ export class ProviderService {
   async getPublicProfile(id: string) {
     const profile = await this.profileRepo.findOne({
       where: { id, verificationStatus: VerificationStatus.APPROVED },
-      relations: { user: true, serviceAreas: true },
+      relations: { user: true, serviceAreas: true, services: true },
+      order: { services: { createdAt: 'ASC' } },
     });
 
     if (!profile?.user || profile.user.deletedAt) {
       apiNotFound('errors.provider.notFound');
     }
 
+    const [enriched] = await this.attachCategoryNames([profile]);
     const area = profile.serviceAreas.find((item) => item.isActive) ?? null;
 
     return {
@@ -200,7 +333,7 @@ export class ProviderService {
       displayName: profile.displayName,
       avatarUrl: profile.user.image,
       bio: profile.bio,
-      category: profile.categoryId,
+      category: enriched.categoryName,
       experienceYears: profile.experienceYears,
       verifiedAt: profile.approvedAt,
       serviceArea: area
@@ -210,6 +343,31 @@ export class ProviderService {
   }
 
   async checkServiceArea(dto: CheckServiceAreaDto, currentUserId?: string) {
+    if (
+      dto.centerLatitude !== undefined &&
+      dto.centerLongitude !== undefined &&
+      dto.radiusKm !== undefined
+    ) {
+      const distance = calculateHaversineKm(
+        dto.latitude,
+        dto.longitude,
+        dto.centerLatitude,
+        dto.centerLongitude,
+      );
+      const radiusKm = Number(dto.radiusKm);
+      const distanceKm = parseFloat(distance.toFixed(2));
+      const eligible = distance <= radiusKm;
+      return {
+        eligible,
+        distanceKm,
+        radiusKm,
+        areaName: null,
+        message: eligible
+          ? `Nằm trong vùng phục vụ (${distanceKm.toFixed(2)} km <= ${radiusKm} km)`
+          : `Nằm ngoài vùng phục vụ (${distanceKm.toFixed(2)} km > ${radiusKm} km)`,
+      };
+    }
+
     let providerId = dto.providerId;
     if (!providerId && currentUserId) {
       const profile = await this.profileRepo.findOne({
@@ -289,7 +447,9 @@ export class ProviderService {
       .leftJoinAndSelect('profile.user', 'user')
       .leftJoinAndSelect('profile.documents', 'documents')
       .leftJoinAndSelect('profile.serviceAreas', 'serviceAreas')
-      .orderBy('profile.createdAt', 'DESC');
+      .leftJoinAndSelect('profile.services', 'services')
+      .orderBy('profile.createdAt', 'DESC')
+      .addOrderBy('services.createdAt', 'ASC');
 
     if (filters.status && filters.status !== 'ALL') {
       qb.andWhere('profile.verificationStatus = :status', {
@@ -298,22 +458,51 @@ export class ProviderService {
     }
 
     if (filters.category) {
-      qb.andWhere('profile.categoryId ILIKE :cat', {
-        cat: `%${filters.category}%`,
-      });
+      const catTerm = filters.category.trim().toLowerCase();
+      const allCategories = await this.categoryRepo.find();
+      const directMatched = this.matchCategoryFromList(
+        allCategories,
+        filters.category,
+      );
+      const matchedCatIds = Array.from(
+        new Set([
+          ...(directMatched ? [directMatched.id] : []),
+          ...allCategories
+            .filter(
+              (c) =>
+                c.id.toLowerCase() === catTerm ||
+                c.slug.toLowerCase() === catTerm ||
+                c.name.toLowerCase().includes(catTerm),
+            )
+            .map((c) => c.id),
+        ]),
+      );
+
+      if (matchedCatIds.length > 0) {
+        qb.andWhere(
+          'EXISTS (SELECT 1 FROM service s WHERE s.provider_id = profile.id AND s.category_id IN (:...matchedCatIds))',
+          { matchedCatIds },
+        );
+      } else {
+        qb.andWhere('1 = 0');
+      }
     }
 
     if (filters.search) {
-      const term = `%${filters.search}%`;
-      qb.andWhere(
-        '(profile.displayName ILIKE :term OR profile.phone ILIKE :term OR user.name ILIKE :term OR user.email ILIKE :term)',
-        { term },
-      );
+      const normalized = filters.search.trim().replace(/^#+/, '');
+      if (normalized) {
+        const term = `%${normalized}%`;
+        qb.andWhere(
+          '(profile.displayName ILIKE :term OR profile.phone ILIKE :term OR user.name ILIKE :term OR user.email ILIKE :term OR CAST(profile.id AS text) ILIKE :term)',
+          { term },
+        );
+      }
     }
 
     qb.skip(skip).take(limit);
 
     const [items, totalFiltered] = await qb.getManyAndCount();
+    const enrichedItems = await this.attachCategoryNames(items);
 
     // Stats
     const total = await this.profileRepo.count();
@@ -329,7 +518,7 @@ export class ProviderService {
 
     return {
       stats: { total, pending, approved, rejected },
-      items,
+      items: enrichedItems,
       total: totalFiltered,
       page,
       limit,
@@ -342,9 +531,12 @@ export class ProviderService {
       where: { id },
       relations: {
         user: true,
-        approver: true,
         documents: true,
         serviceAreas: true,
+        services: true,
+      },
+      order: {
+        services: { createdAt: 'ASC' },
       },
     });
 
@@ -352,10 +544,11 @@ export class ProviderService {
       throw new NotFoundException('Không tìm thấy hồ sơ nhà cung cấp');
     }
 
-    return profile;
+    const [enriched] = await this.attachCategoryNames([profile]);
+    return enriched;
   }
 
-  async approve(adminId: string, providerId: string) {
+  async approve(providerId: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: providerId },
       relations: { user: true },
@@ -369,9 +562,8 @@ export class ProviderService {
       throw new ConflictException('Hồ sơ đã ở trạng thái được phê duyệt');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    await this.dataSource.transaction(async (manager) => {
       profile.verificationStatus = VerificationStatus.APPROVED;
-      profile.approvedBy = adminId;
       profile.approvedAt = new Date();
       profile.rejectionReason = null;
       await manager.getRepository(ProviderProfile).save(profile);
@@ -381,11 +573,19 @@ export class ProviderService {
         .getRepository(User)
         .update({ id: profile.userId }, { role: UserRole.PROVIDER });
 
-      return profile;
+      // Kích hoạt các dịch vụ khởi tạo đang PENDING kèm theo hồ sơ đăng ký
+      await manager
+        .getRepository(Service)
+        .update(
+          { providerId: profile.id, status: ServiceStatus.PENDING },
+          { status: ServiceStatus.ACTIVE },
+        );
     });
+
+    return this.getDetailForAdmin(providerId);
   }
 
-  async reject(adminId: string, providerId: string, reason: string) {
+  async reject(providerId: string, reason: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: providerId },
     });
@@ -399,10 +599,10 @@ export class ProviderService {
     }
 
     profile.verificationStatus = VerificationStatus.REJECTED;
-    profile.approvedBy = adminId;
-    profile.approvedAt = new Date();
+    profile.approvedAt = null;
     profile.rejectionReason = reason;
 
-    return this.profileRepo.save(profile);
+    await this.profileRepo.save(profile);
+    return this.getDetailForAdmin(providerId);
   }
 }

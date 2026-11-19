@@ -32,10 +32,14 @@ const TEST_ACCOUNTS = [
 // Chạy lại seed sẽ đặt lại hồ sơ và vùng phục vụ, nhưng giữ nguyên lịch tuần và khoảng nghỉ.
 const SAMPLE_PROVIDER_PROFILE = {
   displayName: "Nhà cung cấp Mẫu",
-  category: "1. Điện lạnh (Điều hòa, máy giặt, tủ lạnh)",
   experienceYears: 5,
   bio: "Tài khoản mẫu để thử lịch làm việc và hồ sơ công khai của thợ.",
-  area: { name: "Cầu Giấy, Hà Nội", latitude: 21.0368, longitude: 105.7826, radiusKm: 10 },
+  area: {
+    name: "Quận 9, TP. Hồ Chí Minh",
+    latitude: 10.8456,
+    longitude: 106.7719,
+    radiusKm: 10,
+  },
 };
 
 const { DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME, TEST_ACCOUNT_PASSWORD } =
@@ -60,24 +64,23 @@ const client = new Client({
 await client.connect();
 
 async function seedProviderProfile(userId, phone) {
-  const { displayName, category, experienceYears, bio, area } = SAMPLE_PROVIDER_PROFILE;
+  const { displayName, experienceYears, bio, area } = SAMPLE_PROVIDER_PROFILE;
 
   const { rows } = await client.query(
     `INSERT INTO provider_profile
-       (id, user_id, display_name, phone, experience_years, category_id, bio, verification_status, approved_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'APPROVED', now())
+       (id, user_id, display_name, phone, experience_years, bio, verification_status, approved_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 'APPROVED', now())
      ON CONFLICT (user_id) DO UPDATE
      SET display_name = EXCLUDED.display_name,
          phone = EXCLUDED.phone,
          experience_years = EXCLUDED.experience_years,
-         category_id = EXCLUDED.category_id,
          bio = EXCLUDED.bio,
          verification_status = 'APPROVED',
          approved_at = COALESCE(provider_profile.approved_at, now()),
          rejection_reason = NULL,
          updated_at = now()
      RETURNING id`,
-    [uuidv7(), userId, displayName, phone, experienceYears, category, bio],
+    [uuidv7(), userId, displayName, phone, experienceYears, bio],
   );
   const providerId = rows[0].id;
 
