@@ -16,6 +16,8 @@ const messages: Record<string, string> = {
   'errors.address.defaultConflict':
     'Địa chỉ mặc định vừa được thay đổi, vui lòng thử lại',
   'errors.user.invalidAvatar': 'Ảnh đại diện phải là file JPG hoặc PNG',
+  'errors.user.activeBookingConflict':
+    'Không thể xóa tài khoản khi vẫn còn đơn đặt lịch đã xác nhận hoặc đang thực hiện',
   'errors.storage.uploadFailed': 'Không thể tải ảnh lên, vui lòng thử lại sau',
   'errors.provider.profileNotFound':
     'Không tìm thấy hồ sơ nhà cung cấp của bạn',

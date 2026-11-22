@@ -1,4 +1,7 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BookingStatus } from 'src/shared/types/booking-status.enum';
+import { Session } from '../auth/entities/session.entity';
+import { Booking } from '../booking/entities/booking.entity';
 import { User } from './entities/user.entity';
 import { UserService } from './user.service';
 
@@ -122,5 +125,83 @@ describe('UserService.updateAvatar', () => {
     );
 
     expect(storage.upload).not.toHaveBeenCalled();
+  });
+});
+
+describe('UserService.softDeleteAccount', () => {
+  let service: UserService;
+  let queryBuilder: {
+    leftJoin: jest.Mock;
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    getExists: jest.Mock;
+  };
+  let txManager: {
+    createQueryBuilder: jest.Mock;
+    softDelete: jest.Mock;
+    delete: jest.Mock;
+  };
+
+  beforeEach(() => {
+    queryBuilder = {
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getExists: jest.fn(),
+    };
+    txManager = {
+      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      softDelete: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const repository = {
+      manager: {
+        transaction: jest.fn(
+          async (callback: (manager: typeof txManager) => Promise<void>) =>
+            callback(txManager),
+        ),
+      },
+    };
+
+    service = new UserService(repository as never, {} as never);
+  });
+
+  it('trả 409 và không xóa tài khoản khi còn booking CONFIRMED hoặc IN_PROGRESS', async () => {
+    queryBuilder.getExists.mockResolvedValue(true);
+
+    await expect(service.softDeleteAccount(USER_ID)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    expect(txManager.createQueryBuilder).toHaveBeenCalledWith(
+      Booking,
+      'booking',
+    );
+    expect(queryBuilder.leftJoin).toHaveBeenCalledWith(
+      'booking.provider',
+      'provider',
+    );
+    expect(queryBuilder.where).toHaveBeenCalledWith(
+      'booking.status IN (:...statuses)',
+      {
+        statuses: [BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS],
+      },
+    );
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+      '(booking.customerId = :userId OR provider.userId = :userId)',
+      { userId: USER_ID },
+    );
+    expect(txManager.softDelete).not.toHaveBeenCalled();
+    expect(txManager.delete).not.toHaveBeenCalled();
+  });
+
+  it('xóa mềm user và xóa toàn bộ session khi không còn booking đang chạy', async () => {
+    queryBuilder.getExists.mockResolvedValue(false);
+
+    await service.softDeleteAccount(USER_ID);
+
+    expect(txManager.softDelete).toHaveBeenCalledWith(User, { id: USER_ID });
+    expect(txManager.delete).toHaveBeenCalledWith(Session, { userId: USER_ID });
   });
 });
