@@ -5,6 +5,7 @@ import type { AuthenticatedRequest } from 'src/core/guards/auth.guard';
 import { UserRole } from 'src/shared/types/user-role.enum';
 import { CheckServiceAreaDto } from './dto/service-area-and-approval.dto';
 import { RegisterProviderDto } from './dto/register-provider.dto';
+import { UpdateProviderStatusDto } from './dto/update-provider-status.dto';
 import { UpdateServiceAreaDto } from './dto/update-service-area.dto';
 import { ProviderService } from './provider.service';
 
@@ -32,6 +33,17 @@ export class ProviderController {
     return this.providerService.register(req.user.id, dto);
   }
 
+  @Patch('me/status')
+  @ApiBearerAuth()
+  @RequireRoles(UserRole.PROVIDER)
+  @ApiOperation({ summary: 'Bật/tắt trạng thái sẵn sàng nhận việc của thợ' })
+  async updateMyStatus(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateProviderStatusDto,
+  ) {
+    return this.providerService.updateMyStatus(req.user.id, dto.isOnline);
+  }
+
   @Patch('service-area')
   @ApiBearerAuth()
   @RequireRoles(UserRole.PROVIDER)
@@ -56,4 +68,3 @@ export class ProviderController {
     return this.providerService.checkServiceArea(dto, req.user?.id);
   }
 }
-

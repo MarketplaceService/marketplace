@@ -313,6 +313,21 @@ export class ProviderService {
     return this.getMyProfile(userId);
   }
 
+  async updateMyStatus(userId: string, isOnline: boolean) {
+    const profile = await this.profileRepo.findOne({ where: { userId } });
+    if (!profile) {
+      apiNotFound('errors.provider.profileNotFound');
+    }
+
+    profile.isOnline = isOnline;
+    await this.profileRepo.save(profile);
+
+    return {
+      id: profile.id,
+      isOnline: profile.isOnline,
+    };
+  }
+
   // Chỉ trả các trường công khai. Tọa độ tâm vùng phục vụ có thể là nhà riêng của thợ nên không trả
   async getPublicProfile(id: string) {
     const profile = await this.profileRepo.findOne({
@@ -327,6 +342,17 @@ export class ProviderService {
 
     const [enriched] = await this.attachCategoryNames([profile]);
     const area = profile.serviceAreas.find((item) => item.isActive) ?? null;
+    const activeServices = (profile.services ?? [])
+      .filter((item) => item.status === ServiceStatus.ACTIVE)
+      .map((item) => ({
+        id: item.id,
+        categoryId: item.categoryId,
+        title: item.title,
+        description: item.description,
+        basePrice: Number(item.basePrice),
+        priceUnit: item.priceUnit,
+        durationMinutes: item.durationMinutes,
+      }));
 
     return {
       id: profile.id,
@@ -335,10 +361,12 @@ export class ProviderService {
       bio: profile.bio,
       category: enriched.categoryName,
       experienceYears: profile.experienceYears,
+      isOnline: profile.isOnline ?? true,
       verifiedAt: profile.approvedAt,
       serviceArea: area
         ? { areaName: area.areaName, radiusKm: Number(area.radiusKm) }
         : null,
+      services: activeServices,
     };
   }
 

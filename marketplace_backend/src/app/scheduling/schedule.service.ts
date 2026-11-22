@@ -166,36 +166,40 @@ export class ScheduleService {
     if (endAt <= startAt) apiBadRequest('errors.timeOff.invalidRange');
     if (endAt <= now) apiBadRequest('errors.timeOff.ended');
 
-    const providerId = await this.findProviderId(userId);
+    return this.timeOffRepository.manager.transaction(async (manager) => {
+      // Khóa hồ sơ thợ để đồng bộ với luồng tạo/xác nhận đơn đặt lịch
+      const providerId = await this.lockProvider(manager, userId);
 
-    // Đơn đã xác nhận có vòng đời riêng, nên báo xung đột thay vì tự hủy đơn
-    const busy = await this.bookingCalendar.findBusyIntervals(
-      providerId,
-      startAt,
-      endAt,
-    );
-    const conflicts = busy.filter(
-      (interval) =>
-        interval.status === 'BOOKED' &&
-        interval.startAt < endAt &&
-        startAt < interval.endAt,
-    );
-    if (conflicts.length > 0) {
-      const codes = conflicts
-        .map((interval) => interval.bookingCode)
-        .filter(Boolean)
-        .join(', ');
-      apiConflict('errors.timeOff.bookingConflict', codes || undefined);
-    }
-
-    return this.timeOffRepository.save(
-      this.timeOffRepository.create({
+      // Chặn tạo khoảng nghỉ đè lên cả đơn đang giữ chỗ (HELD/PENDING) và đơn đã xác nhận (BOOKED)
+      const busy = await this.bookingCalendar.findBusyIntervals(
         providerId,
         startAt,
         endAt,
-        reason: dto.reason,
-      }),
-    );
+      );
+      const conflicts = busy.filter(
+        (interval) =>
+          (interval.status === 'BOOKED' || interval.status === 'HELD') &&
+          interval.startAt < endAt &&
+          startAt < interval.endAt,
+      );
+      if (conflicts.length > 0) {
+        const codes = conflicts
+          .map((interval) => interval.bookingCode)
+          .filter(Boolean)
+          .join(', ');
+        apiConflict('errors.timeOff.bookingConflict', codes || undefined);
+      }
+
+      const repo = manager.getRepository(ProviderTimeOff);
+      return repo.save(
+        repo.create({
+          providerId,
+          startAt,
+          endAt,
+          reason: dto.reason,
+        }),
+      );
+    });
   }
 
   async removeTimeOff(userId: string, id: string) {

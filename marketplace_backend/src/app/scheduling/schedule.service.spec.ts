@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ProviderProfile } from '../provider/entities/provider-profile.entity';
 import { BusyInterval } from './booking-calendar';
+import { ProviderTimeOff } from './entities/provider-time-off.entity';
 import { ScheduleService } from './schedule.service';
 
 const USER_ID = 'user-1';
@@ -26,6 +27,7 @@ describe('ScheduleService', () => {
     save: jest.Mock;
     create: jest.Mock;
     delete: jest.Mock;
+    manager: { transaction: jest.Mock };
   };
   let bookingCalendar: { findBusyIntervals: jest.Mock };
   let service: ScheduleService;
@@ -42,14 +44,6 @@ describe('ScheduleService', () => {
       create: jest.fn((value: unknown) => value),
       manager: { transaction: jest.fn() },
     };
-    const manager = {
-      getRepository: jest.fn((entity: unknown) =>
-        entity === ProviderProfile ? profileRepository : availabilityRepository,
-      ),
-    };
-    availabilityRepository.manager.transaction.mockImplementation(
-      (work: (m: typeof manager) => unknown) => work(manager),
-    );
     timeOffRepository = {
       find: jest.fn().mockResolvedValue([]),
       save: jest.fn((value: object) =>
@@ -57,7 +51,21 @@ describe('ScheduleService', () => {
       ),
       create: jest.fn((value: unknown) => value),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      manager: { transaction: jest.fn() },
     };
+    const manager = {
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === ProviderProfile) return profileRepository;
+        if (entity === ProviderTimeOff) return timeOffRepository;
+        return availabilityRepository;
+      }),
+    };
+    availabilityRepository.manager.transaction.mockImplementation(
+      (work: (m: typeof manager) => unknown) => work(manager),
+    );
+    timeOffRepository.manager.transaction.mockImplementation(
+      (work: (m: typeof manager) => unknown) => work(manager),
+    );
     bookingCalendar = { findBusyIntervals: jest.fn().mockResolvedValue([]) };
 
     service = new ScheduleService(
@@ -274,25 +282,28 @@ describe('ScheduleService', () => {
       expect(timeOffRepository.save).not.toHaveBeenCalled();
     });
 
-    it('vẫn lưu khi chỉ trùng đơn đang tạm giữ', async () => {
+    it('trả 409 kèm mã đơn khi trùng đơn đang tạm giữ (HELD)', async () => {
       bookingCalendar.findBusyIntervals.mockResolvedValue([
         {
           startAt: new Date('2026-11-20T14:00:00+07:00'),
           endAt: new Date('2026-11-20T15:00:00+07:00'),
           status: 'HELD',
+          bookingCode: 'SV-2026-090',
         },
       ]);
 
-      await expect(
-        service.addTimeOff(
-          USER_ID,
-          timeOff('2026-11-20T13:30:00+07:00', '2026-11-20T16:00:00+07:00'),
-          NOW,
-        ),
-      ).resolves.toMatchObject({
-        providerId: PROVIDER_ID,
-        reason: 'Việc gia đình',
-      });
+      const attempt = service.addTimeOff(
+        USER_ID,
+        timeOff('2026-11-20T13:30:00+07:00', '2026-11-20T16:00:00+07:00'),
+        NOW,
+      );
+
+      await expect(attempt).rejects.toBeInstanceOf(ConflictException);
+      await expect(attempt).rejects.toThrow('SV-2026-090');
+      expect(timeOffRepository.save).not.toHaveBeenCalled();
+      expect(profileRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+      );
     });
 
     it('trả 404 khi xóa khoảng nghỉ không thuộc thợ', async () => {
