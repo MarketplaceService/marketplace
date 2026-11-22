@@ -14,49 +14,41 @@ const CATEGORIES_DATA = [
   {
     name: 'Sửa điện lạnh',
     slug: 'sua-dien-lanh',
-    icon: 'ac_unit',
     isActive: true,
   },
   {
     name: 'Sửa điện nước',
     slug: 'sua-dien-nuoc',
-    icon: 'plumbing',
     isActive: true,
   },
   {
     name: 'Sửa khóa & Cửa cuốn',
     slug: 'sua-khoa-cua-cuon',
-    icon: 'lock',
     isActive: true,
   },
   {
     name: 'Thông tắc vệ sinh',
     slug: 'thong-tac-ve-sinh',
-    icon: 'wash',
     isActive: true,
   },
   {
     name: 'Vệ sinh nhà cửa',
     slug: 've-sinh-nha-cua',
-    icon: 'cleaning_services',
     isActive: true,
   },
   {
     name: 'Thiết bị gia dụng',
     slug: 'thiet-bi-gia-dung',
-    icon: 'microwave',
     isActive: true,
   },
   {
     name: 'Sơn sửa & Chống thấm',
     slug: 'son-sua-chong-tham',
-    icon: 'format_paint',
     isActive: true,
   },
   {
     name: 'Đồ gỗ & Nội thất',
     slug: 'do-go-noi-that',
-    icon: 'table_restaurant',
     isActive: true,
   },
 ];
@@ -210,7 +202,6 @@ async function seed() {
       cat = categoryRepo.create(catData);
     } else {
       cat.name = catData.name;
-      cat.icon = catData.icon;
       cat.isActive = catData.isActive;
     }
     const savedCat = await categoryRepo.save(cat);

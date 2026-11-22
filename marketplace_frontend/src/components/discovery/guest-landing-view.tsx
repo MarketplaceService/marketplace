@@ -146,7 +146,6 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       id: "default-cat-1",
       name: "Sửa điện lạnh",
       slug: "sua-dien-lanh",
-      icon: "ac_unit",
     },
     provider: {
       id: "default-prov-1",
@@ -174,7 +173,6 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       id: "default-cat-2",
       name: "Sửa điện nước",
       slug: "sua-dien-nuoc",
-      icon: "plumbing",
     },
     provider: {
       id: "default-prov-2",
@@ -202,7 +200,6 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       id: "default-cat-3",
       name: "Sửa khóa & Cửa cuốn",
       slug: "sua-khoa-cua-cuon",
-      icon: "lock",
     },
     provider: {
       id: "default-prov-3",
@@ -230,7 +227,6 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       id: "default-cat-4",
       name: "Vệ sinh nhà cửa",
       slug: "ve-sinh-nha-cua",
-      icon: "cleaning_services",
     },
     provider: {
       id: "default-prov-4",
@@ -258,7 +254,6 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       id: "default-cat-5",
       name: "Thông tắc vệ sinh",
       slug: "thong-tac-ve-sinh",
-      icon: "wash",
     },
     provider: {
       id: "default-prov-5",
@@ -286,7 +281,6 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       id: "default-cat-6",
       name: "Sơn sửa & Chống thấm",
       slug: "son-sua-chong-tham",
-      icon: "format_paint",
     },
     provider: {
       id: "default-prov-6",

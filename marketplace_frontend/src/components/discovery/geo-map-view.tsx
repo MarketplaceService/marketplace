@@ -1,6 +1,7 @@
 "use client";
 
 import { notifyComingSoon } from "@/components/header/header-nav-link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAddresses } from "@/hooks/use-addresses";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useCategories, useNearbyServices } from "@/hooks/use-discovery";
@@ -439,17 +440,16 @@ function GeoMapViewInner({
                       title="Xem hồ sơ thợ"
                       className="shrink-0 hover:opacity-90 transition cursor-pointer"
                     >
-                      <div className="w-12 h-12 rounded-full overflow-hidden border border-border bg-muted">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          className="w-full h-full object-cover"
-                          src={
-                            item.provider.avatar ||
-                            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces"
-                          }
+                      <Avatar className="h-12 w-12 border border-border">
+                        <AvatarImage
+                          src={item.provider.avatar ?? undefined}
                           alt={item.provider.displayName}
+                          className="object-cover"
                         />
-                      </div>
+                        <AvatarFallback className="bg-primary/10 text-sm font-bold text-primary">
+                          {(item.provider.displayName.trim().charAt(0) || "?").toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </button>
 
                     {/* Nội dung thông tin thợ & dịch vụ */}

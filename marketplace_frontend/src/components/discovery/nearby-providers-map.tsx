@@ -293,9 +293,12 @@ export default function NearbyProvidersMap({
         ];
       }
 
-      const avatarUrl =
-        item.provider.avatar ||
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces";
+      const avatarInitial = escapeHtml(
+        (item.provider.displayName.trim().charAt(0) || "?").toUpperCase(),
+      );
+      const avatarContentHtml = item.provider.avatar
+        ? `<img src="${escapeHtml(item.provider.avatar)}" alt="${escapeHtml(item.provider.displayName)}" style="width: 100%; height: 100%; object-fit: cover;" />`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#ecfdf5;color:#006948;font-weight:700;font-size:${isSelected ? "16px" : "14px"};">${avatarInitial}</div>`;
 
       const pinHtml = `
         <div style="display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -100%); cursor:pointer;">
@@ -339,18 +342,18 @@ export default function NearbyProvidersMap({
           </div>
 
           <div style="position: relative;">
-            <div style="
-              width: ${isSelected ? "42px" : "36px"};
-              height: ${isSelected ? "42px" : "36px"};
-              border-radius: 50%;
-              overflow: hidden;
-              border: ${isSelected ? "3px solid #059669" : "2.5px solid #ffffff"};
-              box-shadow: 0 3px 10px rgba(0,0,0,0.25);
-              transition: all 0.2s ease;
-              background: #f1f5f9;
-            ">
-              <img src="${avatarUrl}" alt="${escapeHtml(item.provider.displayName)}" style="width: 100%; height: 100%; object-fit: cover;" />
-            </div>
+              <div style="
+                width: ${isSelected ? "42px" : "36px"};
+                height: ${isSelected ? "42px" : "36px"};
+                border-radius: 50%;
+                overflow: hidden;
+                border: ${isSelected ? "3px solid #059669" : "2.5px solid #ffffff"};
+                box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+                transition: all 0.2s ease;
+                background: #f1f5f9;
+              ">
+                ${avatarContentHtml}
+              </div>
             <span style="
               position: absolute;
               top: -3px;

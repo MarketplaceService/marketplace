@@ -86,7 +86,6 @@ describe('ServiceService Unit Tests', () => {
           id: 'cat-1',
           name: 'Sửa điện lạnh',
           slug: 'sua-dien-lanh',
-          icon: 'ac_unit',
           parentId: null,
           isActive: true,
           children: [],
@@ -138,7 +137,6 @@ describe('ServiceService Unit Tests', () => {
             id: 'cat-1',
             name: 'Sửa điện lạnh',
             slug: 'sua-dien-lanh',
-            icon: 'ac_unit',
           },
           provider: {
             id: 'prov-1',
@@ -222,7 +220,6 @@ describe('ServiceService Unit Tests', () => {
             id: 'cat-2',
             name: 'Sửa điện nước',
             slug: 'sua-dien-nuoc',
-            icon: 'plumbing',
           },
           provider: {
             id: 'prov-1',
@@ -253,7 +250,6 @@ describe('ServiceService Unit Tests', () => {
             id: 'cat-4',
             name: 'Thông tắc vệ sinh',
             slug: 'thong-tac-ve-sinh',
-            icon: 'wash',
           },
           provider: {
             id: 'prov-2',
@@ -284,7 +280,6 @@ describe('ServiceService Unit Tests', () => {
             id: 'cat-1',
             name: 'Sửa điện lạnh',
             slug: 'sua-dien-lanh',
-            icon: 'ac_unit',
           },
           provider: {
             id: 'prov-3',
@@ -355,7 +350,6 @@ describe('ServiceService Unit Tests', () => {
           id: 'cat-1',
           name: 'Sửa điện lạnh',
           slug: 'sua-dien-lanh',
-          icon: 'ac_unit',
         },
         provider: {
           id: 'prov-1',
