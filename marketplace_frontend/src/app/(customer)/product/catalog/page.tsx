@@ -1,5 +1,11 @@
+import { AnonymousSessionProvider } from "@/components/auth/anonymous-session-provider";
+
 const ProductCatalog = () => {
-  return <div>Product</div>;
+  return (
+    <AnonymousSessionProvider>
+      <div>Product</div>
+    </AnonymousSessionProvider>
+  );
 };
 
 export default ProductCatalog;

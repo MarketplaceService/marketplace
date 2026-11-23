@@ -61,6 +61,7 @@ const SIGNED_OUT_SESSION: AuthSession = {
   user: null,
   isGuest: false,
   isAuthenticated: false,
+  skipAnonymous: true,
 };
 
 // Mọi query trong cache đều là dữ liệu của người đang đăng nhập, nên đổi người dùng thì xóa hết.

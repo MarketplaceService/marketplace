@@ -1,3 +1,4 @@
+import { AnonymousSessionProvider } from "@/components/auth/anonymous-session-provider";
 import { ProviderPublicView } from "@/components/providers/provider-public-view";
 import type { Metadata } from "next";
 
@@ -15,5 +16,9 @@ export default async function ProviderPublicPage({
   searchParams: Promise<{ serviceId?: string }>;
 }) {
   const [{ id }, { serviceId }] = await Promise.all([params, searchParams]);
-  return <ProviderPublicView providerId={id} serviceId={serviceId} />;
+  return (
+    <AnonymousSessionProvider>
+      <ProviderPublicView providerId={id} serviceId={serviceId} />
+    </AnonymousSessionProvider>
+  );
 }

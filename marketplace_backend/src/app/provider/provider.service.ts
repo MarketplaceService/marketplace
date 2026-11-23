@@ -5,17 +5,20 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { StorageService } from 'src/app/storage/storage.service';
 import { User } from 'src/app/user/entities/user.entity';
-import { apiNotFound } from 'src/shared/helpers/api-i18n';
+import { apiBadRequest, apiNotFound } from 'src/shared/helpers/api-i18n';
 import { UserRole } from 'src/shared/types/user-role.enum';
 import { VerificationStatus } from 'src/shared/types/verification-status.enum';
 import { DataSource, Repository } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import { CheckServiceAreaDto } from './dto/service-area-and-approval.dto';
 import { RegisterProviderDto } from './dto/register-provider.dto';
 import { UpdateServiceAreaDto } from './dto/update-service-area.dto';
 import { ProviderDocument } from './entities/provider-document.entity';
 import { ProviderProfile } from './entities/provider-profile.entity';
 import { ProviderServiceArea } from './entities/provider-service-area.entity';
+import { PROVIDER_DOCUMENT_EXTENSIONS } from './provider-document-upload';
 import { Service } from 'src/app/service/entities/service.entity';
 import { ServiceCategory } from 'src/app/service/entities/service-category.entity';
 import { PriceUnit } from 'src/shared/types/price-unit.enum';
@@ -55,7 +58,23 @@ export class ProviderService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly dataSource: DataSource,
+    private readonly storageService: StorageService,
   ) {}
+
+  private getDocumentPrefix(userId: string): string {
+    return `providers/documents/${userId}/`;
+  }
+
+  private assertManagedDocumentUrl(url: string, userId: string): void {
+    const storagePath = this.storageService.getPathFromUrl(url);
+    if (
+      !storagePath ||
+      storagePath.includes('..') ||
+      !storagePath.startsWith(this.getDocumentPrefix(userId))
+    ) {
+      apiBadRequest('errors.provider.invalidDocumentUrl');
+    }
+  }
 
   private isUuid(value: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -177,6 +196,35 @@ export class ProviderService {
     };
   }
 
+  async uploadDocument(userId: string, file: Express.Multer.File) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+
+    if (user.isAnonymous) {
+      throw new BadRequestException('Tài khoản khách không thể đăng ký Thợ');
+    }
+
+    const existing = await this.profileRepo.findOne({ where: { userId } });
+    if (
+      existing &&
+      existing.verificationStatus === VerificationStatus.APPROVED
+    ) {
+      throw new ConflictException('Hồ sơ của bạn đã được phê duyệt');
+    }
+
+    const ext = PROVIDER_DOCUMENT_EXTENSIONS.get(file.mimetype) ?? 'jpg';
+    const path = `${this.getDocumentPrefix(userId)}${uuidv7()}.${ext}`;
+    const fileUrl = await this.storageService.upload(
+      path,
+      file.buffer,
+      file.mimetype,
+    );
+
+    return { fileUrl };
+  }
+
   async register(userId: string, dto: RegisterProviderDto) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -197,6 +245,12 @@ export class ProviderService {
     ) {
       throw new ConflictException('Hồ sơ của bạn đã được phê duyệt');
     }
+
+    for (const doc of dto.documents ?? []) {
+      this.assertManagedDocumentUrl(doc.fileUrl, userId);
+    }
+
+    let previousDocUrls: string[] = [];
 
     await this.dataSource.transaction(async (manager) => {
       const pRepo = manager.getRepository(ProviderProfile);
@@ -237,6 +291,12 @@ export class ProviderService {
 
       // Re-save documents
       if (dto.documents && dto.documents.length > 0) {
+        const previousDocs = await dRepo.find({
+          where: { providerId: savedProfile.id },
+          select: { fileUrl: true },
+        });
+        previousDocUrls = previousDocs.map((doc) => doc.fileUrl);
+
         await dRepo.delete({ providerId: savedProfile.id });
         const docs = dto.documents.map((d) =>
           dRepo.create({
@@ -287,6 +347,20 @@ export class ProviderService {
       });
       await sRepo.save(initialService);
     });
+
+    // Dọn file cũ đã bị thay thế trên Supabase sau khi giao dịch DB thành công
+    if (previousDocUrls.length > 0) {
+      const newUrlSet = new Set((dto.documents ?? []).map((d) => d.fileUrl));
+      const prefix = this.getDocumentPrefix(userId);
+      const stalePaths = previousDocUrls
+        .filter((url) => !newUrlSet.has(url))
+        .map((url) => this.storageService.getPathFromUrl(url))
+        .filter((path): path is string => Boolean(path?.startsWith(prefix)));
+
+      await Promise.all(
+        stalePaths.map((path) => this.storageService.remove(path)),
+      );
+    }
 
     return this.getMyProfile(userId);
   }

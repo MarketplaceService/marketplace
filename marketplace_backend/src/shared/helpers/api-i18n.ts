@@ -22,6 +22,10 @@ const messages: Record<string, string> = {
   'errors.provider.profileNotFound':
     'Không tìm thấy hồ sơ nhà cung cấp của bạn',
   'errors.provider.notFound': 'Không tìm thấy nhà cung cấp',
+  'errors.provider.invalidDocument':
+    'Tài liệu phải là file JPG, PNG, WebP hoặc PDF và tối đa 2MB',
+  'errors.provider.invalidDocumentUrl':
+    'Đường dẫn tài liệu không hợp lệ hoặc chưa được tải lên hệ thống',
   'errors.schedule.invalidTimeRange': 'Giờ kết thúc phải sau giờ bắt đầu',
   'errors.schedule.overlap':
     'Các ca làm việc trong cùng một ngày không được chồng lên nhau',

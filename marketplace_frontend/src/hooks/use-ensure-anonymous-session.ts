@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthSession } from "./use-auth";
 import { useEffect, useRef } from "react";
 import { getAuthClient } from "@/lib/auth/auth-client";
+import type { AuthSession } from "@/types/hook.types";
 
 const COOLDOWN_MS = 60_000;
 const STORAGE_KEY = "anonymous-signin-cooldown-until";
@@ -34,9 +35,18 @@ export function useEnsureAnonymousSession() {
   const queryClient = useQueryClient();
   const signingInRef = useRef(false);
 
+  // Khi người dùng mới điều hướng vào trang khách vãng lai (vd: từ /auth/signin về /),
+  // gỡ cờ skipAnonymous để khách có thể khởi tạo lại phiên ẩn danh
+  useEffect(() => {
+    queryClient.setQueryData<AuthSession | undefined>(
+      ["auth", "session"],
+      (prev) => (prev?.skipAnonymous ? { ...prev, skipAnonymous: false } : prev),
+    );
+  }, [queryClient]);
+
   useEffect(() => {
     if (isLoading || signingInRef.current) return;
-    if (session?.isAuthenticated) return;
+    if (session?.isAuthenticated || session?.skipAnonymous) return;
     if (isInCooldown()) return;
 
     signingInRef.current = true;
@@ -62,5 +72,5 @@ export function useEnsureAnonymousSession() {
       .finally(() => {
         signingInRef.current = false;
       });
-  }, [isLoading, session?.isAuthenticated, queryClient]);
+  }, [isLoading, session?.isAuthenticated, session?.skipAnonymous, queryClient]);
 }

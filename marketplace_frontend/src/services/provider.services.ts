@@ -121,6 +121,19 @@ export const providerServices = {
     return data;
   },
 
+  uploadDocument: async (file: File): Promise<{ fileUrl: string }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Ghi đè Content-Type mặc định để axios gửi đúng multipart/form-data
+    const { data } = await axiosInstance.post<{ fileUrl: string }>(
+      "/provider/documents/upload",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return data;
+  },
+
   register: async (payload: RegisterProviderPayload): Promise<ProviderStatusResponse> => {
     const { data } = await axiosInstance.post<ProviderStatusResponse>(
       "/provider/register",
