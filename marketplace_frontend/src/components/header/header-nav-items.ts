@@ -11,7 +11,7 @@ export const HEADER_NAV_ITEMS: HeaderNavItem[] = [
   { label: "Trang chủ", href: "/", icon: Home },
   { label: "Bản đồ", href: "/map", icon: Map },
   { label: "Đơn hàng & Bảo hành", href: "/bookings", icon: ReceiptText },
-  { label: "Tin nhắn", icon: MessageSquare },
+  { label: "Tin nhắn", href: "/messages", icon: MessageSquare },
 ];
 
 export const BECOME_PROVIDER_ITEM: HeaderNavItem = {
