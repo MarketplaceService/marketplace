@@ -21,9 +21,6 @@ export class ServiceCategory extends BaseUuidEntity {
   @Column({ type: 'varchar', length: 120, unique: true })
   slug: string;
 
-  @Column({ type: 'text', nullable: true })
-  icon: string | null;
-
   @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive: boolean;
 

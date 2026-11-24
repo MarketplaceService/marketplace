@@ -10,7 +10,7 @@ export interface HeaderNavItem {
 export const HEADER_NAV_ITEMS: HeaderNavItem[] = [
   { label: "Trang chủ", href: "/", icon: Home },
   { label: "Bản đồ", href: "/map", icon: Map },
-  { label: "Đơn hàng & Bảo hành", icon: ReceiptText },
+  { label: "Đơn hàng & Bảo hành", href: "/bookings", icon: ReceiptText },
   { label: "Tin nhắn", icon: MessageSquare },
 ];
 

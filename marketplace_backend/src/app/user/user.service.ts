@@ -2,12 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { DeepPartial, Repository } from 'typeorm';
-import { apiNotFound } from 'src/shared/helpers/api-i18n';
+import { apiConflict, apiNotFound } from 'src/shared/helpers/api-i18n';
+import { BookingStatus } from 'src/shared/types/booking-status.enum';
 import { v7 as uuidv7 } from 'uuid';
 import { Session } from '../auth/entities/session.entity';
+import { Booking } from '../booking/entities/booking.entity';
 import { StorageService } from '../storage/storage.service';
 import { AVATAR_EXTENSIONS } from './avatar-upload';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+
+const BLOCKING_DELETE_BOOKING_STATUSES = [
+  BookingStatus.CONFIRMED,
+  BookingStatus.IN_PROGRESS,
+];
 
 @Injectable()
 export class UserService {
@@ -70,8 +77,23 @@ export class UserService {
   }
 
   async softDeleteAccount(id: string) {
-    // todo: khi có module booking, trả 409 nếu user còn booking CONFIRMED hoặc IN_PROGRESS
     await this.userRepository.manager.transaction(async (manager) => {
+      const hasBlockingBooking = await manager
+        .createQueryBuilder(Booking, 'booking')
+        .leftJoin('booking.provider', 'provider')
+        .where('booking.status IN (:...statuses)', {
+          statuses: BLOCKING_DELETE_BOOKING_STATUSES,
+        })
+        .andWhere(
+          '(booking.customerId = :userId OR provider.userId = :userId)',
+          { userId: id },
+        )
+        .getExists();
+
+      if (hasBlockingBooking) {
+        apiConflict('errors.user.activeBookingConflict');
+      }
+
       await manager.softDelete(User, { id });
       await manager.delete(Session, { userId: id });
     });

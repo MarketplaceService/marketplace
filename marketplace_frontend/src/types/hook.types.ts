@@ -10,4 +10,5 @@ export type AuthSession = {
   user: User | null;
   isGuest: boolean;
   isAuthenticated: boolean;
+  skipAnonymous?: boolean;
 };

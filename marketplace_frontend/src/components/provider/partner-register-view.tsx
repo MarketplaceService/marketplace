@@ -10,6 +10,8 @@ import {
   useRegisterProvider,
 } from "@/hooks/use-provider";
 import { useServiceAreaCenter } from "@/hooks/use-service-area-center";
+import { toastApiError } from "@/lib/api/api-error";
+import { providerServices } from "@/services/provider.services";
 import {
   AlertCircle,
   BadgeCheck,
@@ -30,7 +32,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 // Import dynamic map component with SSR disabled
@@ -50,9 +52,18 @@ export const STANDARD_CATEGORIES = [
   { id: "do-go-noi-that", name: "Đồ gỗ & Nội thất" },
 ];
 
+const ALLOWED_DOC_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
+
 export interface UploadedDoc {
   name: string;
   url: string;
+  file?: File;
+  isObjectUrl?: boolean;
   size?: string;
   type?: string;
 }
@@ -65,6 +76,16 @@ export function PartnerRegisterView() {
   const checkAreaMutation = useCheckServiceArea();
 
   const [isEditingAfterReject, setIsEditingAfterReject] = useState(false);
+  const [isUploadingDocs, setIsUploadingDocs] = useState(false);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const urls = objectUrlsRef.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
 
   // Form states - để trống hoàn toàn cho khách hàng tự nhập
   const [displayName, setDisplayName] = useState("");
@@ -113,12 +134,25 @@ export function PartnerRegisterView() {
     onAreaNameChange: setAreaName,
   });
 
-  // Helper upload file (Data URL preview)
+  const revokeDocPreview = (doc: UploadedDoc | null) => {
+    if (doc?.isObjectUrl) {
+      URL.revokeObjectURL(doc.url);
+      objectUrlsRef.current.delete(doc.url);
+    }
+  };
+
+  // Chọn tệp thực và tạo preview cục bộ (chỉ upload lên Supabase khi nộp hồ sơ)
   const handleFileChange = (
     file: File | undefined,
+    currentDoc: UploadedDoc | null,
     setDoc: (doc: UploadedDoc | null) => void,
   ) => {
     if (!file) return;
+
+    if (!ALLOWED_DOC_MIME_TYPES.has(file.type)) {
+      toast.error("Tài liệu phải là file JPG, PNG, WebP hoặc PDF");
+      return;
+    }
 
     if (file.size > 2 * 1024 * 1024) {
       toast.error("Dung lượng tệp vượt quá giới hạn 2MB");
@@ -130,17 +164,27 @@ export function PartnerRegisterView() {
         ? `${(file.size / 1024).toFixed(0)} KB`
         : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setDoc({
-        name: file.name,
-        url: reader.result as string,
-        size: sizeFormatted,
-        type: file.type,
-      });
-      toast.success(`Đã chọn: ${file.name}`);
-    };
-    reader.readAsDataURL(file);
+    revokeDocPreview(currentDoc);
+    const previewUrl = URL.createObjectURL(file);
+    objectUrlsRef.current.add(previewUrl);
+
+    setDoc({
+      name: file.name,
+      url: previewUrl,
+      file,
+      isObjectUrl: true,
+      size: sizeFormatted,
+      type: file.type,
+    });
+    toast.success(`Đã chọn: ${file.name}`);
+  };
+
+  const handleRemoveDoc = (
+    currentDoc: UploadedDoc | null,
+    setDoc: (doc: UploadedDoc | null) => void,
+  ) => {
+    revokeDocPreview(currentDoc);
+    setDoc(null);
   };
 
   // Check sample addresses
@@ -188,8 +232,9 @@ export function PartnerRegisterView() {
   };
 
   // Submit Registration
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUploadingDocs || registerMutation.isPending) return;
 
     if (!displayName.trim()) {
       toast.error("Vui lòng nhập tên hiển thị Nhà cung cấp");
@@ -239,6 +284,38 @@ export function PartnerRegisterView() {
       return;
     }
 
+    const resolveDocUrl = async (
+      doc: UploadedDoc,
+      setDoc: (next: UploadedDoc | null) => void,
+    ): Promise<string> => {
+      if (!doc.file) return doc.url;
+      const { fileUrl } = await providerServices.uploadDocument(doc.file);
+      revokeDocPreview(doc);
+      setDoc({
+        name: doc.name,
+        url: fileUrl,
+        size: doc.size,
+        type: doc.type,
+      });
+      return fileUrl;
+    };
+
+    let uploadedUrls: [string, string, string, string];
+    try {
+      setIsUploadingDocs(true);
+      uploadedUrls = await Promise.all([
+        resolveDocUrl(doc1, setDoc1),
+        resolveDocUrl(doc2, setDoc2),
+        resolveDocUrl(doc3, setDoc3),
+        resolveDocUrl(doc4, setDoc4),
+      ]);
+    } catch (error) {
+      toastApiError(error, "Không thể tải tài liệu xác minh lên máy chủ");
+      return;
+    } finally {
+      setIsUploadingDocs(false);
+    }
+
     registerMutation.mutate(
       {
         displayName: displayName.trim(),
@@ -247,10 +324,10 @@ export function PartnerRegisterView() {
         categoryId,
         bio: bio.trim(),
         documents: [
-          { documentType: "ID_CARD_FRONT", fileUrl: doc1.url },
-          { documentType: "ID_CARD_BACK", fileUrl: doc2.url },
-          { documentType: "CERTIFICATE", fileUrl: doc3.url },
-          { documentType: "TOOLKIT_PHOTO", fileUrl: doc4.url },
+          { documentType: "ID_CARD_FRONT", fileUrl: uploadedUrls[0] },
+          { documentType: "ID_CARD_BACK", fileUrl: uploadedUrls[1] },
+          { documentType: "CERTIFICATE", fileUrl: uploadedUrls[2] },
+          { documentType: "TOOLKIT_PHOTO", fileUrl: uploadedUrls[3] },
         ],
         serviceArea: {
           areaName: areaName.trim() || "Vùng phục vụ chính",
@@ -522,10 +599,10 @@ export function PartnerRegisterView() {
                       const found = profile.documents?.find(
                         (d) => d.documentType === documentType,
                       );
-                      if (!found?.fileUrl) return null;
-                      const isPdf =
-                        found.fileUrl.startsWith("data:application/pdf") ||
-                        /\.pdf(\?|$)/i.test(found.fileUrl);
+                      if (!found?.fileUrl || found.fileUrl.startsWith("data:")) {
+                        return null;
+                      }
+                      const isPdf = /\.pdf(\?|$)/i.test(found.fileUrl);
                       return {
                         name: `${fallbackName}.${isPdf ? "pdf" : "jpg"}`,
                         url: found.fileUrl,
@@ -929,9 +1006,7 @@ export function PartnerRegisterView() {
                   >
                     <div className="flex items-start sm:items-center gap-3.5">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary overflow-hidden">
-                        {item.doc?.url &&
-                        (item.doc.type?.startsWith("image/") ||
-                          item.doc.url.startsWith("data:image/")) ? (
+                        {item.doc?.url && item.doc.type?.startsWith("image/") ? (
                           <img
                             src={item.doc.url}
                             alt={item.title}
@@ -975,7 +1050,7 @@ export function PartnerRegisterView() {
                       {item.doc && (
                         <button
                           type="button"
-                          onClick={() => item.setDoc(null)}
+                          onClick={() => handleRemoveDoc(item.doc, item.setDoc)}
                           className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                           title="Xóa tệp"
                         >
@@ -987,11 +1062,12 @@ export function PartnerRegisterView() {
                         <span>{item.doc ? "Chọn tệp khác" : "Chọn tệp"}</span>
                         <input
                           type="file"
-                          accept=".jpg,.jpeg,.png,.pdf"
+                          accept=".jpg,.jpeg,.png,.webp,.pdf"
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            handleFileChange(file, item.setDoc);
+                            handleFileChange(file, item.doc, item.setDoc);
+                            e.target.value = "";
                           }}
                         />
                       </label>
@@ -1241,10 +1317,15 @@ export function PartnerRegisterView() {
             <div className="pt-2 text-center">
               <button
                 type="submit"
-                disabled={registerMutation.isPending}
+                disabled={isUploadingDocs || registerMutation.isPending}
                 className="inline-flex min-w-[320px] items-center justify-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-bold text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
-                {registerMutation.isPending ? (
+                {isUploadingDocs ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Đang tải tài liệu lên...</span>
+                  </>
+                ) : registerMutation.isPending ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Đang gửi hồ sơ...</span>

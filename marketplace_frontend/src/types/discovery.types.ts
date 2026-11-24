@@ -5,7 +5,6 @@ export interface ServiceCategoryItem {
   id: string;
   name: string;
   slug: string;
-  icon: string | null;
   activeServicesCount: number;
   children?: ServiceCategoryItem[];
 }
@@ -14,7 +13,6 @@ export interface ServiceCategoryBrief {
   id: string;
   name: string;
   slug: string;
-  icon: string | null;
 }
 
 export interface ServiceListItem {

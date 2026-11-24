@@ -46,9 +46,6 @@ export function setUpApp(
     credentials: true,
   });
 
-  // Nâng giới hạn JSON để nhận ảnh/tài liệu base64 khi đăng ký đối tác (4 tệp × ~2MB)
-  app.useBodyParser('json', { limit: '15mb' });
-
   //PIPE
   app.useGlobalPipes(
     new ValidationPipe({

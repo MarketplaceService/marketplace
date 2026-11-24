@@ -121,6 +121,19 @@ export const providerServices = {
     return data;
   },
 
+  uploadDocument: async (file: File): Promise<{ fileUrl: string }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Ghi đè Content-Type mặc định để axios gửi đúng multipart/form-data
+    const { data } = await axiosInstance.post<{ fileUrl: string }>(
+      "/provider/documents/upload",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return data;
+  },
+
   register: async (payload: RegisterProviderPayload): Promise<ProviderStatusResponse> => {
     const { data } = await axiosInstance.post<ProviderStatusResponse>(
       "/provider/register",
@@ -183,6 +196,14 @@ export const providerServices = {
     return data;
   },
 
+  updateMyStatus: async (isOnline: boolean) => {
+    const { data } = await axiosInstance.patch<{ id: string; isOnline: boolean }>(
+      "/provider/me/status",
+      { isOnline },
+    );
+    return data;
+  },
+
   getPublicProfile: async (id: string) => {
     const { data } = await axiosInstance.get<PublicProviderProfile>(`/providers/${id}`);
     return data;
@@ -197,6 +218,16 @@ export interface UpdateServiceAreaPayload {
   radiusKm: number;
 }
 
+export interface PublicProviderServiceItem {
+  id: string;
+  categoryId: string;
+  title: string;
+  description: string;
+  basePrice: number;
+  priceUnit: "FIXED" | "HOURLY" | "FROM";
+  durationMinutes: number;
+}
+
 /** Hồ sơ công khai của thợ. Không có tọa độ tâm vùng phục vụ vì đó có thể là nhà riêng */
 export interface PublicProviderProfile {
   id: string;
@@ -206,7 +237,9 @@ export interface PublicProviderProfile {
   /** Form đăng ký lưu tên ngành nghề vào đây, ví dụ "1. Điện lạnh (...)" */
   category: string | null;
   experienceYears: number | null;
+  isOnline: boolean;
   verifiedAt: string | null;
   serviceArea: { areaName: string | null; radiusKm: number } | null;
+  services: PublicProviderServiceItem[];
 }
 

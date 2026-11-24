@@ -102,6 +102,22 @@ export function ProviderPublicView({
                 <BadgeCheck className="size-3.5" />
                 Đã xác minh hồ sơ &amp; chứng chỉ
               </span>
+              <span
+                className={
+                  provider.isOnline
+                    ? "inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary"
+                    : "inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+                }
+              >
+                <span
+                  className={
+                    provider.isOnline
+                      ? "size-2 rounded-full bg-primary"
+                      : "size-2 rounded-full bg-muted-foreground"
+                  }
+                />
+                {provider.isOnline ? "Sẵn sàng nhận việc" : "Đang tạm nghỉ"}
+              </span>
             </div>
 
             <ul className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2">
@@ -133,7 +149,12 @@ export function ProviderPublicView({
         </div>
       </section>
 
-      <SlotPicker providerId={provider.id} serviceId={serviceId} />
+      <SlotPicker
+        providerId={provider.id}
+        serviceId={serviceId}
+        isOnline={provider.isOnline}
+        services={provider.services}
+      />
     </div>
   );
 }

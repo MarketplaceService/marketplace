@@ -1,3 +1,4 @@
+import { AnonymousSessionProvider } from "@/components/auth/anonymous-session-provider";
 import GeoMapView from "@/components/discovery/geo-map-view";
 import { Loader2 } from "lucide-react";
 import type { Metadata } from "next";
@@ -24,8 +25,10 @@ function MapLoadingSkeleton() {
 
 export default function CustomerMapPage() {
   return (
-    <Suspense fallback={<MapLoadingSkeleton />}>
-      <GeoMapView />
-    </Suspense>
+    <AnonymousSessionProvider>
+      <Suspense fallback={<MapLoadingSkeleton />}>
+        <GeoMapView />
+      </Suspense>
+    </AnonymousSessionProvider>
   );
 }

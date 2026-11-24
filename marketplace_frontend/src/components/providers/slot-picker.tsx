@@ -1,10 +1,10 @@
 "use client";
 
-import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useServiceDetail } from "@/hooks/use-discovery";
 import { useAvailableSlots } from "@/hooks/use-schedule";
+import { formatVnd } from "@/lib/travel-fee";
 import { cn } from "@/lib/utils";
 import {
   addDays,
@@ -14,8 +14,10 @@ import {
   formatDateOnly,
   todayInVietnam,
 } from "@/lib/vn-time";
+import type { PublicProviderServiceItem } from "@/services/provider.services";
 import type { AvailableSlot, SlotStatus } from "@/services/schedule.services";
 import {
+  AlertCircle,
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
@@ -37,12 +39,22 @@ const STATUS_LEGEND: { status: SlotStatus; label: string; dotClass: string }[] =
   { status: "BOOKED", label: "Đã kín", dotClass: "bg-muted-foreground/50" },
 ];
 
+const PRICE_UNIT_LABELS: Record<"FIXED" | "HOURLY" | "FROM", string> = {
+  FIXED: "Trọn gói",
+  HOURLY: "Theo giờ",
+  FROM: "Giá từ",
+};
+
 export function SlotPicker({
   providerId,
   serviceId,
+  isOnline = true,
+  services = [],
 }: {
   providerId: string;
   serviceId?: string;
+  isOnline?: boolean;
+  services?: PublicProviderServiceItem[];
 }) {
   const router = useRouter();
   const { data: currentUser, isLoading: isAuthLoading } = useCurrentUser();
@@ -52,13 +64,32 @@ export function SlotPicker({
   const [selectedDate, setSelectedDate] = useState(today);
   // Chỉ lưu khung giờ chọn nháp ở client; chỉ khóa/giữ lịch khi người dùng đã đăng nhập và đặt lịch
   const [selectedStartAt, setSelectedStartAt] = useState<string | null>(null);
+  const [pickedServiceId, setPickedServiceId] = useState<string | null>(() => {
+    if (serviceId && services.some((item) => item.id === serviceId)) {
+      return serviceId;
+    }
+    return services[0]?.id ?? null;
+  });
 
-  const { data: selectedService } = useServiceDetail(serviceId ?? null);
+  const activeServiceId =
+    pickedServiceId && services.some((item) => item.id === pickedServiceId)
+      ? pickedServiceId
+      : serviceId && services.some((item) => item.id === serviceId)
+        ? serviceId
+        : (services[0]?.id ?? serviceId ?? null);
+
+  const matchedProviderService =
+    services.find((item) => item.id === activeServiceId) ?? null;
+
+  const { data: selectedService } = useServiceDetail(
+    matchedProviderService ? null : activeServiceId,
+  );
   // Chỉ dùng thời lượng của dịch vụ khi dịch vụ đúng là của thợ đang xem
   const durationMinutes =
-    selectedService?.provider?.id === providerId && selectedService.durationMinutes > 0
+    matchedProviderService?.durationMinutes ??
+    (selectedService?.provider?.id === providerId && selectedService.durationMinutes > 0
       ? selectedService.durationMinutes
-      : DEFAULT_SLOT_MINUTES;
+      : DEFAULT_SLOT_MINUTES);
 
   const days = Array.from({ length: DAYS_PER_PAGE }, (_, index) => addDays(pageStart, index)).filter(
     (date) => date <= lastDay,
@@ -85,19 +116,77 @@ export function SlotPicker({
   };
 
   const handleContinue = () => {
-    if (!selectedSlot || isAuthLoading) return;
+    if (!isOnline || !selectedSlot || !activeServiceId || isAuthLoading) return;
+    const bookUrl = `/providers/${providerId}/book?serviceId=${encodeURIComponent(
+      activeServiceId,
+    )}&startAt=${encodeURIComponent(selectedSlot.startAt)}`;
+
     if (!currentUser) {
-      const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-      router.push(`/auth/signin?redirect=${redirect}`);
+      router.push(`/auth/signin?redirect=${encodeURIComponent(bookUrl)}`);
       return;
     }
-    notifyComingSoon();
+    router.push(bookUrl);
   };
 
   const selectedDayLabel = `${DAY_NAMES[dayOfWeekOf(selectedDate)]}, ${formatDateOnly(selectedDate)}`;
 
   return (
     <section className="rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
+      {!isOnline && (
+        <div
+          role="alert"
+          className="mb-5 flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-foreground"
+        >
+          <AlertCircle className="mt-0.5 size-5 shrink-0 text-warning" />
+          <div>
+            <p className="font-semibold">Thợ hiện đang tạm nghỉ nhận việc</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Bạn vẫn có thể xem lịch dự kiến bên dưới nhưng hiện chưa thể gửi yêu cầu đặt lịch mới cho thợ này.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {services.length > 0 && (
+        <div className="mb-5 border-b border-border pb-5">
+          <p className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Chọn dịch vụ cần đặt
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {services.map((item) => {
+              const isPicked = item.id === activeServiceId;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setPickedServiceId(item.id);
+                    setSelectedStartAt(null);
+                  }}
+                  aria-pressed={isPicked}
+                  className={cn(
+                    "flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors",
+                    isPicked
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                      : "border-border hover:bg-muted/60",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {PRICE_UNIT_LABELS[item.priceUnit]} • {item.durationMinutes} phút
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-bold text-primary">
+                    {formatVnd(item.basePrice)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-foreground">Chọn ngày &amp; khung giờ phục vụ</h2>
@@ -237,11 +326,15 @@ export function SlotPicker({
         <Button
           type="button"
           size="lg"
-          disabled={!selectedSlot || isAuthLoading}
+          disabled={!isOnline || !selectedSlot || !activeServiceId || isAuthLoading}
           onClick={handleContinue}
           className="px-4"
         >
-          {!isAuthLoading && !currentUser ? "Đăng nhập để đặt lịch" : "Tiếp tục đặt lịch"}
+          {!isOnline
+            ? "Thợ đang tạm nghỉ"
+            : !isAuthLoading && !currentUser
+              ? "Đăng nhập để đặt lịch"
+              : "Tiếp tục đặt lịch"}
         </Button>
       </div>
     </section>

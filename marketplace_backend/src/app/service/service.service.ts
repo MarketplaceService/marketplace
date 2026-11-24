@@ -94,7 +94,6 @@ export class ServiceService {
           id: child.id,
           name: child.name,
           slug: child.slug,
-          icon: child.icon,
           activeServicesCount: countMap.get(child.id) || 0,
         }));
 
@@ -102,7 +101,6 @@ export class ServiceService {
         id: cat.id,
         name: cat.name,
         slug: cat.slug,
-        icon: cat.icon,
         activeServicesCount: activeCount,
         children: childrenWithCount,
       };
@@ -211,7 +209,6 @@ export class ServiceService {
           id: service.category.id,
           name: service.category.name,
           slug: service.category.slug,
-          icon: service.category.icon,
         },
         provider: {
           id: service.provider.id,
@@ -304,7 +301,6 @@ export class ServiceService {
           id: string;
           name: string;
           slug: string;
-          icon: string | null;
         };
       };
       provider: {
@@ -371,7 +367,6 @@ export class ServiceService {
               id: service.category.id,
               name: service.category.name,
               slug: service.category.slug,
-              icon: service.category.icon,
             },
           },
           provider: {
@@ -470,7 +465,6 @@ export class ServiceService {
         id: service.category.id,
         name: service.category.name,
         slug: service.category.slug,
-        icon: service.category.icon,
       },
       provider: {
         id: service.provider.id,
