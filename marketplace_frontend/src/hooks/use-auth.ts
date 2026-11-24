@@ -1,5 +1,6 @@
 import { mutationErrorToast } from "@/lib/api/api-error";
 import axiosInstance from "@/lib/axios";
+import { disconnectChatSocket } from "@/lib/chat/chat-socket";
 import { authSerivce } from "@/services/auth.services";
 
 import {
@@ -71,6 +72,7 @@ export const resetUserCache = (
   queryClient: QueryClient,
   session: AuthSession = SIGNED_OUT_SESSION,
 ) => {
+  disconnectChatSocket();
   queryClient.removeQueries();
   queryClient.setQueryData(authSessionQuery.queryKey, session);
 };
