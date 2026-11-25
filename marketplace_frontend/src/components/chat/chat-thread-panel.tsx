@@ -271,7 +271,7 @@ export function ChatThreadPanel({
             <ArrowLeft className="size-5" />
           </button>
 
-          <div className="relative shrink-0">
+          <div className="relative size-10 shrink-0 sm:size-12">
             <Avatar className="size-10 rounded-xl ring-2 ring-primary/20 shadow-xs sm:size-12">
               {conversation.partner.avatarUrl && (
                 <AvatarImage
@@ -284,9 +284,17 @@ export function ChatThreadPanel({
                 {conversation.partner.displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            {conversation.partner.isOnline && (
-              <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-emerald-500 ring-2 ring-card" />
-            )}
+            <span
+              title={
+                conversation.partner.isOnline ? "Đang hoạt động" : "Ngoại tuyến"
+              }
+              className={cn(
+                "absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-card",
+                conversation.partner.isOnline
+                  ? "bg-emerald-500"
+                  : "bg-slate-300 dark:bg-slate-600",
+              )}
+            />
           </div>
 
           <div className="min-w-0 space-y-0.5">

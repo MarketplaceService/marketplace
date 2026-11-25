@@ -193,7 +193,7 @@ export function ConversationListSidebar({
                     : "border-transparent hover:bg-muted/60",
                 )}
               >
-                <div className="relative shrink-0">
+                <div className="relative size-11 shrink-0 self-start">
                   <Avatar className="size-11 rounded-xl border border-border shadow-2xs">
                     {item.partner.avatarUrl && (
                       <AvatarImage
@@ -206,9 +206,15 @@ export function ConversationListSidebar({
                       {item.partner.displayName.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {item.partner.isOnline && (
-                    <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-emerald-500 ring-2 ring-card" />
-                  )}
+                  <span
+                    title={item.partner.isOnline ? "Đang hoạt động" : "Ngoại tuyến"}
+                    className={cn(
+                      "absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-card",
+                      item.partner.isOnline
+                        ? "bg-emerald-500"
+                        : "bg-slate-300 dark:bg-slate-600",
+                    )}
+                  />
                 </div>
 
                 <div className="min-w-0 flex-1">

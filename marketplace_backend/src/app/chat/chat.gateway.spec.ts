@@ -19,16 +19,24 @@ function buildGateway() {
   } as unknown as jest.Mocked<SessionAuthService>;
 
   const createSystemMessageForConversation = jest.fn();
+  const getChatPartnerUserIds = jest.fn().mockResolvedValue([USER_B]);
   const chatService = {
     assertMembership: jest.fn(),
     sendTextMessage: jest.fn(),
     markAsRead: jest.fn(),
     getPartnerUserId: jest.fn(),
+    getChatPartnerUserIds,
     createSystemMessageForConversation,
   };
 
+  const markUserSocketConnected = jest.fn(() => true);
+  const markUserSocketDisconnected = jest.fn(() => true);
+  const emitPresenceChange = jest.fn();
   const realtimePublisher = {
     attachServer: jest.fn(),
+    markUserSocketConnected,
+    markUserSocketDisconnected,
+    emitPresenceChange,
   } as unknown as jest.Mocked<ChatRealtimePublisher>;
 
   const providerProfileRepo = {
@@ -61,6 +69,10 @@ function buildGateway() {
     sessionAuthService,
     chatService,
     createSystemMessageForConversation,
+    getChatPartnerUserIds,
+    markUserSocketConnected,
+    markUserSocketDisconnected,
+    emitPresenceChange,
     providerProfileRepo,
     serverMock,
     emitMock,
@@ -87,8 +99,13 @@ describe('ChatGateway', () => {
     expect(socket.join).not.toHaveBeenCalled();
   });
 
-  it('authenticates valid user via session cookie and joins personal room', async () => {
-    const { gateway, sessionAuthService } = buildGateway();
+  it('authenticates valid user via session cookie, joins personal room, and emits online presence', async () => {
+    const {
+      gateway,
+      sessionAuthService,
+      markUserSocketConnected,
+      emitPresenceChange,
+    } = buildGateway();
     const user = {
       id: USER_A,
       role: UserRole.CUSTOMER,
@@ -98,6 +115,7 @@ describe('ChatGateway', () => {
     sessionAuthService.resolveAuthenticatedUser.mockResolvedValue(user);
 
     const socket = {
+      id: 'sock-a-1',
       handshake: { headers: { cookie: 'better-auth.session_token=abc.sig' } },
       data: {},
       emit: jest.fn(),
@@ -109,6 +127,11 @@ describe('ChatGateway', () => {
 
     expect(socket.data.user).toBe(user);
     expect(socket.join).toHaveBeenCalledWith(`user_${USER_A}`);
+    expect(markUserSocketConnected).toHaveBeenCalledWith(USER_A, 'sock-a-1');
+    expect(emitPresenceChange).toHaveBeenCalledWith(USER_A, true, [USER_B]);
+
+    await gateway.handleDisconnect(socket as never);
+    expect(emitPresenceChange).toHaveBeenCalledWith(USER_A, false, [USER_B]);
   });
 
   it('rejects unauthorized room join without joining room', async () => {

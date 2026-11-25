@@ -80,9 +80,11 @@ function createMocks() {
 
   const emitNewMessage = jest.fn();
   const emitReadReceipt = jest.fn();
+  const isUserOnline = jest.fn(() => false);
   const realtimePublisher = {
     emitNewMessage,
     emitReadReceipt,
+    isUserOnline,
   } as unknown as ChatRealtimePublisher;
 
   txManager.getRepository.mockImplementation((entity: unknown) => {

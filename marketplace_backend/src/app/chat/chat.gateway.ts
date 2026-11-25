@@ -109,6 +109,17 @@ export class ChatGateway
 
       client.data.user = user;
       await client.join(userRoom(user.id));
+
+      const becameOnline = this.realtimePublisher.markUserSocketConnected(
+        user.id,
+        client.id,
+      );
+      if (becameOnline) {
+        const partnerIds = await this.chatService.getChatPartnerUserIds(
+          user.id,
+        );
+        this.realtimePublisher.emitPresenceChange(user.id, true, partnerIds);
+      }
     } catch (error: unknown) {
       this.logger.warn({
         msg: 'chat.socket.auth_failed',
@@ -127,12 +138,27 @@ export class ChatGateway
     const user = client.data.user;
     if (!user) return;
 
-    // Chỉ kết thúc cuộc gọi nếu user không còn socket nào khác đang mở
-    const remainingSockets = await this.server
-      ?.in(userRoom(user.id))
-      .fetchSockets();
-    if (remainingSockets && remainingSockets.length > 0) {
+    const becameOffline = this.realtimePublisher.markUserSocketDisconnected(
+      user.id,
+      client.id,
+    );
+    if (!becameOffline) {
       return;
+    }
+
+    try {
+      const partnerIds = await this.chatService.getChatPartnerUserIds(user.id);
+      this.realtimePublisher.emitPresenceChange(user.id, false, partnerIds);
+    } catch (error: unknown) {
+      this.logger.warn({
+        msg: 'chat.presence.disconnect_notify_failed',
+        error:
+          error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : 'Unknown error',
+      });
     }
 
     const callConversationId = this.userToCallId.get(user.id);

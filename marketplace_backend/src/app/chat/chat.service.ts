@@ -577,6 +577,19 @@ export class ChatService {
     return participants.find((p) => p.userId !== userId)?.userId ?? null;
   }
 
+  async getChatPartnerUserIds(userId: string): Promise<string[]> {
+    const rows = await this.dataSource.query<Array<{ user_id: string }>>(
+      `SELECT DISTINCT cp2.user_id
+       FROM conversation_participant cp1
+       INNER JOIN conversation_participant cp2
+         ON cp2.conversation_id = cp1.conversation_id
+        AND cp2.user_id <> cp1.user_id
+       WHERE cp1.user_id = $1`,
+      [userId],
+    );
+    return rows.map((row) => row.user_id);
+  }
+
   private async ensureBookingConversation(
     bookingId: string,
     customerId: string,
@@ -878,11 +891,7 @@ export class ChatService {
             ? partnerProvider?.verificationStatus ===
               VerificationStatus.APPROVED
             : Boolean(partnerUser?.emailVerified),
-          isOnline: isPartnerProviderRole
-            ? (conv.booking?.provider?.isOnline ??
-              partnerProvider?.isOnline ??
-              true)
-            : true,
+          isOnline: this.realtimePublisher.isUserOnline(partnerUserId),
           subtitle: partnerSubtitle,
         },
         booking: conv.booking

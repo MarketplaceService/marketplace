@@ -321,11 +321,35 @@ export function useChatRealtime({
       });
     };
 
+    const handlePresence = (payload: { userId: string; isOnline: boolean }) => {
+      queryClient.setQueriesData<ConversationsResponse>(
+        { queryKey: [...chatQueryKeys.all, "conversations"] },
+        (prev) => {
+          if (!prev) return prev;
+          let changed = false;
+          const items = prev.items.map((item) => {
+            if (item.partner.userId !== payload.userId) return item;
+            if (item.partner.isOnline === payload.isOnline) return item;
+            changed = true;
+            return {
+              ...item,
+              partner: {
+                ...item.partner,
+                isOnline: payload.isOnline,
+              },
+            };
+          });
+          return changed ? { ...prev, items } : prev;
+        },
+      );
+    };
+
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.on("chat:new_message", handleNewMessage);
     socket.on("chat:conversation_updated", handleConversationUpdated);
     socket.on("chat:read_receipt", handleReadReceipt);
+    socket.on("chat:presence", handlePresence);
 
     if (!socket.connected) {
       socket.connect();
@@ -339,6 +363,7 @@ export function useChatRealtime({
       socket.off("chat:new_message", handleNewMessage);
       socket.off("chat:conversation_updated", handleConversationUpdated);
       socket.off("chat:read_receipt", handleReadReceipt);
+      socket.off("chat:presence", handlePresence);
     };
   }, [
     enabled,
