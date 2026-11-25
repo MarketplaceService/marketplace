@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ReviewService } from 'src/app/review/review.service';
 import { StorageService } from 'src/app/storage/storage.service';
 import { User } from 'src/app/user/entities/user.entity';
 import { apiBadRequest, apiNotFound } from 'src/shared/helpers/api-i18n';
@@ -59,6 +60,7 @@ export class ProviderService {
     private readonly userRepo: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly storageService: StorageService,
+    private readonly reviewService: ReviewService,
   ) {}
 
   private getDocumentPrefix(userId: string): string {
@@ -415,6 +417,9 @@ export class ProviderService {
     }
 
     const [enriched] = await this.attachCategoryNames([profile]);
+    const ratingSummary = await this.reviewService.getProviderRatingSummary(
+      profile.id,
+    );
     const area = profile.serviceAreas.find((item) => item.isActive) ?? null;
     const activeServices = (profile.services ?? [])
       .filter((item) => item.status === ServiceStatus.ACTIVE)
@@ -437,6 +442,8 @@ export class ProviderService {
       experienceYears: profile.experienceYears,
       isOnline: profile.isOnline ?? true,
       verifiedAt: profile.approvedAt,
+      ratingAverage: ratingSummary.ratingAverage,
+      reviewCount: ratingSummary.reviewCount,
       serviceArea: area
         ? { areaName: area.areaName, radiusKm: Number(area.radiusKm) }
         : null,

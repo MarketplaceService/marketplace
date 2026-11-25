@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class CheckServiceAreaDto {
   @IsNumber()
@@ -39,4 +46,3 @@ export class RejectProviderDto {
   @IsNotEmpty({ message: 'Lý do từ chối không được để trống' })
   reason: string;
 }
-

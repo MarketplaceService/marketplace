@@ -1,4 +1,5 @@
 import axiosInstance from "@/lib/axios";
+import type { InspectionPhoto } from "@/types/booking.types";
 
 export interface ProviderDocumentItem {
   id?: string;
@@ -208,6 +209,24 @@ export const providerServices = {
     const { data } = await axiosInstance.get<PublicProviderProfile>(`/providers/${id}`);
     return data;
   },
+
+  getProviderReviews: async (
+    id: string,
+    params?: { page?: number; limit?: number },
+  ) => {
+    const { data } = await axiosInstance.get<ProviderReviewsResponse>(
+      `/providers/${id}/reviews`,
+      { params },
+    );
+    return data;
+  },
+
+  getProviderRadar: async (id: string) => {
+    const { data } = await axiosInstance.get<ProviderRadarResponse>(
+      `/providers/${id}/radar`,
+    );
+    return data;
+  },
 };
 
 export interface UpdateServiceAreaPayload {
@@ -239,7 +258,76 @@ export interface PublicProviderProfile {
   experienceYears: number | null;
   isOnline: boolean;
   verifiedAt: string | null;
+  ratingAverage: number;
+  reviewCount: number;
   serviceArea: { areaName: string | null; radiusKm: number } | null;
   services: PublicProviderServiceItem[];
+}
+
+export interface ProviderReviewItem {
+  id: string;
+  bookingId: string;
+  rating: number;
+  priceMatched: boolean;
+  comment: string | null;
+  createdAt: string;
+  serviceTitle: string;
+  customer: {
+    name: string;
+    ward: string | null;
+    avatarUrl: string | null;
+  };
+  inspectionImages: {
+    before: InspectionPhoto[];
+    after: InspectionPhoto[];
+  } | null;
+}
+
+export interface ProviderReviewsResponse {
+  ratingAverage: number;
+  reviewCount: number;
+  items: ProviderReviewItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ProviderRadarResponse {
+  providerId: string;
+  reviewCount: number;
+  ratingAverage: number;
+  punctuality: number;
+  priceAdherence: number;
+  skillQuality: number;
+  completionRate: number;
+  acceptanceSpeed: number;
+  metrics: {
+    punctuality: {
+      score: number;
+      onTimeCount: number;
+      totalStartedCount: number;
+    };
+    priceAdherence: {
+      score: number;
+      matchedCount: number;
+      totalReviewCount: number;
+    };
+    skillQuality: {
+      score: number;
+      averageRating: number;
+      totalReviewCount: number;
+    };
+    completionRate: {
+      score: number;
+      completedCount: number;
+      denominatorCount: number;
+    };
+    acceptanceSpeed: {
+      score: number;
+      avgResponseMinutes: number | null;
+      respondedCount: number;
+    };
+  };
 }
 

@@ -34,6 +34,8 @@ export interface ServiceListItem {
     phone: string | null;
     areaName: string | null;
     isOnline: boolean;
+    ratingAverage: number;
+    reviewCount: number;
   };
 }
 
@@ -64,6 +66,8 @@ export interface ServiceDetailItem {
     phone: string | null;
     avatar: string | null;
     verificationStatus: string;
+    ratingAverage: number;
+    reviewCount: number;
     serviceAreas: Array<{
       id: string;
       areaName: string | null;
@@ -90,6 +94,8 @@ export interface NearbyServiceItem {
     experienceYears: number;
     avatar: string | null;
     isOnline: boolean;
+    ratingAverage: number;
+    reviewCount: number;
   };
   location: {
     areaName: string | null;

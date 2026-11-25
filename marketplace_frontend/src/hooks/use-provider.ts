@@ -12,6 +12,9 @@ import { toast } from "sonner";
 export const PROVIDER_KEYS = {
   myProfile: ["provider", "me"] as const,
   publicProfile: (id: string) => ["providers", id] as const,
+  reviews: (id: string, params?: { page?: number; limit?: number }) =>
+    ["providers", id, "reviews", params] as const,
+  radar: (id: string) => ["providers", id, "radar"] as const,
   adminList: (filters?: { search?: string; category?: string; status?: string }) =>
     ["admin", "providers", filters] as const,
   adminDetail: (id: string) => ["admin", "providers", id] as const,
@@ -59,6 +62,27 @@ export function usePublicProvider(id: string) {
   return useQuery({
     queryKey: PROVIDER_KEYS.publicProfile(id),
     queryFn: () => providerServices.getPublicProfile(id),
+    enabled: !!id,
+    retry: false,
+  });
+}
+
+export function useProviderReviews(
+  id: string,
+  params?: { page?: number; limit?: number },
+) {
+  return useQuery({
+    queryKey: PROVIDER_KEYS.reviews(id, params),
+    queryFn: () => providerServices.getProviderReviews(id, params),
+    enabled: !!id,
+    retry: false,
+  });
+}
+
+export function useProviderRadar(id: string) {
+  return useQuery({
+    queryKey: PROVIDER_KEYS.radar(id),
+    queryFn: () => providerServices.getProviderRadar(id),
     enabled: !!id,
     retry: false,
   });

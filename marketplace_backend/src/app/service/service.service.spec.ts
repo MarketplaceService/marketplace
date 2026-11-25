@@ -8,6 +8,7 @@ import {
 } from './service.service';
 import { Service } from './entities/service.entity';
 import { ServiceCategory } from './entities/service-category.entity';
+import { ReviewService } from '../review/review.service';
 import { ServiceStatus } from 'src/shared/types/service-status.enum';
 import { VerificationStatus } from 'src/shared/types/verification-status.enum';
 import { PriceUnit } from 'src/shared/types/price-unit.enum';
@@ -23,6 +24,10 @@ describe('ServiceService Unit Tests', () => {
     find: jest.Mock;
     findOne: jest.Mock;
   };
+  let reviewService: {
+    getProviderRatingSummary: jest.Mock;
+    getProviderRatingSummaryMap: jest.Mock;
+  };
 
   beforeEach(async () => {
     serviceRepo = {
@@ -36,6 +41,14 @@ describe('ServiceService Unit Tests', () => {
       findOne: jest.fn(),
     };
 
+    reviewService = {
+      getProviderRatingSummary: jest.fn().mockResolvedValue({
+        ratingAverage: 0,
+        reviewCount: 0,
+      }),
+      getProviderRatingSummaryMap: jest.fn().mockResolvedValue(new Map()),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ServiceService,
@@ -46,6 +59,10 @@ describe('ServiceService Unit Tests', () => {
         {
           provide: getRepositoryToken(ServiceCategory),
           useValue: categoryRepo,
+        },
+        {
+          provide: ReviewService,
+          useValue: reviewService,
         },
       ],
     }).compile();
@@ -382,6 +399,8 @@ describe('ServiceService Unit Tests', () => {
       expect(result.provider.verificationStatus).toBe(
         VerificationStatus.APPROVED,
       );
+      expect(result.provider.ratingAverage).toBe(0);
+      expect(result.provider.reviewCount).toBe(0);
       expect(result.provider.serviceAreas).toHaveLength(1);
     });
 
@@ -391,6 +410,86 @@ describe('ServiceService Unit Tests', () => {
       await expect(service.getServiceDetail('non-existent-id')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('S25.4: Real ratingAverage & reviewCount integration', () => {
+    it('nên sắp xếp searchServices theo ratingAverage thật thay vì experienceYears', async () => {
+      const mockItems = [
+        {
+          id: 'srv-exp',
+          title: 'Dịch vụ A',
+          description: 'Mô tả A',
+          basePrice: 200000,
+          priceUnit: PriceUnit.FIXED,
+          durationMinutes: 60,
+          status: ServiceStatus.ACTIVE,
+          createdAt: new Date('2026-11-20T00:00:00Z'),
+          category: { id: 'cat-1', name: 'Điện lạnh', slug: 'sua-dien-lanh' },
+          provider: {
+            id: 'prov-high-exp-low-rating',
+            userId: 'u-1',
+            displayName: 'Thợ Kinh Nghiệm Cao',
+            experienceYears: 15,
+            phone: '0900000001',
+            isOnline: true,
+            user: { image: null },
+            serviceAreas: [],
+          },
+        },
+        {
+          id: 'srv-rated',
+          title: 'Dịch vụ B',
+          description: 'Mô tả B',
+          basePrice: 200000,
+          priceUnit: PriceUnit.FIXED,
+          durationMinutes: 60,
+          status: ServiceStatus.ACTIVE,
+          createdAt: new Date('2026-11-19T00:00:00Z'),
+          category: { id: 'cat-1', name: 'Điện lạnh', slug: 'sua-dien-lanh' },
+          provider: {
+            id: 'prov-low-exp-high-rating',
+            userId: 'u-2',
+            displayName: 'Thợ Đánh Giá Cao',
+            experienceYears: 2,
+            phone: '0900000002',
+            isOnline: true,
+            user: { image: null },
+            serviceAreas: [],
+          },
+        },
+      ];
+
+      const mockQb = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([mockItems, 2]),
+      };
+      serviceRepo.createQueryBuilder.mockReturnValue(mockQb);
+      reviewService.getProviderRatingSummaryMap.mockResolvedValue(
+        new Map([
+          ['prov-high-exp-low-rating', { ratingAverage: 3.5, reviewCount: 4 }],
+          ['prov-low-exp-high-rating', { ratingAverage: 4.9, reviewCount: 12 }],
+        ]),
+      );
+
+      const result = await service.searchServices({
+        sort: 'rating',
+        page: 1,
+        limit: 12,
+      });
+
+      expect(result.items[0].provider.id).toBe('prov-low-exp-high-rating');
+      expect(result.items[0].provider.ratingAverage).toBe(4.9);
+      expect(result.items[0].provider.reviewCount).toBe(12);
+      expect(result.items[1].provider.id).toBe('prov-high-exp-low-rating');
+      expect(result.items[1].provider.ratingAverage).toBe(3.5);
     });
   });
 });

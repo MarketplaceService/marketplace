@@ -157,6 +157,8 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       phone: null,
       areaName: "Trạm Hiệp Phú - Lê Văn Việt, Quận 9",
       isOnline: true,
+      ratingAverage: 0,
+      reviewCount: 0,
     },
   },
   {
@@ -184,6 +186,8 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       phone: null,
       areaName: "Trạm Tăng Nhơn Phú A - Man Thiện, Quận 9",
       isOnline: true,
+      ratingAverage: 0,
+      reviewCount: 0,
     },
   },
   {
@@ -211,6 +215,8 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       phone: null,
       areaName: "Trạm Phước Long B - Đỗ Xuân Hợp, Quận 9",
       isOnline: true,
+      ratingAverage: 0,
+      reviewCount: 0,
     },
   },
   {
@@ -238,6 +244,8 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       phone: null,
       areaName: "Trạm Tăng Nhơn Phú B - Dương Đình Hội, Quận 9",
       isOnline: true,
+      ratingAverage: 0,
+      reviewCount: 0,
     },
   },
   {
@@ -265,6 +273,8 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       phone: null,
       areaName: "Trạm Long Thạnh Mỹ - Khu Công Nghệ Cao, Quận 9",
       isOnline: true,
+      ratingAverage: 0,
+      reviewCount: 0,
     },
   },
   {
@@ -292,6 +302,8 @@ const DEFAULT_SHOWCASE_SERVICES: ServiceListItem[] = [
       phone: null,
       areaName: "Trạm Tân Phú - Suối Tiên, Quận 9",
       isOnline: true,
+      ratingAverage: 0,
+      reviewCount: 0,
     },
   },
 ];
@@ -316,6 +328,8 @@ function toFallbackServiceDetail(item: ServiceListItem): ServiceDetailItem {
       phone: item.provider.phone,
       avatar: item.provider.avatar,
       verificationStatus: "APPROVED",
+      ratingAverage: item.provider.ratingAverage,
+      reviewCount: item.provider.reviewCount,
       serviceAreas: item.provider.areaName
         ? [
             {
@@ -1936,10 +1950,14 @@ export function GuestLandingView() {
                       <div>
                         <span className="text-sm font-bold text-[#0F172A] flex items-center justify-center gap-1">
                           <Star className="w-3.5 h-3.5 fill-[#D97706] text-[#D97706]" />{" "}
-                          5.0
+                          {item.provider.reviewCount > 0
+                            ? item.provider.ratingAverage.toFixed(1)
+                            : "0.0"}
                         </span>
                         <span className="block text-[11px] text-[#64748B]">
-                          Đánh giá
+                          {item.provider.reviewCount > 0
+                            ? `${item.provider.reviewCount} đánh giá`
+                            : "Chưa có đánh giá"}
                         </span>
                       </div>
                       <div>

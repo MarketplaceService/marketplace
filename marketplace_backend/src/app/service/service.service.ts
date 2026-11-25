@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ReviewService } from 'src/app/review/review.service';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Service } from './entities/service.entity';
 import { ServiceCategory } from './entities/service-category.entity';
@@ -50,6 +51,7 @@ export class ServiceService {
     private readonly serviceRepo: Repository<Service>,
     @InjectRepository(ServiceCategory)
     private readonly categoryRepo: Repository<ServiceCategory>,
+    private readonly reviewService: ReviewService,
   ) {}
 
   /**
@@ -169,6 +171,7 @@ export class ServiceService {
     }
 
     // Sắp xếp
+    const sortByRating = dto.sort === 'rating';
     switch (dto.sort) {
       case 'price_asc':
         qb.orderBy('service.basePrice', 'ASC');
@@ -177,25 +180,52 @@ export class ServiceService {
         qb.orderBy('service.basePrice', 'DESC');
         break;
       case 'rating':
-        qb.orderBy('provider.experienceYears', 'DESC').addOrderBy(
-          'service.createdAt',
-          'DESC',
-        );
-        break;
       case 'newest':
       default:
         qb.orderBy('service.createdAt', 'DESC');
         break;
     }
 
-    qb.skip(skip).take(limit);
+    if (!sortByRating) {
+      qb.skip(skip).take(limit);
+    }
 
-    const [items, total] = await qb.getManyAndCount();
+    const [rawItems, total] = await qb.getManyAndCount();
+    const ratingMap = await this.reviewService.getProviderRatingSummaryMap(
+      rawItems.map((service) => service.provider.id),
+    );
+
+    let items = rawItems;
+    if (sortByRating) {
+      items = [...rawItems]
+        .sort((a, b) => {
+          const ratingA = ratingMap.get(a.provider.id) ?? {
+            ratingAverage: 0,
+            reviewCount: 0,
+          };
+          const ratingB = ratingMap.get(b.provider.id) ?? {
+            ratingAverage: 0,
+            reviewCount: 0,
+          };
+          return (
+            ratingB.ratingAverage - ratingA.ratingAverage ||
+            ratingB.reviewCount - ratingA.reviewCount ||
+            (b.provider.experienceYears ?? 0) -
+              (a.provider.experienceYears ?? 0) ||
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        })
+        .slice(skip, skip + limit);
+    }
 
     const formattedItems = items.map((service) => {
       const activeArea = (service.provider.serviceAreas || []).find(
         (a) => a.isActive,
       );
+      const ratingSummary = ratingMap.get(service.provider.id) ?? {
+        ratingAverage: 0,
+        reviewCount: 0,
+      };
       return {
         id: service.id,
         title: service.title,
@@ -219,6 +249,8 @@ export class ServiceService {
           phone: service.provider.phone,
           areaName: activeArea?.areaName ?? null,
           isOnline: service.provider.isOnline ?? true,
+          ratingAverage: ratingSummary.ratingAverage,
+          reviewCount: ratingSummary.reviewCount,
         },
       };
     });
@@ -289,6 +321,9 @@ export class ServiceService {
     }
 
     const candidateServices = await qb.getMany();
+    const ratingMap = await this.reviewService.getProviderRatingSummaryMap(
+      candidateServices.map((service) => service.provider.id),
+    );
     const results: Array<{
       service: {
         id: string;
@@ -309,6 +344,8 @@ export class ServiceService {
         experienceYears: number;
         avatar: string | null;
         isOnline: boolean;
+        ratingAverage: number;
+        reviewCount: number;
       };
       location: {
         areaName: string | null;
@@ -354,6 +391,10 @@ export class ServiceService {
         const { distanceFee, isFreeShipping } =
           calculateDistanceFee(distanceKm);
         const estimatedTotal = Number(service.basePrice) + distanceFee;
+        const ratingSummary = ratingMap.get(service.provider.id) ?? {
+          ratingAverage: 0,
+          reviewCount: 0,
+        };
 
         results.push({
           service: {
@@ -375,6 +416,8 @@ export class ServiceService {
             experienceYears: service.provider.experienceYears ?? 0,
             avatar: service.provider.user?.image ?? null,
             isOnline: service.provider.isOnline ?? true,
+            ratingAverage: ratingSummary.ratingAverage,
+            reviewCount: ratingSummary.reviewCount,
           },
           location: {
             areaName: bestArea.areaName,
@@ -402,7 +445,8 @@ export class ServiceService {
       case 'rating':
         results.sort(
           (a, b) =>
-            b.provider.experienceYears - a.provider.experienceYears ||
+            b.provider.ratingAverage - a.provider.ratingAverage ||
+            b.provider.reviewCount - a.provider.reviewCount ||
             a.distance.distanceKm - b.distance.distanceKm,
         );
         break;
@@ -442,6 +486,10 @@ export class ServiceService {
       );
     }
 
+    const ratingSummary = await this.reviewService.getProviderRatingSummary(
+      service.provider.id,
+    );
+
     const activeAreas = (service.provider.serviceAreas || [])
       .filter((a) => a.isActive)
       .map((a) => ({
@@ -475,6 +523,8 @@ export class ServiceService {
         phone: service.provider.phone,
         avatar: service.provider.user?.image ?? null,
         verificationStatus: service.provider.verificationStatus,
+        ratingAverage: ratingSummary.ratingAverage,
+        reviewCount: ratingSummary.reviewCount,
         serviceAreas: activeAreas,
       },
     };

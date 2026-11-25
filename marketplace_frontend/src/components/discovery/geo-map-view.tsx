@@ -1,6 +1,5 @@
 "use client";
 
-import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAddresses } from "@/hooks/use-addresses";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -431,14 +430,11 @@ function GeoMapViewInner({
                 >
                   <div className="flex items-start gap-3">
                     {/* Avatar thợ */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        notifyComingSoon();
-                      }}
+                    <Link
+                      href={providerProfileHref}
+                      onClick={(e) => e.stopPropagation()}
                       title="Xem hồ sơ thợ"
-                      className="shrink-0 hover:opacity-90 transition cursor-pointer"
+                      className="shrink-0 hover:opacity-90 transition"
                     >
                       <Avatar className="h-12 w-12 border border-border">
                         <AvatarImage
@@ -450,26 +446,27 @@ function GeoMapViewInner({
                           {(item.provider.displayName.trim().charAt(0) || "?").toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                    </button>
+                    </Link>
 
                     {/* Nội dung thông tin thợ & dịch vụ */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <h3 className="font-semibold text-foreground text-sm truncate">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              notifyComingSoon();
-                            }}
-                            className="hover:text-primary hover:underline cursor-pointer text-left truncate max-w-full"
+                          <Link
+                            href={providerProfileHref}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:text-primary hover:underline text-left truncate block max-w-full"
                           >
                             {item.provider.displayName}
-                          </button>
+                          </Link>
                         </h3>
                         <div className="flex items-center gap-1 text-xs text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/70 font-semibold shrink-0">
                           <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                          <span>5.0</span>
+                          <span>
+                            {item.provider.reviewCount > 0
+                              ? `${item.provider.ratingAverage.toFixed(1)} (${item.provider.reviewCount})`
+                              : "0.0"}
+                          </span>
                         </div>
                       </div>
 

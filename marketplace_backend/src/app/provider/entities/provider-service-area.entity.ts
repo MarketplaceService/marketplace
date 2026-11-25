@@ -45,4 +45,3 @@ export class ProviderServiceArea extends BaseUuidEntity {
   @JoinColumn({ name: 'provider_id' })
   provider: ProviderProfile;
 }
-

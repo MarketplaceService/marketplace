@@ -871,6 +871,7 @@ export class BookingService {
           category: true,
         },
         cancelledByUser: true,
+        review: true,
         statusHistories: {
           changedByUser: true,
         },
@@ -896,6 +897,11 @@ export class BookingService {
 
     const payments = await this.bookingPaymentPort.findByBookingId(booking.id);
     const latestPayment = payments[0] ?? null;
+    const existingReview = booking.review ?? null;
+    const canReview =
+      isCustomer &&
+      booking.status === BookingStatus.COMPLETED &&
+      !existingReview;
 
     return {
       ...this.serializeBookingSummary(booking, latestPayment),
@@ -914,6 +920,17 @@ export class BookingService {
       hasRequiredInspection: hasRequiredInspectionPhotos(
         booking.inspectionImages,
       ),
+      canReview,
+      review: existingReview
+        ? {
+            id: existingReview.id,
+            bookingId: existingReview.bookingId,
+            rating: existingReview.rating,
+            priceMatched: existingReview.priceMatched,
+            comment: existingReview.comment,
+            createdAt: toVnIsoString(existingReview.createdAt),
+          }
+        : null,
       payments,
       statusHistories: (booking.statusHistories ?? []).map((history) => ({
         id: history.id,
