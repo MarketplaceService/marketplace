@@ -13,6 +13,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useVoiceCall } from "@/hooks/use-voice-call";
 import type { ChatMessage } from "@/types/chat.types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CallOptionsDialog } from "./call-options-dialog";
 import { ChatImageLightbox } from "./chat-image-lightbox";
 import { ChatThreadPanel } from "./chat-thread-panel";
 import { ConversationListSidebar } from "./conversation-list-sidebar";
@@ -38,6 +39,10 @@ export function ChatWorkspaceView({
   const [lightbox, setLightbox] = useState<{
     url: string;
     caption?: string;
+  } | null>(null);
+  const [callDialogState, setCallDialogState] = useState<{
+    conversationId: string;
+    fallbackNotice: string | null;
   } | null>(null);
 
   const isAuthed = Boolean(currentUser && !currentUser.isAnonymous);
@@ -143,9 +148,17 @@ export function ChatWorkspaceView({
   const { mutate: uploadAttachment, isPending: isUploadingImage } =
     useUploadChatAttachment(activeConversationId);
 
+  const handleCallFallback = useCallback(
+    (conversationId: string, reasonMessage: string) => {
+      setCallDialogState({ conversationId, fallbackNotice: reasonMessage });
+    },
+    [],
+  );
+
   const voiceCall = useVoiceCall({
     enabled: isAuthed,
     currentUserId: currentUser?.id,
+    onCallFallback: handleCallFallback,
   });
 
   const handleSelectConversation = (conversationId: string) => {
@@ -158,15 +171,32 @@ export function ChatWorkspaceView({
     }
   };
 
-  const handleStartCall = () => {
+  const handleOpenCallOptions = () => {
     if (!activeConversation) return;
-    void voiceCall.startCall({
+    setCallDialogState({
       conversationId: activeConversation.id,
-      name: activeConversation.partner.displayName,
-      avatarUrl: activeConversation.partner.avatarUrl,
-      subtitle: activeConversation.booking
-        ? `#${activeConversation.booking.bookingCode} • ${activeConversation.booking.serviceTitle}`
-        : activeConversation.partner.subtitle,
+      fallbackNotice: null,
+    });
+  };
+
+  const callDialogConversation = useMemo(() => {
+    if (!callDialogState) return null;
+    return (
+      conversations.find((c) => c.id === callDialogState.conversationId) ??
+      activeConversation
+    );
+  }, [callDialogState, conversations, activeConversation]);
+
+  const handleStartWebCall = () => {
+    const target = callDialogConversation ?? activeConversation;
+    if (!target) return;
+    void voiceCall.startCall({
+      conversationId: target.id,
+      name: target.partner.displayName,
+      avatarUrl: target.partner.avatarUrl,
+      subtitle: target.booking
+        ? `#${target.booking.bookingCode} • ${target.booking.serviceTitle}`
+        : target.partner.subtitle,
     });
   };
 
@@ -201,9 +231,18 @@ export function ChatWorkspaceView({
         onLoadMore={() => fetchNextPage()}
         onSendMessage={(content) => sendMessage(content)}
         onUploadImage={(file) => uploadAttachment(file)}
-        onStartCall={handleStartCall}
+        onStartCall={handleOpenCallOptions}
         onOpenLightbox={(url, caption) => setLightbox({ url, caption })}
         className={mobileShowThread ? "flex" : "hidden md:flex"}
+      />
+
+      <CallOptionsDialog
+        open={Boolean(callDialogState && callDialogConversation)}
+        conversation={callDialogConversation}
+        fallbackNotice={callDialogState?.fallbackNotice ?? null}
+        callBusy={voiceCall.status !== "idle"}
+        onClose={() => setCallDialogState(null)}
+        onStartWebCall={handleStartWebCall}
       />
 
       <ChatImageLightbox

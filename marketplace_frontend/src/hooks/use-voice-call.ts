@@ -56,9 +56,11 @@ function getMicErrorMessage(error: unknown): string {
 export function useVoiceCall({
   enabled,
   currentUserId,
+  onCallFallback,
 }: {
   enabled: boolean;
   currentUserId?: string;
+  onCallFallback?: (conversationId: string, reasonMessage: string) => void;
 }) {
   const [status, setStatus] = useState<VoiceCallStatus>("idle");
   const [peer, setPeer] = useState<VoiceCallPeerInfo | null>(null);
@@ -75,6 +77,11 @@ export function useVoiceCall({
   );
   const statusRef = useRef<VoiceCallStatus>("idle");
   const peerRef = useRef<VoiceCallPeerInfo | null>(null);
+  const fallbackCallbackRef = useRef(onCallFallback);
+
+  useEffect(() => {
+    fallbackCallbackRef.current = onCallFallback;
+  }, [onCallFallback]);
 
   const updateStatus = useCallback((next: VoiceCallStatus) => {
     statusRef.current = next;
@@ -200,7 +207,10 @@ export function useVoiceCall({
 
       const socket = getChatSocket();
       if (!socket.connected) {
-        toast.error("Chưa kết nối máy chủ thời gian thực, vui lòng thử lại sau.");
+        const msg =
+          "Chưa kết nối máy chủ thời gian thực. Bạn có thể gọi trực tiếp qua số điện thoại.";
+        toast.error(msg);
+        fallbackCallbackRef.current?.(target.conversationId, msg);
         return;
       }
 
@@ -208,7 +218,12 @@ export function useVoiceCall({
       try {
         stream = await acquireMicrophone();
       } catch (error) {
-        toast.error(getMicErrorMessage(error));
+        const msg = getMicErrorMessage(error);
+        toast.error(msg);
+        fallbackCallbackRef.current?.(
+          target.conversationId,
+          `${msg} Bạn có thể gọi qua số điện thoại bên dưới.`,
+        );
         return;
       }
 
@@ -239,18 +254,26 @@ export function useVoiceCall({
 
       if (!ack.ok) {
         cleanupMedia();
-        toast.info(ack.message || "Không thể thực hiện cuộc gọi lúc này");
+        const reasonMsg =
+          ack.message ||
+          "Không thể thực hiện cuộc gọi web lúc này. Bạn có thể gọi qua số điện thoại bên dưới.";
+        toast.info(reasonMsg);
+        fallbackCallbackRef.current?.(target.conversationId, reasonMsg);
         return;
       }
 
       ringTimeoutRef.current = setTimeout(() => {
         if (statusRef.current === "calling" && peerRef.current) {
+          const convId = peerRef.current.conversationId;
           socket.emit("call:reject", {
-            conversationId: peerRef.current.conversationId,
+            conversationId: convId,
             reason: "timeout",
           });
           cleanupMedia();
+          const msg =
+            "Đối phương không bắt máy trên web. Bạn có thể gọi trực tiếp qua số điện thoại bên dưới.";
           toast.info("Đối phương không bắt máy.");
+          fallbackCallbackRef.current?.(convId, msg);
         }
       }, RING_TIMEOUT_MS);
     },
@@ -449,6 +472,7 @@ export function useVoiceCall({
       reason?: string;
     }) => {
       if (peerRef.current?.conversationId !== payload.conversationId) return;
+      const wasCaller = statusRef.current === "calling";
       cleanupMedia();
       if (payload.reason === "timeout") {
         toast.info("Cuộc gọi nhỡ do không có người trả lời.");
@@ -456,6 +480,12 @@ export function useVoiceCall({
         toast.info("Người gọi đã hủy cuộc gọi.");
       } else {
         toast.info("Đối phương đã từ chối cuộc gọi.");
+        if (wasCaller) {
+          fallbackCallbackRef.current?.(
+            payload.conversationId,
+            "Đối phương chưa thể nghe máy trên web. Bạn có thể gọi trực tiếp qua số điện thoại bên dưới.",
+          );
+        }
       }
     };
 
