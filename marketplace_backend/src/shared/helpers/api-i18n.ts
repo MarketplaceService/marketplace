@@ -80,6 +80,8 @@ const messages: Record<string, string> = {
     'Chỉ có thể đánh giá sau khi đơn đặt lịch đã hoàn thành',
   'errors.review.alreadyReviewed': 'Đơn đặt lịch này đã được đánh giá trước đó',
   'errors.review.invalidRating': 'Điểm đánh giá phải từ 1 đến 5 sao',
+  'errors.notification.notFound': 'Không tìm thấy thông báo',
+  'errors.notification.forbidden': 'Bạn không có quyền truy cập thông báo này',
 };
 
 export function translateApiMessage(key: string) {

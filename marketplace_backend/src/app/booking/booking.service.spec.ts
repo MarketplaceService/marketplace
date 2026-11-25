@@ -228,6 +228,10 @@ describe('BookingService', () => {
       ),
     };
 
+    const notificationServiceMock = {
+      createNotification: jest.fn().mockResolvedValue(null),
+    };
+
     service = new BookingService(
       dataSource as never,
       bookingRepo as never,
@@ -240,6 +244,7 @@ describe('BookingService', () => {
       {} as never,
       storageServiceMock as never,
       mockPaymentPort,
+      notificationServiceMock as never,
     );
   });
 
@@ -563,5 +568,62 @@ describe('BookingService', () => {
       priceMatched: true,
       comment: 'Làm rất sạch sẽ',
     });
+  });
+
+  it('S28.1: phát sinh thông báo BOOKING cho thợ khi tạo đơn và cho khách khi thợ xác nhận đơn', async () => {
+    const createNotif = jest.fn().mockResolvedValue(null);
+    const svcWithNotif = new BookingService(
+      dataSource as never,
+      bookingRepo as never,
+      {} as never,
+      {} as never,
+      profileRepo as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      mockPaymentPort,
+      { createNotification: createNotif } as never,
+    );
+
+    await svcWithNotif.createBooking(CUSTOMER_ID, {
+      serviceId: SERVICE_ID,
+      addressId: ADDRESS_ID,
+      scheduledStartAt: startAt.toISOString(),
+      paymentMethod: 'payos',
+    });
+
+    expect(createNotif).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: PROVIDER_USER_ID,
+        type: 'BOOKING',
+        referenceType: 'BOOKING',
+        referenceId: BOOKING_ID,
+      }),
+    );
+
+    bookingRepoInTx.findOne.mockResolvedValueOnce({
+      id: BOOKING_ID,
+      bookingCode: 'SV-20261122-AABBCC',
+      customerId: CUSTOMER_ID,
+      providerId: PROVIDER_ID,
+      serviceTitleSnapshot: 'Vệ sinh máy lạnh',
+      status: BookingStatus.PENDING,
+      scheduledStartAt: startAt,
+      scheduledEndAt: new Date(startAt.getTime() + 60 * 60_000),
+      inspectionImages: null,
+    });
+
+    await svcWithNotif.confirmBooking(PROVIDER_USER_ID, BOOKING_ID);
+
+    expect(createNotif).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: CUSTOMER_ID,
+        type: 'BOOKING',
+        referenceType: 'BOOKING',
+        referenceId: BOOKING_ID,
+      }),
+    );
   });
 });

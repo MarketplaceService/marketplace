@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import { Address } from 'src/app/address/entities/address.entity';
+import { NotificationService } from 'src/app/notification/notification.service';
 import { ProviderProfile } from 'src/app/provider/entities/provider-profile.entity';
 import { ProviderServiceArea } from 'src/app/provider/entities/provider-service-area.entity';
 import { ProviderAvailability } from 'src/app/scheduling/entities/provider-availability.entity';
@@ -147,6 +148,7 @@ export class BookingService {
     private readonly timeOffRepo: Repository<ProviderTimeOff>,
     private readonly storageService: StorageService,
     private readonly bookingPaymentPort: BookingPaymentPort,
+    @Optional() private readonly notificationService?: NotificationService,
   ) {}
 
   async previewBooking(userId: string, dto: PreviewBookingDto) {
@@ -316,6 +318,9 @@ export class BookingService {
     }
 
     let createdId = '';
+    let createdBookingCode = '';
+    let createdServiceTitle = '';
+    let providerUserId = '';
 
     try {
       await this.dataSource.transaction(async (manager) => {
@@ -496,6 +501,9 @@ export class BookingService {
         });
 
         createdId = savedBooking.id;
+        createdBookingCode = savedBooking.bookingCode;
+        createdServiceTitle = savedBooking.serviceTitleSnapshot;
+        providerUserId = service.provider.userId;
       });
     } catch (error) {
       const pgCode = getPgDriverErrorCode(error);
@@ -506,6 +514,17 @@ export class BookingService {
         apiBadRequest('errors.booking.serviceInactive');
       }
       throw error;
+    }
+
+    if (providerUserId) {
+      await this.notificationService?.createNotification({
+        userId: providerUserId,
+        type: 'BOOKING',
+        title: 'Bạn có đơn đặt lịch mới',
+        body: `Đơn ${createdBookingCode} (${createdServiceTitle}) đang chờ bạn xác nhận.`,
+        referenceType: 'BOOKING',
+        referenceId: createdId,
+      });
     }
 
     return this.getBookingDetail(
@@ -1413,6 +1432,12 @@ export class BookingService {
       booking: Booking,
     ) => Promise<void>;
   }) {
+    let transitionMeta: {
+      booking: Booking;
+      providerUserId: string | null;
+      actorRole: BookingActorRole;
+    } | null = null;
+
     await this.dataSource.transaction(async (manager) => {
       const bookingRepo = manager.getRepository(Booking);
       const booking = await bookingRepo.findOne({
@@ -1483,7 +1508,136 @@ export class BookingService {
       if (input.onAfterStatusUpdate) {
         await input.onAfterStatusUpdate(manager, savedBooking);
       }
+
+      transitionMeta = {
+        booking: savedBooking,
+        providerUserId: provider?.userId ?? null,
+        actorRole,
+      };
     });
+
+    if (transitionMeta) {
+      await this.dispatchBookingStatusNotification({
+        booking: (transitionMeta as { booking: Booking }).booking,
+        providerUserId: (transitionMeta as { providerUserId: string | null })
+          .providerUserId,
+        actorRole: (transitionMeta as { actorRole: BookingActorRole })
+          .actorRole,
+        targetStatus: input.targetStatus,
+        reason: input.historyReason,
+      });
+    }
+  }
+
+  private async dispatchBookingStatusNotification(input: {
+    booking: Booking;
+    providerUserId: string | null;
+    actorRole: BookingActorRole;
+    targetStatus: BookingStatus;
+    reason: string;
+  }) {
+    if (!this.notificationService) return;
+
+    const { booking, providerUserId, actorRole, targetStatus, reason } = input;
+    const label = `${booking.bookingCode} (${booking.serviceTitleSnapshot})`;
+
+    switch (targetStatus) {
+      case BookingStatus.CONFIRMED:
+        await this.notificationService.createNotification({
+          userId: booking.customerId,
+          type: 'BOOKING',
+          title: 'Đơn đặt lịch đã được xác nhận',
+          body: `Thợ đã xác nhận nhận đơn ${label}.`,
+          referenceType: 'BOOKING',
+          referenceId: booking.id,
+        });
+        break;
+
+      case BookingStatus.REJECTED:
+        await this.notificationService.createNotification({
+          userId: booking.customerId,
+          type: 'BOOKING',
+          title: 'Đơn đặt lịch bị từ chối',
+          body: `Đơn ${label} đã bị thợ từ chối. Lý do: ${reason}`,
+          referenceType: 'BOOKING',
+          referenceId: booking.id,
+        });
+        break;
+
+      case BookingStatus.IN_PROGRESS:
+        await this.notificationService.createNotification({
+          userId: booking.customerId,
+          type: 'BOOKING',
+          title: 'Thợ đang thực hiện công việc',
+          body: `Thợ đã bắt đầu thực hiện đơn ${label}.`,
+          referenceType: 'BOOKING',
+          referenceId: booking.id,
+        });
+        break;
+
+      case BookingStatus.COMPLETED:
+        if (providerUserId) {
+          await this.notificationService.createNotification({
+            userId: providerUserId,
+            type: 'BOOKING',
+            title: 'Đơn đặt lịch đã hoàn tất',
+            body: `Khách hàng đã nghiệm thu và hoàn tất đơn ${label}.`,
+            referenceType: 'BOOKING',
+            referenceId: booking.id,
+          });
+        }
+        break;
+
+      case BookingStatus.CANCELLED:
+        if (actorRole === 'CUSTOMER') {
+          if (providerUserId) {
+            await this.notificationService.createNotification({
+              userId: providerUserId,
+              type: 'BOOKING',
+              title: 'Khách hàng đã hủy đơn đặt lịch',
+              body: `Đơn ${label} đã bị khách hàng hủy. Lý do: ${reason}`,
+              referenceType: 'BOOKING',
+              referenceId: booking.id,
+            });
+          }
+        } else if (actorRole === 'PROVIDER') {
+          await this.notificationService.createNotification({
+            userId: booking.customerId,
+            type: 'BOOKING',
+            title: 'Thợ đã hủy đơn đặt lịch',
+            body: `Đơn ${label} đã bị thợ hủy. Lý do: ${reason}`,
+            referenceType: 'BOOKING',
+            referenceId: booking.id,
+          });
+        } else {
+          await Promise.all([
+            this.notificationService.createNotification({
+              userId: booking.customerId,
+              type: 'BOOKING',
+              title: 'Đơn đặt lịch đã bị hủy bởi quản trị viên',
+              body: `Đơn ${label} đã bị hủy. Lý do: ${reason}`,
+              referenceType: 'BOOKING',
+              referenceId: booking.id,
+            }),
+            ...(providerUserId
+              ? [
+                  this.notificationService.createNotification({
+                    userId: providerUserId,
+                    type: 'BOOKING',
+                    title: 'Đơn đặt lịch đã bị hủy bởi quản trị viên',
+                    body: `Đơn ${label} đã bị hủy. Lý do: ${reason}`,
+                    referenceType: 'BOOKING',
+                    referenceId: booking.id,
+                  }),
+                ]
+              : []),
+          ]);
+        }
+        break;
+
+      default:
+        break;
+    }
   }
 
   private serializeBookingSummary(

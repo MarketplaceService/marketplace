@@ -1,13 +1,14 @@
 "use client";
 
 import { useCurrentUser, useSignOut } from "@/hooks/use-auth";
-import { Bell, Handshake } from "lucide-react";
+import { Handshake } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "./brand-logo";
 import { HeaderMobileNav } from "./header-mobile-nav";
 import { BECOME_PROVIDER_ITEM, HEADER_NAV_ITEMS } from "./header-nav-items";
-import { HeaderAction, NavLink, notifyComingSoon } from "./header-nav-link";
+import { HeaderAction, NavLink } from "./header-nav-link";
 import { UserMenu } from "./header-user-menu";
+import { NotificationBell } from "./notification-bell";
 
 export function Header() {
   const pathname = usePathname();
@@ -53,14 +54,7 @@ export function Header() {
 
           {user && (
             <>
-              <button
-                type="button"
-                aria-label="Thông báo"
-                className="rounded-full p-2 text-muted-foreground transition duration-150 hover:bg-muted hover:text-foreground"
-                onClick={notifyComingSoon}
-              >
-                <Bell className="h-5 w-5" />
-              </button>
+              <NotificationBell />
               <div className="hidden h-6 w-px bg-border sm:block" />
             </>
           )}

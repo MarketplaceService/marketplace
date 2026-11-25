@@ -1,6 +1,7 @@
 "use client";
 
 import { BrandLogo } from "@/components/header/brand-logo";
+import { NotificationBell } from "@/components/header/notification-bell";
 import { UserMenu } from "@/components/header/header-user-menu";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { useCurrentUser, useSignOut } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { Bell, ChevronRight, Menu, type LucideIcon } from "lucide-react";
+import { ChevronRight, Menu, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -44,7 +45,6 @@ export function DashboardShell({
   logoBadge,
   navItems,
   headerExtra,
-  notificationMessage,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
@@ -264,17 +264,7 @@ export function DashboardShell({
           {/* Cánh phải: extra, chuông, user */}
           <div className="flex items-center gap-2 sm:gap-4">
             {headerExtra}
-            <button
-              type="button"
-              onClick={() =>
-                toast.info(notificationMessage || "Không có thông báo mới")
-              }
-              className="relative rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-              aria-label="Thông báo"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
-            </button>
+            <NotificationBell />
 
             <div className="hidden sm:block h-6 w-px bg-border" />
 

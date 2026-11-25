@@ -3,8 +3,10 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { NotificationService } from 'src/app/notification/notification.service';
 import { ReviewService } from 'src/app/review/review.service';
 import { StorageService } from 'src/app/storage/storage.service';
 import { User } from 'src/app/user/entities/user.entity';
@@ -61,6 +63,7 @@ export class ProviderService {
     private readonly dataSource: DataSource,
     private readonly storageService: StorageService,
     private readonly reviewService: ReviewService,
+    @Optional() private readonly notificationService?: NotificationService,
   ) {}
 
   private getDocumentPrefix(userId: string): string {
@@ -691,6 +694,15 @@ export class ProviderService {
         );
     });
 
+    await this.notificationService?.createNotification({
+      userId: profile.userId,
+      type: 'SYSTEM',
+      title: 'Hồ sơ Nhà cung cấp đã được phê duyệt',
+      body: 'Chúc mừng! Hồ sơ KYC của bạn đã được Admin phê duyệt. Bạn đã sẵn sàng nhận đơn đặt lịch trên Servigo.',
+      referenceType: 'PROVIDER_PROFILE',
+      referenceId: profile.id,
+    });
+
     return this.getDetailForAdmin(providerId);
   }
 
@@ -712,6 +724,16 @@ export class ProviderService {
     profile.rejectionReason = reason;
 
     await this.profileRepo.save(profile);
+
+    await this.notificationService?.createNotification({
+      userId: profile.userId,
+      type: 'SYSTEM',
+      title: 'Hồ sơ Nhà cung cấp chưa đạt yêu cầu',
+      body: `Hồ sơ KYC của bạn chưa được duyệt. Lý do: ${reason}`,
+      referenceType: 'PROVIDER_PROFILE',
+      referenceId: profile.id,
+    });
+
     return this.getDetailForAdmin(providerId);
   }
 }
