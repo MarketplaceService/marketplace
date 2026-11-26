@@ -3,11 +3,20 @@ import { ProviderProfile } from 'src/app/provider/entities/provider-profile.enti
 import { PriceUnit } from 'src/shared/types/price-unit.enum';
 import { ServiceStatus } from 'src/shared/types/service-status.enum';
 import { decimalColumnTransformer } from 'src/shared/utils/decimal-column.transformer';
-import { Check, Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
+import {
+  Check,
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  Unique,
+} from 'typeorm';
 import { ServiceCategory } from './service-category.entity';
 
 @Entity('service')
-@Index('uq_service_provider_id', ['providerId', 'id'], { unique: true })
+// Đích của FK ghép FK_booking_provider_service bên booking
+@Unique('uq_service_provider_id', ['providerId', 'id'])
 @Index('idx_service_provider_list', ['providerId'])
 @Index('idx_service_category_status_date', [
   'categoryId',

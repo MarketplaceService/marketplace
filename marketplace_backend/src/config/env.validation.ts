@@ -39,6 +39,8 @@ export const envSchema = z.looseObject({
   SUPABASE_URL: z.url(), //https://<project-ref>.supabase.co, không kèm /rest/v1/
   SUPABASE_SECRET_KEY: z.string().trim().min(1),
   SUPABASE_BUCKET_NAME: z.string().trim().min(1),
+  // Bucket riêng tư cho bookings/ và providers/. Bỏ trống thì dùng private-files
+  SUPABASE_PRIVATE_BUCKET_NAME: z.string().trim().min(1).optional(),
   SUPABASE_ANON_KEY: z.string().trim().optional(),
 
   //* MapVina (REST API key cho tìm địa chỉ). Bỏ trống thì app vẫn chạy, chỉ không có gợi ý địa chỉ

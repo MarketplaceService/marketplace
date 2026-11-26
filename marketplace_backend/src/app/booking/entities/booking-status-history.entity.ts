@@ -34,10 +34,16 @@ export class BookingStatusHistory extends BaseUuidEntity {
   @ManyToOne(() => Booking, (booking) => booking.statusHistories, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'booking_id' })
+  @JoinColumn({
+    name: 'booking_id',
+    foreignKeyConstraintName: 'FK_booking_status_history_booking',
+  })
   booking: Booking;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'changed_by' })
+  @JoinColumn({
+    name: 'changed_by',
+    foreignKeyConstraintName: 'FK_booking_status_history_changed_by',
+  })
   changedByUser: User | null;
 }

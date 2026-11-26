@@ -86,24 +86,51 @@ export class Booking extends BaseUuidEntity {
   @Column({ type: 'text', nullable: true })
   cancelReason: string | null;
 
+  // Tên FK khớp với tên viết tay trong migration CreateBookingTables,
+  // để migration:generate không đề xuất xóa rồi tạo lại
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'customer_id' })
+  @JoinColumn({
+    name: 'customer_id',
+    foreignKeyConstraintName: 'FK_booking_customer',
+  })
   customer: User;
 
   @ManyToOne(() => ProviderProfile, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'provider_id' })
+  @JoinColumn({
+    name: 'provider_id',
+    foreignKeyConstraintName: 'FK_booking_provider',
+  })
   provider: ProviderProfile;
 
+  // Composite FK ties the booked provider to the actual service owner.
+  // Ref: booking.(provider_id, service_id) > service.(provider_id, id)
   @ManyToOne(() => Service, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'service_id' })
+  @JoinColumn([
+    {
+      name: 'provider_id',
+      referencedColumnName: 'providerId',
+      foreignKeyConstraintName: 'FK_booking_provider_service',
+    },
+    {
+      name: 'service_id',
+      referencedColumnName: 'id',
+      foreignKeyConstraintName: 'FK_booking_provider_service',
+    },
+  ])
   service: Service;
 
   @ManyToOne(() => Address, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'address_id' })
+  @JoinColumn({
+    name: 'address_id',
+    foreignKeyConstraintName: 'FK_booking_address',
+  })
   address: Address;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'cancelled_by' })
+  @JoinColumn({
+    name: 'cancelled_by',
+    foreignKeyConstraintName: 'FK_booking_cancelled_by',
+  })
   cancelledByUser: User | null;
 
   @OneToMany(() => BookingStatusHistory, (history) => history.booking)

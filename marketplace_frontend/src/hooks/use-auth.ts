@@ -217,6 +217,18 @@ export const useAuthSession = () => {
   return useQuery(authSessionQuery);
 };
 
+/**
+ * Lấy lại session từ /auth/me khi dữ liệu đã cũ hơn `maxAgeMs` (mặc định luôn lấy lại).
+ * Dùng khi role có thể đã đổi ở phía server, ví dụ admin vừa duyệt hồ sơ nhà cung cấp.
+ */
+export const useRefreshAuthSession = () => {
+  const queryClient = useQueryClient();
+  return (maxAgeMs = 0) =>
+    queryClient
+      .fetchQuery({ ...authSessionQuery, staleTime: maxAgeMs })
+      .catch(noop);
+};
+
 export const useCurrentUser = (): { data: User | null; isLoading: boolean } => {
   const { data, isLoading } = useAuthSession();
   const user = data?.isAuthenticated && !data.isGuest ? (data.user ?? null) : null;

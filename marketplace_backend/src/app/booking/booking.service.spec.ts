@@ -218,12 +218,14 @@ describe('BookingService', () => {
       }),
     };
 
-    const storagePublicPrefix = 'https://storage.test/bucket/';
-    const storageServiceMock = {
+    const storageSignedPrefix =
+      'https://storage.test/object/sign/private-files/';
+    const privateStorageMock = {
       upload: jest.fn(),
-      getPathFromUrl: jest.fn((url: string | null) =>
-        url?.startsWith(storagePublicPrefix)
-          ? url.slice(storagePublicPrefix.length)
+      signPaths: jest.fn(),
+      toPath: jest.fn((url: string | null) =>
+        url?.startsWith(storageSignedPrefix)
+          ? url.slice(storageSignedPrefix.length).split('?')[0]
           : null,
       ),
     };
@@ -238,7 +240,7 @@ describe('BookingService', () => {
       {} as never,
       {} as never,
       {} as never,
-      storageServiceMock as never,
+      privateStorageMock as never,
       mockPaymentPort,
     );
   });
@@ -448,7 +450,7 @@ describe('BookingService', () => {
         scheduledStartAt: startAt.toISOString(),
         initialImages: [
           {
-            url: 'https://storage.test/bucket/bookings/initial/other-user/img.png',
+            url: 'https://storage.test/object/sign/private-files/bookings/initial/other-user/img.png',
             capturedAt: new Date().toISOString(),
           },
         ],
@@ -462,20 +464,34 @@ describe('BookingService', () => {
         scheduledStartAt: startAt.toISOString(),
         initialImages: [
           {
-            url: `https://storage.test/bucket/bookings/initial/${CUSTOMER_ID}/img.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/initial/${CUSTOMER_ID}/img.png?token=abc`,
             capturedAt: new Date().toISOString(),
           },
         ],
       }),
     ).resolves.toMatchObject({ id: BOOKING_ID });
 
-    bookingRepoInTx.findOne.mockResolvedValue({
+    // Database lưu path, không lưu URL có chữ ký
+    expect(bookingRepoInTx.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        inspectionImages: {
+          initial: [
+            expect.objectContaining({
+              url: `bookings/initial/${CUSTOMER_ID}/img.png`,
+            }),
+          ],
+        },
+      }),
+    );
+
+    const inProgressBooking = {
       id: BOOKING_ID,
       customerId: CUSTOMER_ID,
       providerId: PROVIDER_ID,
       status: BookingStatus.IN_PROGRESS,
       inspectionImages: null,
-    });
+    };
+    bookingRepoInTx.findOne.mockResolvedValue(inProgressBooking);
 
     await expect(
       service.submitInspection(PROVIDER_USER_ID, BOOKING_ID, {
@@ -487,7 +503,7 @@ describe('BookingService', () => {
         ],
         after: [
           {
-            url: `https://storage.test/bucket/bookings/inspections/${BOOKING_ID}/after/a.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/inspections/${BOOKING_ID}/after/a.png`,
             capturedAt: new Date().toISOString(),
           },
         ],
@@ -498,17 +514,22 @@ describe('BookingService', () => {
       service.submitInspection(PROVIDER_USER_ID, BOOKING_ID, {
         before: [
           {
-            url: `https://storage.test/bucket/bookings/inspections/${BOOKING_ID}/before/b.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/inspections/${BOOKING_ID}/before/b.png`,
             capturedAt: new Date().toISOString(),
           },
         ],
         after: [
           {
-            url: `https://storage.test/bucket/bookings/inspections/${BOOKING_ID}/after/a.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/inspections/${BOOKING_ID}/after/a.png`,
             capturedAt: new Date().toISOString(),
           },
         ],
       }),
     ).resolves.toMatchObject({ id: BOOKING_ID });
+
+    expect(inProgressBooking.inspectionImages).toMatchObject({
+      before: [{ url: `bookings/inspections/${BOOKING_ID}/before/b.png` }],
+      after: [{ url: `bookings/inspections/${BOOKING_ID}/after/a.png` }],
+    });
   });
 });

@@ -76,12 +76,17 @@ export interface RegisterProviderPayload {
     radiusKm: number;
     isActive?: boolean;
   };
-  initialService?: {
-    title: string;
-    basePrice: number;
-    priceUnit: "FIXED" | "HOURLY" | "FROM";
-    durationMinutes: number;
-  };
+  /** 1 đến MAX_REGISTER_SERVICES dịch vụ, cùng thuộc ngành nghề chính categoryId */
+  services: RegisterServiceItem[];
+}
+
+export type ServicePriceUnit = "FIXED" | "HOURLY" | "FROM";
+
+export interface RegisterServiceItem {
+  title: string;
+  basePrice: number;
+  priceUnit: ServicePriceUnit;
+  durationMinutes: number;
 }
 
 export interface CheckServiceAreaPayload {

@@ -1,4 +1,6 @@
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -7,6 +9,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -48,9 +51,13 @@ export class InitialServiceAreaDto {
   isActive?: boolean;
 }
 
+/** Số dịch vụ tối đa khai khi đăng ký; mọi dịch vụ thuộc ngành nghề chính categoryId */
+export const MAX_REGISTER_SERVICES = 5;
+
 export class InitialServiceDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   title: string;
 
   @IsNumber()
@@ -97,9 +104,21 @@ export class RegisterProviderDto {
   @Type(() => InitialServiceAreaDto)
   serviceArea?: InitialServiceAreaDto;
 
+  // Bỏ trống thì hệ thống tạo một dịch vụ mặc định theo ngành nghề chính
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(MAX_REGISTER_SERVICES)
+  @ValidateNested({ each: true })
+  @Type(() => InitialServiceDto)
+  services?: InitialServiceDto[];
+
+  /**
+   * @deprecated Dạng một dịch vụ của frontend cũ, dùng `services`.
+   * Vẫn nhận để bản build cũ không bị 400 (ValidationPipe chặn field lạ); bỏ qua khi có `services`.
+   */
   @IsOptional()
   @ValidateNested()
   @Type(() => InitialServiceDto)
   initialService?: InitialServiceDto;
 }
-

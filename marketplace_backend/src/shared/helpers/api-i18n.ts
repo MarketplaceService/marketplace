@@ -19,11 +19,14 @@ const messages: Record<string, string> = {
   'errors.user.activeBookingConflict':
     'Không thể xóa tài khoản khi vẫn còn đơn đặt lịch đã xác nhận hoặc đang thực hiện',
   'errors.storage.uploadFailed': 'Không thể tải ảnh lên, vui lòng thử lại sau',
+  'errors.storage.signFailed': 'Không thể tải ảnh, vui lòng thử lại sau',
   'errors.provider.profileNotFound':
     'Không tìm thấy hồ sơ nhà cung cấp của bạn',
   'errors.provider.notFound': 'Không tìm thấy nhà cung cấp',
   'errors.provider.invalidDocument':
     'Tài liệu phải là file JPG, PNG, WebP hoặc PDF và tối đa 2MB',
+  'errors.provider.serviceTitleRequired': 'Vui lòng nhập tên cho mọi dịch vụ',
+  'errors.provider.duplicateServiceTitle': 'Hai dịch vụ không được trùng tên',
   'errors.provider.invalidDocumentUrl':
     'Đường dẫn tài liệu không hợp lệ hoặc chưa được tải lên hệ thống',
   'errors.schedule.invalidTimeRange': 'Giờ kết thúc phải sau giờ bắt đầu',

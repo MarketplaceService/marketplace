@@ -17,11 +17,18 @@ export const PROVIDER_KEYS = {
   adminDetail: (id: string) => ["admin", "providers", id] as const,
 };
 
-export function useMyProviderProfile() {
+export function useMyProviderProfile(options?: {
+  /** Hỏi lại định kỳ khi hồ sơ đang chờ duyệt, để thấy kết quả duyệt mà không cần tải lại trang */
+  pollWhilePendingMs?: number;
+}) {
+  const pollMs = options?.pollWhilePendingMs;
   return useQuery({
     queryKey: PROVIDER_KEYS.myProfile,
     queryFn: () => providerServices.getMyProfile(),
     staleTime: 1000 * 60,
+    refetchInterval: pollMs
+      ? (query) => (query.state.data?.status === "PENDING" ? pollMs : false)
+      : false,
   });
 }
 

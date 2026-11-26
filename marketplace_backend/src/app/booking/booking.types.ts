@@ -20,6 +20,10 @@ export interface BookingAddressSnapshot {
 }
 
 export interface InspectionPhoto {
+  /**
+   * Database lưu path trong bucket riêng tư (bookings/...). API trả URL có chữ ký hạn 1 giờ,
+   * hoặc null khi file không còn trong bucket.
+   */
   url: string;
   caption?: string;
   capturedAt: string;

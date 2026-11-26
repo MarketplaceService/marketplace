@@ -10,7 +10,7 @@ import { buildDaySlots } from 'src/app/scheduling/slot-calculator';
 import { MAX_DAYS_AHEAD } from 'src/app/scheduling/slot.service';
 import { Service } from 'src/app/service/entities/service.entity';
 import { calculateHaversineKm } from 'src/app/service/service.service';
-import { StorageService } from 'src/app/storage/storage.service';
+import { PrivateStorageService } from 'src/app/storage/private-storage.service';
 import {
   apiBadRequest,
   apiConflict,
@@ -145,7 +145,7 @@ export class BookingService {
     private readonly availabilityRepo: Repository<ProviderAvailability>,
     @InjectRepository(ProviderTimeOff)
     private readonly timeOffRepo: Repository<ProviderTimeOff>,
-    private readonly storageService: StorageService,
+    private readonly privateStorage: PrivateStorageService,
     private readonly bookingPaymentPort: BookingPaymentPort,
   ) {}
 
@@ -293,13 +293,13 @@ export class BookingService {
       validFiles.map(async (file) => {
         const ext = BOOKING_IMAGE_EXTENSIONS.get(file.mimetype) ?? 'jpg';
         const path = `bookings/initial/${userId}/${uuidv7()}.${ext}`;
-        const url = await this.storageService.upload(
+        const { signedUrl } = await this.privateStorage.upload(
           path,
           file.buffer,
           file.mimetype,
         );
         return {
-          url,
+          url: signedUrl,
           capturedAt: nowIso,
         };
       }),
@@ -437,17 +437,14 @@ export class BookingService {
         const inspectionImages: BookingInspectionData | null =
           dto.initialImages && dto.initialImages.length > 0
             ? {
-                initial: dto.initialImages.map((img) => {
-                  this.assertManagedImageUrl(
+                initial: dto.initialImages.map((img) => ({
+                  url: this.toManagedImagePath(
                     img.url,
                     `bookings/initial/${userId}/`,
-                  );
-                  return {
-                    url: img.url,
-                    caption: img.caption,
-                    capturedAt: img.capturedAt,
-                  };
-                }),
+                  ),
+                  caption: img.caption,
+                  capturedAt: img.capturedAt,
+                })),
               }
             : null;
 
@@ -619,14 +616,14 @@ export class BookingService {
 
     const ext = BOOKING_IMAGE_EXTENSIONS.get(file.mimetype) ?? 'jpg';
     const path = `bookings/inspections/${bookingId}/${kind}/${uuidv7()}.${ext}`;
-    const url = await this.storageService.upload(
+    const { signedUrl } = await this.privateStorage.upload(
       path,
       file.buffer,
       file.mimetype,
     );
 
     return {
-      url,
+      url: signedUrl,
       capturedAt: new Date().toISOString(),
     };
   }
@@ -667,28 +664,22 @@ export class BookingService {
         ...(booking.inspectionImages?.initial?.length
           ? { initial: booking.inspectionImages.initial }
           : {}),
-        before: dto.before.map((item) => {
-          this.assertManagedImageUrl(
+        before: dto.before.map((item) => ({
+          url: this.toManagedImagePath(
             item.url,
             `bookings/inspections/${bookingId}/before/`,
-          );
-          return {
-            url: item.url,
-            ...(item.caption ? { caption: item.caption } : {}),
-            capturedAt: item.capturedAt,
-          };
-        }),
-        after: dto.after.map((item) => {
-          this.assertManagedImageUrl(
+          ),
+          ...(item.caption ? { caption: item.caption } : {}),
+          capturedAt: item.capturedAt,
+        })),
+        after: dto.after.map((item) => ({
+          url: this.toManagedImagePath(
             item.url,
             `bookings/inspections/${bookingId}/after/`,
-          );
-          return {
-            url: item.url,
-            ...(item.caption ? { caption: item.caption } : {}),
-            capturedAt: item.capturedAt,
-          };
-        }),
+          ),
+          ...(item.caption ? { caption: item.caption } : {}),
+          capturedAt: item.capturedAt,
+        })),
         ...(dto.technicalSpecs?.length
           ? {
               technicalSpecs: dto.technicalSpecs.map((spec) => ({
@@ -910,7 +901,9 @@ export class BookingService {
           }
         : null,
       serviceAddressSnapshot: booking.serviceAddressSnapshot,
-      inspectionImages: booking.inspectionImages,
+      inspectionImages: await this.signInspectionImages(
+        booking.inspectionImages,
+      ),
       hasRequiredInspection: hasRequiredInspectionPhotos(
         booking.inspectionImages,
       ),
@@ -1242,15 +1235,38 @@ export class BookingService {
     };
   }
 
-  private assertManagedImageUrl(url: string, expectedPrefix: string): void {
-    const storagePath = this.storageService.getPathFromUrl(url);
-    if (
-      !storagePath ||
-      storagePath.includes('..') ||
-      !storagePath.startsWith(expectedPrefix)
-    ) {
+  /**
+   * Trả path của ảnh trong bucket riêng tư. Client gửi lại URL có chữ ký nhận được lúc tải lên
+   * hoặc lúc xem đơn; database chỉ lưu path.
+   */
+  private toManagedImagePath(url: string, expectedPrefix: string): string {
+    const storagePath = this.privateStorage.toPath(url);
+    if (!storagePath || !storagePath.startsWith(expectedPrefix)) {
       apiBadRequest('errors.booking.invalidImageUrl');
     }
+    return storagePath;
+  }
+
+  // Thay path của ảnh bằng URL có chữ ký, một lần ký cho cả đơn
+  private async signInspectionImages(
+    data: BookingInspectionData | null,
+  ): Promise<BookingInspectionData | null> {
+    if (!data) return null;
+
+    const groups = ['initial', 'before', 'after'] as const;
+    const signed = await this.privateStorage.signPaths(
+      groups.flatMap((group) => (data[group] ?? []).map((photo) => photo.url)),
+    );
+
+    const result: BookingInspectionData = { ...data };
+    for (const group of groups) {
+      if (!data[group]) continue;
+      result[group] = data[group].map((photo) => ({
+        ...photo,
+        url: signed.get(photo.url) ?? null,
+      }));
+    }
+    return result;
   }
 
   private evaluateServiceArea(
