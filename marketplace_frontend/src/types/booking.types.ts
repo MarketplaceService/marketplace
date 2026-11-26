@@ -192,6 +192,21 @@ export interface BookingStatusHistoryItem {
   createdAt: string;
 }
 
+export interface BookingReviewItem {
+  id: string;
+  bookingId: string;
+  rating: number;
+  priceMatched: boolean;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface CreateReviewPayload {
+  rating: number;
+  priceMatched: boolean;
+  comment?: string;
+}
+
 export interface BookingDetail extends BookingSummaryItem {
   customerNote: string | null;
   cancelReason: string | null;
@@ -204,6 +219,8 @@ export interface BookingDetail extends BookingSummaryItem {
   serviceAddressSnapshot: BookingAddressSnapshot;
   inspectionImages: BookingInspectionData | null;
   hasRequiredInspection: boolean;
+  canReview: boolean;
+  review: BookingReviewItem | null;
   payments: BookingPaymentSummary[];
   statusHistories: BookingStatusHistoryItem[];
 }

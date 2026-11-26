@@ -102,4 +102,3 @@ export class RegisterProviderDto {
   @Type(() => InitialServiceDto)
   initialService?: InitialServiceDto;
 }
-

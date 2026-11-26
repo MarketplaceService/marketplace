@@ -28,4 +28,3 @@ export class ProviderDocument extends BaseUuidEntity {
   @JoinColumn({ name: 'provider_id' })
   provider: ProviderProfile;
 }
-

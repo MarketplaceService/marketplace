@@ -2,6 +2,7 @@
 
 import { BeforeAfterSlider } from "@/components/booking/before-after-slider";
 import { BookingPaymentCard } from "@/components/booking/booking-payment-card";
+import { BookingReviewSection } from "@/components/booking/booking-review-section";
 import { BookingStatusBadge } from "@/components/booking/booking-status-badge";
 import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -45,7 +46,6 @@ import {
   Phone,
   Play,
   RefreshCw,
-  Star,
   Wrench,
   XCircle,
 } from "lucide-react";
@@ -682,28 +682,11 @@ export function BookingDetailView({
             </section>
           )}
 
-          {/* Khối Đánh giá dịch vụ placeholder cho #134 */}
-          {booking.status === "COMPLETED" && isCustomerOwner && (
-            <section className="rounded-2xl border border-dashed border-border bg-card p-6 space-y-3">
-              <div className="flex items-center gap-2">
-                <Star className="size-4 text-amber-500" />
-                <h2 className="text-base font-semibold text-foreground">
-                  Đánh giá chất lượng dịch vụ
-                </h2>
-              </div>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Tính năng đánh giá 5 sao &amp; minh bạch chi phí cho thợ đang được tích hợp ở phân hệ Đánh giá &amp; Uy tín (#134).
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={notifyComingSoon}
-                className="min-h-[44px]"
-              >
-                Gửi đánh giá (Sắp ra mắt)
-              </Button>
-            </section>
-          )}
+          {/* Khối Đánh giá dịch vụ 5 sao & Minh bạch giá niêm yết (S25.1, S25.3) */}
+          <BookingReviewSection
+            booking={booking}
+            providerDisplayName={booking.provider?.displayName}
+          />
 
           {/* Nhật ký trạng thái */}
           <section className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">

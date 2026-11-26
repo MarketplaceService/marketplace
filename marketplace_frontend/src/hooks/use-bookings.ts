@@ -4,6 +4,7 @@ import type {
   BookingPreviewPayload,
   BookingStatus,
   CreateBookingPayload,
+  CreateReviewPayload,
   CustomerBookingTab,
 } from "@/types/booking.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -107,5 +108,29 @@ export function useCancelBooking() {
       toast.success("Đã hủy đơn đặt lịch");
     },
     onError: mutationErrorToast("Không thể hủy đơn đặt lịch"),
+  });
+}
+
+export function useCreateBookingReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      payload,
+    }: {
+      bookingId: string;
+      payload: CreateReviewPayload;
+    }) => bookingServices.createBookingReview(bookingId, payload),
+    onSuccess: (_review, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: BOOKING_KEYS.detail(variables.bookingId),
+      });
+      void queryClient.invalidateQueries({ queryKey: BOOKING_KEYS.all });
+      void queryClient.invalidateQueries({ queryKey: ["providers"] });
+      void queryClient.invalidateQueries({ queryKey: ["discovery"] });
+      toast.success("Cảm ơn bạn đã gửi đánh giá dịch vụ!");
+    },
+    onError: mutationErrorToast("Không thể gửi đánh giá"),
   });
 }

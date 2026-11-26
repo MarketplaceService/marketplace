@@ -1,10 +1,17 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { usePublicProvider } from "@/hooks/use-provider";
-import { BadgeCheck, ChevronRight, MapPin, Wrench } from "lucide-react";
+import {
+  useProviderRadar,
+  useProviderReviews,
+  usePublicProvider,
+} from "@/hooks/use-provider";
+import { BadgeCheck, ChevronRight, MapPin, Star, Wrench } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { formatKm } from "../provider/schedule/service-area-card";
+import { ProviderRadarCard } from "./provider-radar-card";
+import { ProviderReviewsCard } from "./provider-reviews-card";
 import { SlotPicker } from "./slot-picker";
 
 // Form đăng ký lưu tên ngành nghề kèm số thứ tự, ví dụ "1. Điện lạnh (Điều hòa, ...)"
@@ -18,13 +25,22 @@ export function ProviderPublicView({
   providerId: string;
   serviceId?: string;
 }) {
+  const [reviewsPage, setReviewsPage] = useState(1);
   const { data: provider, isLoading, isError } = usePublicProvider(providerId);
+  const { data: radar, isLoading: radarLoading } = useProviderRadar(providerId);
+  const { data: reviewsData, isLoading: reviewsLoading } = useProviderReviews(
+    providerId,
+    { page: reviewsPage, limit: 5 },
+  );
 
   if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-8">
+      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-8">
         <div className="h-40 animate-pulse rounded-2xl bg-muted" />
-        <div className="h-96 animate-pulse rounded-2xl bg-muted" />
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="h-96 animate-pulse rounded-2xl bg-muted lg:col-span-5" />
+          <div className="h-96 animate-pulse rounded-2xl bg-muted lg:col-span-7" />
+        </div>
       </div>
     );
   }
@@ -50,15 +66,12 @@ export function ProviderPublicView({
   const area = provider.serviceArea;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-8">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-8">
       <nav
         aria-label="Breadcrumb"
         className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground"
       >
-        <Link
-          href="/"
-          className="hover:text-foreground"
-        >
+        <Link href="/" className="hover:text-foreground">
           Trang chủ
         </Link>
         {category && (
@@ -93,7 +106,7 @@ export function ProviderPublicView({
             </span>
           </div>
 
-          <div className="min-w-0 space-y-3">
+          <div className="min-w-0 flex-1 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl font-bold text-foreground">
                 {provider.displayName}
@@ -120,41 +133,80 @@ export function ProviderPublicView({
               </span>
             </div>
 
-            <ul className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+            <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
               {category && (
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-1.5">
                   <Wrench className="size-4 shrink-0 text-primary" />
-                  {category}
+                  <span>{category}</span>
                 </li>
               )}
               {provider.experienceYears !== null && (
-                <li className="flex items-center gap-2">
+                <li className="flex items-center gap-1.5">
                   <BadgeCheck className="size-4 shrink-0 text-primary" />
-                  {provider.experienceYears} năm kinh nghiệm
+                  <span>{provider.experienceYears} năm kinh nghiệm</span>
                 </li>
               )}
               {area && (
-                <li className="flex items-center gap-2 sm:col-span-2">
+                <li className="flex items-center gap-1.5">
                   <MapPin className="size-4 shrink-0 text-primary" />
-                  {area.areaName ? `${area.areaName} — ` : ""}Bán kính phục vụ{" "}
-                  {formatKm(area.radiusKm)} km
+                  <span>
+                    {area.areaName ? `${area.areaName} — ` : ""}Bán kính phục vụ{" "}
+                    {formatKm(area.radiusKm)} km
+                  </span>
                 </li>
               )}
+              <li className="flex items-center gap-1.5">
+                <Star
+                  className={
+                    provider.reviewCount > 0
+                      ? "size-4 shrink-0 fill-amber-500 text-amber-500"
+                      : "size-4 shrink-0 text-muted-foreground"
+                  }
+                />
+                {provider.reviewCount > 0 ? (
+                  <span>
+                    <strong className="text-foreground">
+                      {provider.ratingAverage.toFixed(1)} / 5.0
+                    </strong>{" "}
+                    <span>({provider.reviewCount} đánh giá)</span>
+                  </span>
+                ) : (
+                  <span>Chưa có đánh giá</span>
+                )}
+              </li>
             </ul>
 
             {provider.bio && (
-              <p className="text-sm leading-relaxed text-foreground/80">{provider.bio}</p>
+              <p className="text-sm leading-relaxed text-foreground/80">
+                {provider.bio}
+              </p>
             )}
           </div>
         </div>
       </section>
 
-      <SlotPicker
-        providerId={provider.id}
-        serviceId={serviceId}
-        isOnline={provider.isOnline}
-        services={provider.services}
-      />
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+        {/* Cột trái 5 cột: Radar uy tín 5 chiều + Danh sách đánh giá */}
+        <section className="space-y-6 lg:col-span-5">
+          <ProviderRadarCard radar={radar} isLoading={radarLoading} />
+          <ProviderReviewsCard
+            data={reviewsData}
+            isLoading={reviewsLoading}
+            page={reviewsPage}
+            onPageChange={setReviewsPage}
+          />
+        </section>
+
+        {/* Cột phải 7 cột: Chọn dịch vụ & Khung giờ đặt lịch */}
+        <section className="lg:col-span-7">
+          <SlotPicker
+            providerId={provider.id}
+            serviceId={serviceId}
+            isOnline={provider.isOnline}
+            services={provider.services}
+          />
+        </section>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { useServiceDetail } from "@/hooks/use-discovery";
 import type { ServiceDetailItem } from "@/types/discovery.types";
 import {
@@ -176,9 +175,25 @@ export function ServiceDetailDialog({
                       <span className="font-semibold text-foreground text-sm truncate">
                         {activeService.provider?.displayName}
                       </span>
-                      <span className="inline-flex items-center gap-0.5 text-xs text-amber-500 font-bold shrink-0">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                        <span>5.0</span>
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs shrink-0 ${
+                          activeService.provider?.reviewCount > 0
+                            ? "text-amber-500 font-bold"
+                            : "text-muted-foreground font-medium"
+                        }`}
+                      >
+                        <Star
+                          className={`w-3.5 h-3.5 ${
+                            activeService.provider?.reviewCount > 0
+                              ? "fill-amber-500 text-amber-500"
+                              : "text-muted-foreground/70"
+                          }`}
+                        />
+                        <span>
+                          {activeService.provider?.reviewCount > 0
+                            ? `${activeService.provider.ratingAverage.toFixed(1)} (${activeService.provider.reviewCount})`
+                            : "Chưa có đánh giá"}
+                        </span>
                       </span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
                         <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
@@ -194,14 +209,14 @@ export function ServiceDetailDialog({
                   </div>
                 </div>
                 {!hideBookingAction && activeService.provider?.id && (
-                  <button
-                    type="button"
-                    onClick={notifyComingSoon}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary/30 bg-background hover:bg-primary/5 text-primary text-xs font-semibold transition shrink-0 cursor-pointer"
+                  <Link
+                    href={`/providers/${activeService.provider.id}?serviceId=${activeService.id}`}
+                    onClick={onClose}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-primary/30 bg-background hover:bg-primary/5 text-primary text-xs font-semibold transition shrink-0"
                   >
                     <span>Xem hồ sơ</span>
                     <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  </Link>
                 )}
               </div>
 

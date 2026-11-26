@@ -3,4 +3,3 @@ export enum VerificationStatus {
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
 }
-

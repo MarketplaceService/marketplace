@@ -1,5 +1,6 @@
 import { Address } from 'src/app/address/entities/address.entity';
 import { ProviderProfile } from 'src/app/provider/entities/provider-profile.entity';
+import { Review } from 'src/app/review/entities/review.entity';
 import { Service } from 'src/app/service/entities/service.entity';
 import { User } from 'src/app/user/entities/user.entity';
 import { BaseUuidEntity } from 'src/config/database/base-uuid.entity';
@@ -13,6 +14,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import type {
   BookingAddressSnapshot,
@@ -108,4 +110,7 @@ export class Booking extends BaseUuidEntity {
 
   @OneToMany(() => BookingStatusHistory, (history) => history.booking)
   statusHistories: BookingStatusHistory[];
+
+  @OneToOne(() => Review, (review) => review.booking)
+  review?: Review | null;
 }

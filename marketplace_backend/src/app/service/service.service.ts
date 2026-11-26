@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ReviewService } from 'src/app/review/review.service';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Service } from './entities/service.entity';
 import { ServiceCategory } from './entities/service-category.entity';
@@ -50,6 +51,7 @@ export class ServiceService {
     private readonly serviceRepo: Repository<Service>,
     @InjectRepository(ServiceCategory)
     private readonly categoryRepo: Repository<ServiceCategory>,
+    private readonly reviewService: ReviewService,
   ) {}
 
   /**
@@ -125,16 +127,123 @@ export class ServiceService {
     const limit = Math.max(1, Math.min(50, Number(dto.limit) || 12));
     const skip = (page - 1) * limit;
 
+    if (dto.sort === 'rating') {
+      return this.searchServicesSortedByRating(dto, page, limit, skip);
+    }
+
     const qb = this.serviceRepo
       .createQueryBuilder('service')
       .innerJoinAndSelect('service.category', 'category')
       .innerJoinAndSelect('service.provider', 'provider')
       .leftJoinAndSelect('provider.user', 'user')
+      .leftJoinAndSelect('provider.serviceAreas', 'serviceAreas');
+
+    this.applySearchFilters(qb, dto);
+
+    // Sắp xếp
+    switch (dto.sort) {
+      case 'price_asc':
+        qb.orderBy('service.basePrice', 'ASC');
+        break;
+      case 'price_desc':
+        qb.orderBy('service.basePrice', 'DESC');
+        break;
+      case 'newest':
+      default:
+        qb.orderBy('service.createdAt', 'DESC');
+        break;
+    }
+
+    qb.skip(skip).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+    return this.formatSearchServicesResult(items, total, page, limit);
+  }
+
+  private async searchServicesSortedByRating(
+    dto: SearchServicesDto,
+    page: number,
+    limit: number,
+    skip: number,
+  ) {
+    const countQb = this.serviceRepo
+      .createQueryBuilder('service')
+      .innerJoin('service.category', 'category')
+      .innerJoin('service.provider', 'provider');
+    this.applySearchFilters(countQb, dto);
+
+    const idQb = this.serviceRepo
+      .createQueryBuilder('service')
+      .select('service.id', 'id')
+      .innerJoin('service.category', 'category')
+      .innerJoin('service.provider', 'provider')
+      .leftJoin(
+        (subQuery) =>
+          subQuery
+            .select('booking.provider_id', 'provider_id')
+            .addSelect(
+              'ROUND(COALESCE(AVG(review.rating), 0)::numeric, 1)',
+              'rating_average',
+            )
+            .addSelect('COUNT(review.id)::int', 'review_count')
+            .from('review', 'review')
+            .innerJoin('booking', 'booking', 'booking.id = review.booking_id')
+            .groupBy('booking.provider_id'),
+        'rating_stats',
+        'rating_stats.provider_id = provider.id',
+      );
+    this.applySearchFilters(idQb, dto);
+
+    idQb
+      .orderBy('COALESCE(rating_stats.rating_average, 0)', 'DESC')
+      .addOrderBy('COALESCE(rating_stats.review_count, 0)', 'DESC')
+      .addOrderBy('COALESCE(provider.experienceYears, 0)', 'DESC')
+      .addOrderBy('service.createdAt', 'DESC')
+      .offset(skip)
+      .limit(limit);
+
+    const [total, pagedRows] = await Promise.all([
+      countQb.getCount(),
+      idQb.getRawMany<{ id: string }>(),
+    ]);
+
+    if (total === 0 || pagedRows.length === 0) {
+      return {
+        items: [],
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
+
+    const pageIds = pagedRows.map((row) => row.id);
+    const fetchedItems = await this.serviceRepo
+      .createQueryBuilder('service')
+      .innerJoinAndSelect('service.category', 'category')
+      .innerJoinAndSelect('service.provider', 'provider')
+      .leftJoinAndSelect('provider.user', 'user')
       .leftJoinAndSelect('provider.serviceAreas', 'serviceAreas')
-      .where('service.status = :status', { status: ServiceStatus.ACTIVE })
-      .andWhere('provider.verificationStatus = :vStatus', {
-        vStatus: VerificationStatus.APPROVED,
-      });
+      .where('service.id IN (:...pageIds)', { pageIds })
+      .getMany();
+
+    const itemById = new Map(fetchedItems.map((item) => [item.id, item]));
+    const orderedItems = pageIds
+      .map((id) => itemById.get(id))
+      .filter((item): item is Service => Boolean(item));
+
+    return this.formatSearchServicesResult(orderedItems, total, page, limit);
+  }
+
+  private applySearchFilters(
+    qb: SelectQueryBuilder<Service>,
+    dto: SearchServicesDto,
+  ): void {
+    qb.where('service.status = :status', {
+      status: ServiceStatus.ACTIVE,
+    }).andWhere('provider.verificationStatus = :vStatus', {
+      vStatus: VerificationStatus.APPROVED,
+    });
 
     // Lọc theo keyword
     this.applyKeywordFilter(qb, dto.keyword);
@@ -167,35 +276,26 @@ export class ServiceService {
         minExp: dto.minExperienceYears,
       });
     }
+  }
 
-    // Sắp xếp
-    switch (dto.sort) {
-      case 'price_asc':
-        qb.orderBy('service.basePrice', 'ASC');
-        break;
-      case 'price_desc':
-        qb.orderBy('service.basePrice', 'DESC');
-        break;
-      case 'rating':
-        qb.orderBy('provider.experienceYears', 'DESC').addOrderBy(
-          'service.createdAt',
-          'DESC',
-        );
-        break;
-      case 'newest':
-      default:
-        qb.orderBy('service.createdAt', 'DESC');
-        break;
-    }
-
-    qb.skip(skip).take(limit);
-
-    const [items, total] = await qb.getManyAndCount();
+  private async formatSearchServicesResult(
+    items: Service[],
+    total: number,
+    page: number,
+    limit: number,
+  ) {
+    const ratingMap = await this.reviewService.getProviderRatingSummaryMap(
+      items.map((service) => service.provider.id),
+    );
 
     const formattedItems = items.map((service) => {
       const activeArea = (service.provider.serviceAreas || []).find(
         (a) => a.isActive,
       );
+      const ratingSummary = ratingMap.get(service.provider.id) ?? {
+        ratingAverage: 0,
+        reviewCount: 0,
+      };
       return {
         id: service.id,
         title: service.title,
@@ -219,6 +319,8 @@ export class ServiceService {
           phone: service.provider.phone,
           areaName: activeArea?.areaName ?? null,
           isOnline: service.provider.isOnline ?? true,
+          ratingAverage: ratingSummary.ratingAverage,
+          reviewCount: ratingSummary.reviewCount,
         },
       };
     });
@@ -289,6 +391,9 @@ export class ServiceService {
     }
 
     const candidateServices = await qb.getMany();
+    const ratingMap = await this.reviewService.getProviderRatingSummaryMap(
+      candidateServices.map((service) => service.provider.id),
+    );
     const results: Array<{
       service: {
         id: string;
@@ -309,6 +414,8 @@ export class ServiceService {
         experienceYears: number;
         avatar: string | null;
         isOnline: boolean;
+        ratingAverage: number;
+        reviewCount: number;
       };
       location: {
         areaName: string | null;
@@ -354,6 +461,10 @@ export class ServiceService {
         const { distanceFee, isFreeShipping } =
           calculateDistanceFee(distanceKm);
         const estimatedTotal = Number(service.basePrice) + distanceFee;
+        const ratingSummary = ratingMap.get(service.provider.id) ?? {
+          ratingAverage: 0,
+          reviewCount: 0,
+        };
 
         results.push({
           service: {
@@ -375,6 +486,8 @@ export class ServiceService {
             experienceYears: service.provider.experienceYears ?? 0,
             avatar: service.provider.user?.image ?? null,
             isOnline: service.provider.isOnline ?? true,
+            ratingAverage: ratingSummary.ratingAverage,
+            reviewCount: ratingSummary.reviewCount,
           },
           location: {
             areaName: bestArea.areaName,
@@ -402,7 +515,8 @@ export class ServiceService {
       case 'rating':
         results.sort(
           (a, b) =>
-            b.provider.experienceYears - a.provider.experienceYears ||
+            b.provider.ratingAverage - a.provider.ratingAverage ||
+            b.provider.reviewCount - a.provider.reviewCount ||
             a.distance.distanceKm - b.distance.distanceKm,
         );
         break;
@@ -442,6 +556,10 @@ export class ServiceService {
       );
     }
 
+    const ratingSummary = await this.reviewService.getProviderRatingSummary(
+      service.provider.id,
+    );
+
     const activeAreas = (service.provider.serviceAreas || [])
       .filter((a) => a.isActive)
       .map((a) => ({
@@ -475,6 +593,8 @@ export class ServiceService {
         phone: service.provider.phone,
         avatar: service.provider.user?.image ?? null,
         verificationStatus: service.provider.verificationStatus,
+        ratingAverage: ratingSummary.ratingAverage,
+        reviewCount: ratingSummary.reviewCount,
         serviceAreas: activeAreas,
       },
     };

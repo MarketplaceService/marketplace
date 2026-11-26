@@ -74,6 +74,12 @@ const messages: Record<string, string> = {
     'Không tìm thấy địa chỉ hoặc địa chỉ không thuộc tài khoản của bạn',
   'errors.booking.invalidScheduleTime':
     'Thời gian hẹn đặt lịch không hợp lệ hoặc đã qua',
+  'errors.review.forbidden':
+    'Chỉ khách hàng sở hữu đơn đặt lịch mới có quyền đánh giá',
+  'errors.review.bookingNotCompleted':
+    'Chỉ có thể đánh giá sau khi đơn đặt lịch đã hoàn thành',
+  'errors.review.alreadyReviewed': 'Đơn đặt lịch này đã được đánh giá trước đó',
+  'errors.review.invalidRating': 'Điểm đánh giá phải từ 1 đến 5 sao',
 };
 
 export function translateApiMessage(key: string) {

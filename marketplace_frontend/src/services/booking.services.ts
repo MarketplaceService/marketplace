@@ -3,8 +3,10 @@ import type {
   BookingDetail,
   BookingPreviewPayload,
   BookingPreviewResponse,
+  BookingReviewItem,
   BookingStatus,
   CreateBookingPayload,
+  CreateReviewPayload,
   CustomerBookingTab,
   InspectionPhoto,
   MyBookingsResponse,
@@ -70,6 +72,17 @@ export const bookingServices = {
     const { data } = await axiosInstance.post<BookingDetail>(`/bookings/${id}/cancel`, {
       reason,
     });
+    return data;
+  },
+
+  createBookingReview: async (
+    bookingId: string,
+    payload: CreateReviewPayload,
+  ): Promise<BookingReviewItem> => {
+    const { data } = await axiosInstance.post<BookingReviewItem>(
+      `/bookings/${bookingId}/reviews`,
+      payload,
+    );
     return data;
   },
 

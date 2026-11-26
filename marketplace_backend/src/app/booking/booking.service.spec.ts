@@ -511,4 +511,57 @@ describe('BookingService', () => {
       }),
     ).resolves.toMatchObject({ id: BOOKING_ID });
   });
+
+  it('S25.3: getBookingDetail trả canReview=true cho khách khi COMPLETED và chưa đánh giá, false khi đã đánh giá hoặc là thợ', async () => {
+    const baseDetail = (await bookingRepo.findOne()) as Record<string, unknown>;
+    bookingRepo.findOne.mockResolvedValueOnce({
+      ...baseDetail,
+      status: BookingStatus.COMPLETED,
+      review: null,
+    });
+
+    const customerUnreviewed = await service.getBookingDetail(
+      { id: CUSTOMER_ID, role: UserRole.CUSTOMER },
+      BOOKING_ID,
+    );
+    expect(customerUnreviewed.canReview).toBe(true);
+    expect(customerUnreviewed.review).toBeNull();
+
+    bookingRepo.findOne.mockResolvedValueOnce({
+      ...baseDetail,
+      status: BookingStatus.COMPLETED,
+      review: null,
+    });
+
+    const providerView = await service.getBookingDetail(
+      { id: PROVIDER_USER_ID, role: UserRole.PROVIDER },
+      BOOKING_ID,
+    );
+    expect(providerView.canReview).toBe(false);
+
+    bookingRepo.findOne.mockResolvedValueOnce({
+      ...baseDetail,
+      status: BookingStatus.COMPLETED,
+      review: {
+        id: 'review-1',
+        bookingId: BOOKING_ID,
+        rating: 5,
+        priceMatched: true,
+        comment: 'Làm rất sạch sẽ',
+        createdAt: new Date('2026-11-25T10:00:00Z'),
+      },
+    });
+
+    const customerReviewed = await service.getBookingDetail(
+      { id: CUSTOMER_ID, role: UserRole.CUSTOMER },
+      BOOKING_ID,
+    );
+    expect(customerReviewed.canReview).toBe(false);
+    expect(customerReviewed.review).toMatchObject({
+      id: 'review-1',
+      rating: 5,
+      priceMatched: true,
+      comment: 'Làm rất sạch sẽ',
+    });
+  });
 });

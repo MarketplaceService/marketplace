@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { ReviewModule } from '../review/review.module';
 import { StorageModule } from '../storage/storage.module';
 import { ServiceCategory } from '../service/entities/service-category.entity';
 import { Service } from '../service/entities/service.entity';
@@ -25,6 +26,7 @@ import { PublicProviderController } from './public-provider.controller';
     ]),
     AuthModule,
     StorageModule,
+    ReviewModule,
   ],
   controllers: [
     ProviderController,

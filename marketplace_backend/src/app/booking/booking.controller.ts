@@ -25,6 +25,8 @@ import {
   bookingInitialImagesOptions,
   MAX_INITIAL_BOOKING_IMAGES,
 } from './booking-image-upload';
+import { CreateReviewDto } from '../review/dto/create-review.dto';
+import { ReviewService } from '../review/review.service';
 import { BookingService } from './booking.service';
 import { BookingReasonDto } from './dto/booking-action.dto';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -35,7 +37,10 @@ import { GetMyBookingsQueryDto } from './dto/query-bookings.dto';
 @ApiBearerAuth()
 @Controller('bookings')
 export class BookingController {
-  constructor(private readonly bookingService: BookingService) {}
+  constructor(
+    private readonly bookingService: BookingService,
+    private readonly reviewService: ReviewService,
+  ) {}
 
   @Post('preview')
   @RequireRoles(UserRole.CUSTOMER, UserRole.PROVIDER)
@@ -141,5 +146,18 @@ export class BookingController {
       id,
       dto.reason,
     );
+  }
+
+  @Post(':id/reviews')
+  @RequireRoles(UserRole.CUSTOMER, UserRole.PROVIDER)
+  @ApiOperation({
+    summary: 'Khách hàng đánh giá chất lượng dịch vụ sau khi hoàn thành đơn',
+  })
+  createReview(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateReviewDto,
+  ) {
+    return this.reviewService.createReview(req.user.id, id, dto);
   }
 }

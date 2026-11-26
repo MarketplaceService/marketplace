@@ -1,6 +1,5 @@
 "use client";
 
-import { notifyComingSoon } from "@/components/header/header-nav-link";
 import { useCategories, useSearchServices } from "@/hooks/use-discovery";
 import type { ServiceListItem } from "@/types/discovery.types";
 import {
@@ -25,6 +24,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
@@ -481,9 +481,23 @@ export function CustomerDashboardView({ user }: CustomerDashboardViewProps) {
                           <span className="text-sm font-semibold text-foreground truncate">
                             {item.provider?.displayName}
                           </span>
-                          <span className="inline-flex items-center gap-0.5 text-xs text-amber-500 font-bold shrink-0">
-                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                            5.0
+                          <span
+                            className={`inline-flex items-center gap-1 text-xs shrink-0 ${
+                              item.provider.reviewCount > 0
+                                ? "text-amber-500 font-bold"
+                                : "text-muted-foreground font-medium"
+                            }`}
+                          >
+                            <Star
+                              className={`w-3.5 h-3.5 ${
+                                item.provider.reviewCount > 0
+                                  ? "fill-amber-500 text-amber-500"
+                                  : "text-muted-foreground/70"
+                              }`}
+                            />
+                            {item.provider.reviewCount > 0
+                              ? `${item.provider.ratingAverage.toFixed(1)} (${item.provider.reviewCount})`
+                              : "Chưa có đánh giá"}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
@@ -528,14 +542,13 @@ export function CustomerDashboardView({ user }: CustomerDashboardViewProps) {
                     >
                       Chi tiết dịch vụ
                     </button>
-                    <button
-                      type="button"
-                      onClick={notifyComingSoon}
-                      className="w-full py-2 px-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold text-center shadow-xs transition inline-flex items-center justify-center gap-1 cursor-pointer"
+                    <Link
+                      href={`/providers/${item.provider.id}?serviceId=${item.id}`}
+                      className="w-full py-2 px-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold text-center shadow-xs transition inline-flex items-center justify-center gap-1"
                     >
                       <span>Xem hồ sơ</span>
                       <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))}
