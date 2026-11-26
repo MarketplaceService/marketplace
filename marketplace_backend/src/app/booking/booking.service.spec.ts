@@ -513,7 +513,7 @@ describe('BookingService', () => {
   });
 
   it('S25.3: getBookingDetail trả canReview=true cho khách khi COMPLETED và chưa đánh giá, false khi đã đánh giá hoặc là thợ', async () => {
-    const baseDetail = await bookingRepo.findOne();
+    const baseDetail = (await bookingRepo.findOne()) as Record<string, unknown>;
     bookingRepo.findOne.mockResolvedValueOnce({
       ...baseDetail,
       status: BookingStatus.COMPLETED,

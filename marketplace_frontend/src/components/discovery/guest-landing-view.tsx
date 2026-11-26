@@ -1948,17 +1948,26 @@ export function GuestLandingView() {
                     {/* Stats Grid */}
                     <div className="mt-4 grid grid-cols-3 gap-2 py-3 border-y border-[#E2E8F0] text-center">
                       <div>
-                        <span className="text-sm font-bold text-[#0F172A] flex items-center justify-center gap-1">
-                          <Star className="w-3.5 h-3.5 fill-[#D97706] text-[#D97706]" />{" "}
-                          {item.provider.reviewCount > 0
-                            ? item.provider.ratingAverage.toFixed(1)
-                            : "0.0"}
-                        </span>
-                        <span className="block text-[11px] text-[#64748B]">
-                          {item.provider.reviewCount > 0
-                            ? `${item.provider.reviewCount} đánh giá`
-                            : "Chưa có đánh giá"}
-                        </span>
+                        {item.provider.reviewCount > 0 ? (
+                          <>
+                            <span className="text-sm font-bold text-[#0F172A] flex items-center justify-center gap-1">
+                              <Star className="w-3.5 h-3.5 fill-[#D97706] text-[#D97706]" />{" "}
+                              {item.provider.ratingAverage.toFixed(1)}
+                            </span>
+                            <span className="block text-[11px] text-[#64748B]">
+                              {item.provider.reviewCount} đánh giá
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs font-semibold text-[#64748B] flex items-center justify-center gap-1">
+                              <Star className="w-3.5 h-3.5 text-[#94A3B8]" /> Mới
+                            </span>
+                            <span className="block text-[11px] text-[#64748B]">
+                              Chưa có đánh giá
+                            </span>
+                          </>
+                        )}
                       </div>
                       <div>
                         <span className="block text-sm font-bold text-[#0F172A] font-mono">

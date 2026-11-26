@@ -460,12 +460,24 @@ function GeoMapViewInner({
                             {item.provider.displayName}
                           </Link>
                         </h3>
-                        <div className="flex items-center gap-1 text-xs text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/70 font-semibold shrink-0">
-                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                        <div
+                          className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border shrink-0 ${
+                            item.provider.reviewCount > 0
+                              ? "text-amber-900 bg-amber-50 border-amber-200/70 font-semibold"
+                              : "text-muted-foreground bg-muted/70 border-border font-medium"
+                          }`}
+                        >
+                          <Star
+                            className={`h-3 w-3 ${
+                              item.provider.reviewCount > 0
+                                ? "fill-amber-500 text-amber-500"
+                                : "text-muted-foreground/70"
+                            }`}
+                          />
                           <span>
                             {item.provider.reviewCount > 0
                               ? `${item.provider.ratingAverage.toFixed(1)} (${item.provider.reviewCount})`
-                              : "0.0"}
+                              : "Chưa có đánh giá"}
                           </span>
                         </div>
                       </div>

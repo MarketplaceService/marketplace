@@ -156,7 +156,13 @@ export function ProviderPublicView({
                 </li>
               )}
               <li className="flex items-center gap-1.5">
-                <Star className="size-4 shrink-0 fill-amber-500 text-amber-500" />
+                <Star
+                  className={
+                    provider.reviewCount > 0
+                      ? "size-4 shrink-0 fill-amber-500 text-amber-500"
+                      : "size-4 shrink-0 text-muted-foreground"
+                  }
+                />
                 {provider.reviewCount > 0 ? (
                   <span>
                     <strong className="text-foreground">
@@ -165,7 +171,7 @@ export function ProviderPublicView({
                     <span>({provider.reviewCount} đánh giá)</span>
                   </span>
                 ) : (
-                  <span>Chưa có đánh giá (0)</span>
+                  <span>Chưa có đánh giá</span>
                 )}
               </li>
             </ul>

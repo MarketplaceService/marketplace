@@ -5,9 +5,7 @@ import {
   NotFoundException,
   ValidationPipe,
 } from '@nestjs/common';
-import { BookingStatusHistory } from 'src/app/booking/entities/booking-status-history.entity';
 import { Booking } from 'src/app/booking/entities/booking.entity';
-import { ProviderProfile } from 'src/app/provider/entities/provider-profile.entity';
 import { BookingStatus } from 'src/shared/types/booking-status.enum';
 import { VerificationStatus } from 'src/shared/types/verification-status.enum';
 import { CreateReviewDto } from './dto/create-review.dto';
@@ -102,10 +100,10 @@ describe('ReviewService & Radar Calculation', () => {
     });
 
     it('chấp nhận rating 1..5 và priceMatched boolean hợp lệ', async () => {
-      const dto = await pipe.transform(
+      const dto = (await pipe.transform(
         { rating: 5, priceMatched: false, comment: '  Rất tốt  ' },
         { type: 'body', metatype: CreateReviewDto },
-      );
+      )) as CreateReviewDto;
       expect(dto).toMatchObject({
         rating: 5,
         priceMatched: false,

@@ -40,7 +40,9 @@ async function seedReviews() {
     await userRepo.save(customer);
     console.log('✅ Đã tạo tài khoản khách hàng test: customer@servigo.vn');
   } else {
-    console.log('ℹ️ Đã tìm thấy tài khoản khách hàng test: customer@servigo.vn');
+    console.log(
+      'ℹ️ Đã tìm thấy tài khoản khách hàng test: customer@servigo.vn',
+    );
   }
 
   // 2. Tạo địa chỉ cho Customer
@@ -72,17 +74,23 @@ async function seedReviews() {
   });
 
   if (!provider) {
-    console.error('❌ Chưa có dữ liệu thợ. Vui lòng chạy pnpm run seed:discovery trước!');
+    console.error(
+      '❌ Chưa có dữ liệu thợ. Vui lòng chạy pnpm run seed:discovery trước!',
+    );
     process.exit(1);
   }
 
-  const service = await serviceRepo.findOne({ where: { providerId: provider.id } });
+  const service = await serviceRepo.findOne({
+    where: { providerId: provider.id },
+  });
   if (!service) {
     console.error('❌ Thợ chưa có dịch vụ nào.');
     process.exit(1);
   }
 
-  console.log(`👷 Sử dụng thợ mẫu: ${provider.user?.name || provider.id} (${provider.id})`);
+  console.log(
+    `👷 Sử dụng thợ mẫu: ${provider.user?.name || provider.id} (${provider.id})`,
+  );
   console.log(`🔧 Dịch vụ: ${service.title} (${service.id})`);
 
   // Xóa các booking test cũ của khách hàng này để seed lại cho sạch
@@ -133,7 +141,7 @@ async function seedReviews() {
       fieldNote: 'Ghi chú kỹ thuật bí mật (không lộ ra ngoài)',
     },
     status: BookingStatus.COMPLETED,
-  } as any);
+  } as unknown as Booking);
 
   // Status history cho Đơn 1
   const b1CreatedAt = new Date(booking1Start.getTime() - 3600 * 1000);
@@ -182,7 +190,9 @@ async function seedReviews() {
       'Thợ đến đúng giờ hẹn, tác phong rất chuyên nghiệp, xử lý sạch sẽ và đúng giá niêm yết ban đầu không phát sinh.',
   });
   await reviewRepo.save(review1);
-  console.log(`⭐️ Đã tạo Đơn 1 (${booking1.bookingCode}) kèm Đánh giá 5 sao & ảnh Before/After.`);
+  console.log(
+    `⭐️ Đã tạo Đơn 1 (${booking1.bookingCode}) kèm Đánh giá 5 sao & ảnh Before/After.`,
+  );
 
   // 5. Tạo Đơn 2: Đã COMPLETED & ĐÃ ĐÁNH GIÁ 4 SAO
   const booking2Start = new Date(now.getTime() - 1 * 24 * 3600 * 1000);
@@ -214,7 +224,7 @@ async function seedReviews() {
       ],
     },
     status: BookingStatus.COMPLETED,
-  } as any);
+  } as unknown as Booking);
 
   const b2CreatedAt = new Date(booking2Start.getTime() - 2500 * 1000);
   const b2ConfirmedAt = new Date(b2CreatedAt.getTime() + 15 * 60 * 1000); // Thợ nhận sau 15p
@@ -292,7 +302,7 @@ async function seedReviews() {
       ],
     },
     status: BookingStatus.COMPLETED,
-  } as any);
+  } as unknown as Booking);
 
   await historyRepo.save([
     historyRepo.create({
@@ -326,17 +336,27 @@ async function seedReviews() {
   ]);
 
   console.log(`\n🎉 SEED DỮ LIỆU TEST MODULE 06 HOÀN TẤT THÀNH CÔNG!`);
-  console.log(`================================================================`);
+  console.log(
+    `================================================================`,
+  );
   console.log(`📌 THÔNG TIN ĐỂ BẠN TEST TRÊN TRÌNH DUYỆT (UI):`);
-  console.log(`1. Đơn hàng CHƯA ĐÁNH GIÁ (đang mở để bạn tự tay test đánh giá):`);
+  console.log(
+    `1. Đơn hàng CHƯA ĐÁNH GIÁ (đang mở để bạn tự tay test đánh giá):`,
+  );
   console.log(`   - Mã đơn: ${booking3.bookingCode}`);
   console.log(`   - ID đơn: ${booking3.id}`);
-  console.log(`   - Link test trên Web: http://localhost:3000/bookings/${booking3.id}`);
+  console.log(
+    `   - Link test trên Web: http://localhost:3000/bookings/${booking3.id}`,
+  );
   console.log(`\n2. Hồ sơ Thợ có Biểu đồ Radar 5 trục và Danh sách đánh giá:`);
   console.log(`   - Tên thợ: ${provider.user?.name || 'Thợ Servigo'}`);
   console.log(`   - ID Thợ: ${provider.id}`);
-  console.log(`   - Link xem Radar & Review: http://localhost:3000/providers/${provider.id}`);
-  console.log(`================================================================\n`);
+  console.log(
+    `   - Link xem Radar & Review: http://localhost:3000/providers/${provider.id}`,
+  );
+  console.log(
+    `================================================================\n`,
+  );
 
   await dataSource.destroy();
 }

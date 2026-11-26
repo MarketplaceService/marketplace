@@ -481,11 +481,23 @@ export function CustomerDashboardView({ user }: CustomerDashboardViewProps) {
                           <span className="text-sm font-semibold text-foreground truncate">
                             {item.provider?.displayName}
                           </span>
-                          <span className="inline-flex items-center gap-0.5 text-xs text-amber-500 font-bold shrink-0">
-                            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                          <span
+                            className={`inline-flex items-center gap-1 text-xs shrink-0 ${
+                              item.provider.reviewCount > 0
+                                ? "text-amber-500 font-bold"
+                                : "text-muted-foreground font-medium"
+                            }`}
+                          >
+                            <Star
+                              className={`w-3.5 h-3.5 ${
+                                item.provider.reviewCount > 0
+                                  ? "fill-amber-500 text-amber-500"
+                                  : "text-muted-foreground/70"
+                              }`}
+                            />
                             {item.provider.reviewCount > 0
                               ? `${item.provider.ratingAverage.toFixed(1)} (${item.provider.reviewCount})`
-                              : "0.0"}
+                              : "Chưa có đánh giá"}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground truncate">

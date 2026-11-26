@@ -414,7 +414,7 @@ describe('ServiceService Unit Tests', () => {
   });
 
   describe('S25.4: Real ratingAverage & reviewCount integration', () => {
-    it('nên sắp xếp searchServices theo ratingAverage thật thay vì experienceYears', async () => {
+    it('nên phân trang & sắp xếp searchServices theo ratingAverage thật ngay tại DB SQL', async () => {
       const mockItems = [
         {
           id: 'srv-exp',
@@ -460,18 +460,38 @@ describe('ServiceService Unit Tests', () => {
         },
       ];
 
-      const mockQb = {
-        innerJoinAndSelect: jest.fn().mockReturnThis(),
-        leftJoinAndSelect: jest.fn().mockReturnThis(),
+      const countQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(25),
+      };
+      const idQb = {
+        select: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         addOrderBy: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        getManyAndCount: jest.fn().mockResolvedValue([mockItems, 2]),
+        offset: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'srv-rated' }, { id: 'srv-exp' }]),
       };
-      serviceRepo.createQueryBuilder.mockReturnValue(mockQb);
+      const detailQb = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockItems),
+      };
+
+      serviceRepo.createQueryBuilder
+        .mockReturnValueOnce(countQb)
+        .mockReturnValueOnce(idQb)
+        .mockReturnValueOnce(detailQb);
+
       reviewService.getProviderRatingSummaryMap.mockResolvedValue(
         new Map([
           ['prov-high-exp-low-rating', { ratingAverage: 3.5, reviewCount: 4 }],
@@ -481,10 +501,19 @@ describe('ServiceService Unit Tests', () => {
 
       const result = await service.searchServices({
         sort: 'rating',
-        page: 1,
-        limit: 12,
+        page: 2,
+        limit: 2,
       });
 
+      expect(idQb.offset).toHaveBeenCalledWith(2);
+      expect(idQb.limit).toHaveBeenCalledWith(2);
+      expect(detailQb.where).toHaveBeenCalledWith(
+        'service.id IN (:...pageIds)',
+        {
+          pageIds: ['srv-rated', 'srv-exp'],
+        },
+      );
+      expect(result.total).toBe(25);
       expect(result.items[0].provider.id).toBe('prov-low-exp-high-rating');
       expect(result.items[0].provider.ratingAverage).toBe(4.9);
       expect(result.items[0].provider.reviewCount).toBe(12);
