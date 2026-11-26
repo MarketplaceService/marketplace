@@ -53,9 +53,6 @@ export function CallOptionsDialog({
 
   const { partner } = conversation;
   const cleanPhone = partner.phone?.trim() || null;
-  const dialHref = cleanPhone
-    ? `tel:${cleanPhone.replace(/[^\d+]/g, "")}`
-    : null;
   const canWebCall = partner.isOnline && !callBusy;
 
   const handleCopyPhone = async () => {
@@ -111,16 +108,8 @@ export function CallOptionsDialog({
               <h3 className="truncate font-serif text-base font-bold text-foreground">
                 Liên hệ {partner.displayName}
               </h3>
-              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                  className={cn(
-                    "inline-block size-2 rounded-full",
-                    partner.isOnline ? "bg-emerald-500" : "bg-slate-400",
-                  )}
-                />
-                <span>
-                  {partner.isOnline ? "Đang hoạt động" : "Đang ngoại tuyến"}
-                </span>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {partner.isOnline ? "Đang hoạt động" : "Đang ngoại tuyến"}
               </p>
             </div>
           </div>
@@ -209,39 +198,43 @@ export function CallOptionsDialog({
               </div>
             </div>
 
-            {cleanPhone && dialHref && (
-              <div className="grid grid-cols-2 gap-2.5">
-                <a
-                  href={dialHref}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition",
-                    !partner.isOnline
-                      ? "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
-                      : "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/15",
-                  )}
-                >
-                  <Phone className="size-4" />
-                  <span>Gọi qua số</span>
-                </a>
-
-                <button
-                  type="button"
-                  onClick={() => void handleCopyPhone()}
-                  className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3.5 py-2.5 text-xs font-semibold text-foreground transition hover:border-primary/40 hover:bg-muted"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="size-4 text-primary" />
-                      <span className="text-primary">Đã sao chép</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="size-4 text-muted-foreground" />
-                      <span>Sao chép số</span>
-                    </>
-                  )}
-                </button>
-              </div>
+            {cleanPhone && (
+              <button
+                type="button"
+                onClick={() => void handleCopyPhone()}
+                className={cn(
+                  "flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.99]",
+                  !partner.isOnline
+                    ? "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+                    : "border border-border bg-muted/60 text-foreground hover:border-primary/40 hover:bg-muted",
+                )}
+              >
+                {copied ? (
+                  <>
+                    <Check
+                      className={cn(
+                        "size-4",
+                        !partner.isOnline
+                          ? "text-primary-foreground"
+                          : "text-primary",
+                      )}
+                    />
+                    <span>Đã sao chép số điện thoại</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy
+                      className={cn(
+                        "size-4",
+                        !partner.isOnline
+                          ? "text-primary-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    />
+                    <span>Sao chép số</span>
+                  </>
+                )}
+              </button>
             )}
           </div>
         </div>
