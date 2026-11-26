@@ -8,6 +8,8 @@ export function calculateTravelFee(distanceKm: number) {
   return Math.round(extraKm * TRAVEL_FEE_PER_KM);
 }
 
-export function formatVnd(amount: number) {
-  return `${amount.toLocaleString("vi-VN")} đ`;
+export function formatVnd(amount: number | null | undefined) {
+  const numeric = Number(amount);
+  const safeAmount = Number.isFinite(numeric) ? numeric : 0;
+  return `${safeAmount.toLocaleString("vi-VN")} đ`;
 }

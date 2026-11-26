@@ -6,9 +6,76 @@ import { Service } from '../app/service/entities/service.entity';
 import { Booking } from '../app/booking/entities/booking.entity';
 import { BookingStatusHistory } from '../app/booking/entities/booking-status-history.entity';
 import { Review } from '../app/review/entities/review.entity';
+import type {
+  BookingAddressSnapshot,
+  BookingInspectionData,
+} from '../app/booking/booking.types';
 import { UserRole } from '../shared/types/user-role.enum';
 import { BookingStatus } from '../shared/types/booking-status.enum';
+import { PriceUnit } from '../shared/types/price-unit.enum';
 import { v7 as uuidv7 } from 'uuid';
+
+function buildAddressSnapshot(
+  address: Address,
+  service: Service,
+): BookingAddressSnapshot {
+  const basePrice = Number(service.basePrice) || 250000;
+  return {
+    addressId: address.id,
+    fullName: address.fullName,
+    phone: address.phone,
+    addressLine1: address.addressLine1,
+    addressLine2: address.addressLine2 ?? null,
+    ward: address.ward,
+    district: address.district ?? null,
+    city: address.city,
+    postalCode: address.postalCode ?? null,
+    latitude: Number(address.latitude),
+    longitude: Number(address.longitude),
+    distanceKm: 1.5,
+    distanceFee: 0,
+    basePriceSnapshot: basePrice,
+    priceUnitSnapshot: service.priceUnit || PriceUnit.FIXED,
+    durationMinutesSnapshot: Number(service.durationMinutes) || 60,
+  };
+}
+
+function buildInspectionData(
+  beforeUrl: string,
+  afterUrl: string,
+  startedAt: Date,
+  completedAt: Date,
+  options?: { includeSensitive?: boolean },
+): BookingInspectionData {
+  return {
+    before: [
+      {
+        url: beforeUrl,
+        caption: 'Hiện trạng trước khi thực hiện dịch vụ',
+        capturedAt: startedAt.toISOString(),
+      },
+    ],
+    after: [
+      {
+        url: afterUrl,
+        caption: 'Hoàn tất kiểm tra & bàn giao thiết bị',
+        capturedAt: completedAt.toISOString(),
+      },
+    ],
+    ...(options?.includeSensitive
+      ? {
+          initial: [
+            {
+              url: 'https://example.com/sensitive-initial.jpg',
+              capturedAt: startedAt.toISOString(),
+            },
+          ],
+          fieldNote: 'Ghi chú kỹ thuật bí mật (không lộ ra ngoài)',
+        }
+      : {}),
+    submittedAt: completedAt.toISOString(),
+  };
+}
 
 async function seedReviews() {
   console.log('🚀 Khởi động kết nối database để seed dữ liệu mẫu Module 06...');
@@ -108,10 +175,17 @@ async function seedReviews() {
   }
 
   const now = new Date();
+  const addressSnapshot = buildAddressSnapshot(address, service);
+  const totalPrice = addressSnapshot.basePriceSnapshot;
 
   // 4. Tạo Đơn 1: Đã COMPLETED & ĐÃ ĐÁNH GIÁ 5 SAO
   const booking1Start = new Date(now.getTime() - 2 * 24 * 3600 * 1000);
   const booking1End = new Date(booking1Start.getTime() + 2 * 3600 * 1000);
+  const b1CreatedAt = new Date(booking1Start.getTime() - 3600 * 1000);
+  const b1ConfirmedAt = new Date(b1CreatedAt.getTime() + 10 * 60 * 1000);
+  const b1InProgressAt = new Date(booking1Start.getTime() + 5 * 60 * 1000);
+  const b1CompletedAt = new Date(booking1End.getTime());
+
   const booking1: Booking = await bookingRepo.save({
     id: uuidv7(),
     bookingCode: `SVG-${Date.now().toString().slice(-6)}-01`,
@@ -121,33 +195,18 @@ async function seedReviews() {
     addressId: address.id,
     scheduledStartAt: booking1Start,
     scheduledEndAt: booking1End,
-    totalPrice: service.basePrice || 250000,
+    totalPrice,
     serviceTitleSnapshot: service.title,
-    serviceAddressSnapshot: {
-      recipientName: address.fullName,
-      phoneNumber: address.phone,
-      fullAddress: `${address.addressLine1}, ${address.ward}, ${address.district}, ${address.city}`,
-      latitude: address.latitude,
-      longitude: address.longitude,
-    },
-    inspectionImages: {
-      before: [
-        'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&q=80',
-      ],
-      after: [
-        'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&q=80',
-      ],
-      initial: ['https://example.com/sensitive-initial.jpg'],
-      fieldNote: 'Ghi chú kỹ thuật bí mật (không lộ ra ngoài)',
-    },
+    serviceAddressSnapshot: addressSnapshot,
+    inspectionImages: buildInspectionData(
+      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&q=80',
+      'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&q=80',
+      b1InProgressAt,
+      b1CompletedAt,
+      { includeSensitive: true },
+    ),
     status: BookingStatus.COMPLETED,
   } as unknown as Booking);
-
-  // Status history cho Đơn 1
-  const b1CreatedAt = new Date(booking1Start.getTime() - 3600 * 1000);
-  const b1ConfirmedAt = new Date(b1CreatedAt.getTime() + 10 * 60 * 1000); // Thợ nhận sau 10p
-  const b1InProgressAt = new Date(booking1Start.getTime() + 5 * 60 * 1000); // Thợ đến sau 5p (đúng giờ)
-  const b1CompletedAt = new Date(booking1End.getTime());
 
   await historyRepo.save([
     historyRepo.create({
@@ -180,7 +239,6 @@ async function seedReviews() {
     }),
   ]);
 
-  // Review 1
   const review1 = reviewRepo.create({
     id: uuidv7(),
     bookingId: booking1.id,
@@ -197,6 +255,11 @@ async function seedReviews() {
   // 5. Tạo Đơn 2: Đã COMPLETED & ĐÃ ĐÁNH GIÁ 4 SAO
   const booking2Start = new Date(now.getTime() - 1 * 24 * 3600 * 1000);
   const booking2End = new Date(booking2Start.getTime() + 2 * 3600 * 1000);
+  const b2CreatedAt = new Date(booking2Start.getTime() - 2500 * 1000);
+  const b2ConfirmedAt = new Date(b2CreatedAt.getTime() + 15 * 60 * 1000);
+  const b2InProgressAt = new Date(booking2Start.getTime() + 10 * 60 * 1000);
+  const b2CompletedAt = new Date(booking2End.getTime());
+
   const booking2: Booking = await bookingRepo.save({
     id: uuidv7(),
     bookingCode: `SVG-${Date.now().toString().slice(-6)}-02`,
@@ -206,30 +269,17 @@ async function seedReviews() {
     addressId: address.id,
     scheduledStartAt: booking2Start,
     scheduledEndAt: booking2End,
-    totalPrice: service.basePrice || 300000,
+    totalPrice,
     serviceTitleSnapshot: service.title,
-    serviceAddressSnapshot: {
-      recipientName: address.fullName,
-      phoneNumber: address.phone,
-      fullAddress: `${address.addressLine1}, ${address.ward}, ${address.district}, ${address.city}`,
-      latitude: address.latitude,
-      longitude: address.longitude,
-    },
-    inspectionImages: {
-      before: [
-        'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80',
-      ],
-      after: [
-        'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80',
-      ],
-    },
+    serviceAddressSnapshot: addressSnapshot,
+    inspectionImages: buildInspectionData(
+      'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80',
+      'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80',
+      b2InProgressAt,
+      b2CompletedAt,
+    ),
     status: BookingStatus.COMPLETED,
   } as unknown as Booking);
-
-  const b2CreatedAt = new Date(booking2Start.getTime() - 2500 * 1000);
-  const b2ConfirmedAt = new Date(b2CreatedAt.getTime() + 15 * 60 * 1000); // Thợ nhận sau 15p
-  const b2InProgressAt = new Date(booking2Start.getTime() + 10 * 60 * 1000); // Thợ đến sau 10p (đúng giờ <= 15p)
-  const b2CompletedAt = new Date(booking2End.getTime());
 
   await historyRepo.save([
     historyRepo.create({
@@ -284,23 +334,15 @@ async function seedReviews() {
     addressId: address.id,
     scheduledStartAt: booking3Start,
     scheduledEndAt: booking3End,
-    totalPrice: service.basePrice || 350000,
+    totalPrice,
     serviceTitleSnapshot: service.title,
-    serviceAddressSnapshot: {
-      recipientName: address.fullName,
-      phoneNumber: address.phone,
-      fullAddress: `${address.addressLine1}, ${address.ward}, ${address.district}, ${address.city}`,
-      latitude: address.latitude,
-      longitude: address.longitude,
-    },
-    inspectionImages: {
-      before: [
-        'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&q=80',
-      ],
-      after: [
-        'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&q=80',
-      ],
-    },
+    serviceAddressSnapshot: addressSnapshot,
+    inspectionImages: buildInspectionData(
+      'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&q=80',
+      'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=800&q=80',
+      booking3Start,
+      booking3End,
+    ),
     status: BookingStatus.COMPLETED,
   } as unknown as Booking);
 

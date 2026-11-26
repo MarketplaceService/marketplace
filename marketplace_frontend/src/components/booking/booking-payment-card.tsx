@@ -11,13 +11,14 @@ import { ReceiptText, ShieldCheck } from "lucide-react";
  */
 export function BookingPaymentCard({ booking }: { booking: BookingDetail }) {
   const snapshot = booking.serviceAddressSnapshot;
+  const basePrice = Number(snapshot?.basePriceSnapshot ?? booking.totalPrice ?? 0);
+  const durationMinutes = Number(snapshot?.durationMinutesSnapshot ?? 60);
+  const distanceKm = Number(snapshot?.distanceKm ?? 0);
+  const distanceFee = Number(snapshot?.distanceFee ?? 0);
   const serviceSubtotal =
-    snapshot.priceUnitSnapshot === "HOURLY"
-      ? Math.round(
-          snapshot.basePriceSnapshot *
-            (snapshot.durationMinutesSnapshot / 60),
-        )
-      : snapshot.basePriceSnapshot;
+    snapshot?.priceUnitSnapshot === "HOURLY"
+      ? Math.round(basePrice * (durationMinutes / 60))
+      : basePrice;
 
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
@@ -40,7 +41,7 @@ export function BookingPaymentCard({ booking }: { booking: BookingDetail }) {
       <div className="space-y-2.5 text-sm">
         <div className="flex items-center justify-between gap-2">
           <span className="text-muted-foreground">
-            Giá dịch vụ ({snapshot.durationMinutesSnapshot} phút)
+            Giá dịch vụ ({durationMinutes} phút)
           </span>
           <span className="font-medium text-foreground">
             {formatVnd(serviceSubtotal)}
@@ -49,12 +50,10 @@ export function BookingPaymentCard({ booking }: { booking: BookingDetail }) {
 
         <div className="flex items-center justify-between gap-2">
           <span className="text-muted-foreground">
-            Phí di chuyển ({snapshot.distanceKm} km, miễn phí ≤ {FREE_TRAVEL_KM} km)
+            Phí di chuyển ({distanceKm} km, miễn phí ≤ {FREE_TRAVEL_KM} km)
           </span>
           <span className="font-medium text-foreground">
-            {snapshot.distanceFee === 0
-              ? "Miễn phí"
-              : formatVnd(snapshot.distanceFee)}
+            {distanceFee === 0 ? "Miễn phí" : formatVnd(distanceFee)}
           </span>
         </div>
 
