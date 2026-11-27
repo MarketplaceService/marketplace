@@ -4,6 +4,7 @@ import {
   DashboardNavItem,
   DashboardShell,
 } from "@/components/layout/dashboard-shell";
+import { useChatInboxRealtime, useConversations } from "@/hooks/use-chat";
 import { useMyProviderProfile } from "@/hooks/use-provider";
 import {
   useProviderBookings,
@@ -77,9 +78,16 @@ export default function ProviderLayout({
     { tab: "in_progress", page: 1, limit: 1 },
     isApprovedProvider,
   );
+  const { data: providerConversations } = useConversations(
+    { scope: "provider" },
+    isApprovedProvider,
+  );
+  useChatInboxRealtime(isApprovedProvider, myProfile?.profile?.userId);
 
   const pendingCount = pendingBookings?.counts?.pending ?? 0;
   const inProgressCount = inProgressBookings?.counts?.inProgress ?? 0;
+  const unreadChatCount =
+    providerConversations?.counts?.totalUnreadMessages ?? 0;
 
   const navItems: DashboardNavItem[] = [
     {
@@ -113,8 +121,10 @@ export default function ProviderLayout({
     },
     {
       label: "Tin nhắn",
+      href: "/provider/messages",
       icon: MessageSquare,
-      disabled: true,
+      badge: unreadChatCount > 0 ? unreadChatCount : undefined,
+      badgeVariant: "primary",
     },
     {
       label: "Hồ sơ & Dịch vụ",

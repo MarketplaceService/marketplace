@@ -1,6 +1,7 @@
 "use client";
 
 import { useCurrentUser, useSignOut } from "@/hooks/use-auth";
+import { useChatInboxRealtime, useConversations } from "@/hooks/use-chat";
 import { Bell, Handshake } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { BrandLogo } from "./brand-logo";
@@ -16,6 +17,19 @@ export function Header() {
     success: "Đã đăng xuất",
   });
   const showBecomeProvider = user?.role === "customer";
+  const canUseChat = Boolean(
+    user &&
+      !user.isAnonymous &&
+      (user.role === "customer" || user.role === "provider"),
+  );
+  const { data: customerConversations } = useConversations(
+    { scope: "customer" },
+    canUseChat,
+  );
+  useChatInboxRealtime(canUseChat, user?.id);
+
+  const unreadChatCount =
+    customerConversations?.counts?.totalUnreadMessages ?? 0;
 
   // Trang chủ (/) dành cho khách vãng lai dùng Guest Header thiết kế riêng
   if (pathname === "/" && !user) {
@@ -26,7 +40,10 @@ export function Header() {
     <header className="sticky top-0 z-40 h-16 w-full shrink-0 border-b border-border bg-card/95 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-1">
-          <HeaderMobileNav showBecomeProvider={showBecomeProvider} />
+          <HeaderMobileNav
+            showBecomeProvider={showBecomeProvider}
+            unreadChatCount={unreadChatCount}
+          />
           <BrandLogo href="/" size="md" />
 
         </div>
@@ -36,6 +53,7 @@ export function Header() {
             <NavLink
               key={item.label}
               item={item}
+              badge={item.href === "/messages" ? unreadChatCount : undefined}
             />
           ))}
         </nav>

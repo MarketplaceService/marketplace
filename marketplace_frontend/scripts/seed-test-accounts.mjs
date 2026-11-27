@@ -33,13 +33,34 @@ const TEST_ACCOUNTS = [
 const SAMPLE_PROVIDER_PROFILE = {
   displayName: "Nhà cung cấp Mẫu",
   experienceYears: 5,
-  bio: "Tài khoản mẫu để thử lịch làm việc và hồ sơ công khai của thợ.",
+  bio: "Tài khoản mẫu để thử lịch làm việc, bản đồ, đặt lịch và nhắn tin trực tiếp.",
   area: {
     name: "Quận 9, TP. Hồ Chí Minh",
     latitude: 10.8456,
     longitude: 106.7719,
-    radiusKm: 10,
+    radiusKm: 15,
   },
+  service: {
+    categorySlug: "sua-dien-lanh",
+    categoryName: "Sửa điện lạnh",
+    title: "Vệ sinh & Bảo dưỡng điều hòa Inverter tại nhà",
+    description:
+      "Vệ sinh dàn lạnh, dàn nóng bằng máy xịt áp lực chuyên dụng, kiểm tra đường ống thoát nước và đo gas miễn phí.",
+    basePrice: 180000,
+    priceUnit: "FIXED",
+    durationMinutes: 60,
+  },
+};
+
+const SAMPLE_CUSTOMER_ADDRESS = {
+  fullName: "Khách hàng Mẫu",
+  phone: "0900000003",
+  addressLine1: "123 Lê Văn Việt",
+  ward: "Hiệp Phú",
+  district: "Quận 9",
+  city: "TP. Hồ Chí Minh",
+  latitude: 10.8456,
+  longitude: 106.7719,
 };
 
 const { DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_NAME, TEST_ACCOUNT_PASSWORD } =
@@ -92,7 +113,82 @@ async function seedProviderProfile(userId, phone) {
     [uuidv7(), providerId, area.name, area.latitude, area.longitude, area.radiusKm],
   );
 
+  // Đảm bảo có ít nhất 1 danh mục và 1 dịch vụ ACTIVE để thợ xuất hiện trên bản đồ & đặt lịch được
+  const { service } = SAMPLE_PROVIDER_PROFILE;
+  const catRes = await client.query(
+    `INSERT INTO service_category (id, name, slug, is_active)
+     VALUES ($1, $2, $3, true)
+     ON CONFLICT (slug) DO UPDATE SET is_active = true
+     RETURNING id`,
+    [uuidv7(), service.categoryName, service.categorySlug],
+  );
+  const categoryId = catRes.rows[0].id;
+
+  const existingSvc = await client.query(
+    `SELECT id FROM service WHERE provider_id = $1 AND status = 'ACTIVE' LIMIT 1`,
+    [providerId],
+  );
+  if (existingSvc.rows.length === 0) {
+    await client.query(
+      `INSERT INTO service
+         (id, provider_id, category_id, title, description, base_price, price_unit, duration_minutes, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE')`,
+      [
+        uuidv7(),
+        providerId,
+        categoryId,
+        service.title,
+        service.description,
+        service.basePrice,
+        service.priceUnit,
+        service.durationMinutes,
+      ],
+    );
+  }
+
+  // Bổ sung lịch làm việc 08:00-18:00 cả tuần nếu thợ chưa có lịch nào
+  const existingAvail = await client.query(
+    `SELECT 1 FROM provider_availability WHERE provider_id = $1 LIMIT 1`,
+    [providerId],
+  );
+  if (existingAvail.rows.length === 0) {
+    for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek += 1) {
+      await client.query(
+        `INSERT INTO provider_availability (id, provider_id, day_of_week, start_time, end_time, is_active)
+         VALUES ($1, $2, $3, '08:00:00', '18:00:00', true)`,
+        [uuidv7(), providerId, dayOfWeek],
+      );
+    }
+  }
+
   return providerId;
+}
+
+async function seedCustomerAddress(userId) {
+  const existing = await client.query(
+    `SELECT 1 FROM address WHERE user_id = $1 AND deleted_at IS NULL LIMIT 1`,
+    [userId],
+  );
+  if (existing.rows.length > 0) return;
+
+  const a = SAMPLE_CUSTOMER_ADDRESS;
+  await client.query(
+    `INSERT INTO address
+       (id, user_id, full_name, phone, address_line1, ward, district, city, latitude, longitude, is_default)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)`,
+    [
+      uuidv7(),
+      userId,
+      a.fullName,
+      a.phone,
+      a.addressLine1,
+      a.ward,
+      a.district,
+      a.city,
+      a.latitude,
+      a.longitude,
+    ],
+  );
 }
 
 try {
@@ -126,6 +222,9 @@ try {
     if (role === "provider") {
       const providerId = await seedProviderProfile(userId, phone);
       console.log(`Đã sẵn sàng: ${email} (${role}), hồ sơ công khai /providers/${providerId}`);
+    } else if (role === "customer") {
+      await seedCustomerAddress(userId);
+      console.log(`Đã sẵn sàng: ${email} (${role}) (đã có địa chỉ mặc định Quận 9)`);
     } else {
       console.log(`Đã sẵn sàng: ${email} (${role})`);
     }

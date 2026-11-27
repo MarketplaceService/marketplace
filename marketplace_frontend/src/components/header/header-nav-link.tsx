@@ -56,7 +56,13 @@ export function HeaderAction({
   );
 }
 
-export function NavLink({ item }: { item: HeaderNavItem }) {
+export function NavLink({
+  item,
+  badge,
+}: {
+  item: HeaderNavItem;
+  badge?: number;
+}) {
   const active = isActivePath(usePathname(), item.href);
 
   return (
@@ -64,13 +70,18 @@ export function NavLink({ item }: { item: HeaderNavItem }) {
       href={item.href}
       active={active}
       className={cn(
-        "border-b-2 py-1 text-sm whitespace-nowrap transition-colors duration-150",
+        "inline-flex items-center gap-1.5 border-b-2 py-1 text-sm whitespace-nowrap transition-colors duration-150",
         active
           ? "border-primary font-semibold text-primary"
           : "border-transparent text-muted-foreground hover:text-foreground",
       )}
     >
-      {item.label}
+      <span>{item.label}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[11px] leading-none font-bold text-primary-foreground tabular-nums">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </HeaderAction>
   );
 }
