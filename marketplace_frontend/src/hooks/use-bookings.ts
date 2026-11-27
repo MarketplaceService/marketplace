@@ -52,6 +52,15 @@ export function useCreateBooking() {
       void queryClient.invalidateQueries({ queryKey: ["provider", "bookings"] });
       void queryClient.invalidateQueries({ queryKey: ["providers"] });
       queryClient.setQueryData(BOOKING_KEYS.detail(created.id), created);
+
+      const payment = created.latestPayment;
+      if (payment?.paymentMethod === "payos") {
+        // Link lỗi thì trang checkout tự báo, không báo thành công ở đây
+        if (payment.status === "pending" && payment.paymentLinkUrl) {
+          toast.success("Đã tạo đơn, đang chuyển tới trang thanh toán PayOS...");
+        }
+        return;
+      }
       toast.success("Đặt lịch thành công! Đơn hàng đang chờ thợ xác nhận.");
     },
     onError: mutationErrorToast("Không thể tạo đơn đặt lịch"),

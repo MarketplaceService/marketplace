@@ -3,10 +3,12 @@
 import { PaymentStatusBadge } from "@/components/booking/booking-status-badge";
 import { Button } from "@/components/ui/button";
 import { useProviderWallet } from "@/hooks/use-provider-bookings";
+import { getPaymentMethodLabel } from "@/lib/payment";
 import { formatVnd } from "@/lib/travel-fee";
 import { cn } from "@/lib/utils";
 import { formatVnDateTime, todayInVietnam } from "@/lib/vn-time";
 import { bookingServices } from "@/services/booking.services";
+import type { PaymentMethod } from "@/types/booking.types";
 import {
   ChevronLeft,
   ChevronRight,
@@ -40,6 +42,12 @@ function getRecentMonths(count: number): { value: string; label: string }[] {
   return list;
 }
 
+const PAYMENT_FILTERS: { value: PaymentMethod | null; label: string }[] = [
+  { value: null, label: "Tất cả" },
+  { value: "cod", label: "Tiền mặt" },
+  { value: "payos", label: "PayOS" },
+];
+
 function escapeCsvCell(value: string | number): string {
   const str = String(value);
   if (/[",\n\r]/.test(str)) {
@@ -55,11 +63,14 @@ export function ProviderWalletView() {
   );
   const [page, setPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  // Lọc bảng sao kê theo phương thức của giao dịch đã trả; các thẻ tổng hợp không đổi
+  const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | null>(null);
 
   const { data, isLoading, isError, refetch } = useProviderWallet({
     month: selectedMonth,
     page,
     limit: 10,
+    paymentMethod: paymentFilter ?? undefined,
   });
 
   const handleExportCsv = async () => {
@@ -69,6 +80,7 @@ export function ProviderWalletView() {
         month: selectedMonth,
         page: 1,
         limit: 100,
+        paymentMethod: paymentFilter ?? undefined,
       });
 
       const rows = fullData.transactions.items;
@@ -100,7 +112,7 @@ export function ProviderWalletView() {
             tx.distanceFee,
             tx.totalPrice,
             tx.paymentMethod
-              ? `${tx.paymentMethod.toUpperCase()} (${tx.paymentStatus ?? ""})`
+              ? getPaymentMethodLabel(tx.paymentMethod)
               : "Hoàn tất nghiệm thu",
           ]
             .map(escapeCsvCell)
@@ -344,10 +356,44 @@ export function ProviderWalletView() {
               </span>
             </div>
 
+            <div
+              role="group"
+              aria-label="Lọc theo phương thức thanh toán"
+              className="flex flex-wrap items-center gap-2 border-b border-border px-6 py-3"
+            >
+              <span className="mr-1 text-xs font-semibold text-muted-foreground">
+                Thanh toán:
+              </span>
+              {PAYMENT_FILTERS.map((filter) => {
+                const active = paymentFilter === filter.value;
+                return (
+                  <button
+                    key={filter.label}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setPaymentFilter(filter.value);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "min-h-[32px] cursor-pointer rounded-lg px-3 text-xs font-semibold transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {transactions.length === 0 ? (
               <div className="p-10 text-center space-y-2">
                 <p className="text-sm font-semibold text-foreground">
-                  Chưa có giao dịch hoàn thành trong tháng {selectedMonth}
+                  {paymentFilter
+                    ? `Không có đơn trả bằng ${getPaymentMethodLabel(paymentFilter).toLowerCase()} hoàn thành trong tháng ${selectedMonth}`
+                    : `Chưa có giao dịch hoàn thành trong tháng ${selectedMonth}`}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Khi khách hàng xác nhận nghiệm thu hoàn tất đơn hàng, doanh thu sẽ được ghi nhận ngay tại đây.
@@ -387,8 +433,8 @@ export function ProviderWalletView() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {tx.latestPayment ? (
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold uppercase text-foreground">
-                                {tx.latestPayment.paymentMethod}
+                              <span className="text-xs font-semibold text-foreground">
+                                {getPaymentMethodLabel(tx.latestPayment.paymentMethod)}
                               </span>
                               <PaymentStatusBadge
                                 status={tx.latestPayment.status}

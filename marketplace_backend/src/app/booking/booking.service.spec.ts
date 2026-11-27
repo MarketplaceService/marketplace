@@ -5,6 +5,8 @@ import { ProviderAvailability } from 'src/app/scheduling/entities/provider-avail
 import { ProviderTimeOff } from 'src/app/scheduling/entities/provider-time-off.entity';
 import { Service } from 'src/app/service/entities/service.entity';
 import { BookingStatus } from 'src/shared/types/booking-status.enum';
+import { PaymentMethod } from 'src/shared/types/payment-method.enum';
+import { PaymentStatus } from 'src/shared/types/payment-status.enum';
 import { PriceUnit } from 'src/shared/types/price-unit.enum';
 import { ServiceStatus } from 'src/shared/types/service-status.enum';
 import { UserRole } from 'src/shared/types/user-role.enum';
@@ -33,8 +35,10 @@ describe('BookingService', () => {
   const slotDow = dayOfWeekOf(tomorrow);
 
   let initPaymentMock: jest.Mock;
+  let activatePaymentMock: jest.Mock;
   let markCompletedMock: jest.Mock;
   let cancelOrRefundMock: jest.Mock;
+  let releaseGatewayLinksMock: jest.Mock;
   let mockPaymentPort: BookingPaymentPort;
   let bookingRepo: { findOne: jest.Mock; createQueryBuilder?: jest.Mock };
   let profileRepo: { findOne: jest.Mock };
@@ -97,12 +101,16 @@ describe('BookingService', () => {
 
   beforeEach(() => {
     initPaymentMock = jest.fn().mockResolvedValue(null);
+    activatePaymentMock = jest.fn().mockResolvedValue(null);
     markCompletedMock = jest.fn().mockResolvedValue(null);
     cancelOrRefundMock = jest.fn().mockResolvedValue(null);
+    releaseGatewayLinksMock = jest.fn().mockResolvedValue(undefined);
     mockPaymentPort = {
       initPayment: initPaymentMock,
+      activatePayment: activatePaymentMock,
       markCompletedOnAcceptance: markCompletedMock,
       cancelOrRefund: cancelOrRefundMock,
+      releaseGatewayLinks: releaseGatewayLinksMock,
       findByBookingId: jest.fn().mockResolvedValue([]),
       findLatestByBookingIds: jest.fn().mockResolvedValue(new Map()),
     };
@@ -218,12 +226,14 @@ describe('BookingService', () => {
       }),
     };
 
-    const storagePublicPrefix = 'https://storage.test/bucket/';
-    const storageServiceMock = {
+    const storageSignedPrefix =
+      'https://storage.test/object/sign/private-files/';
+    const privateStorageMock = {
       upload: jest.fn(),
-      getPathFromUrl: jest.fn((url: string | null) =>
-        url?.startsWith(storagePublicPrefix)
-          ? url.slice(storagePublicPrefix.length)
+      signPaths: jest.fn(),
+      toPath: jest.fn((url: string | null) =>
+        url?.startsWith(storageSignedPrefix)
+          ? url.slice(storageSignedPrefix.length).split('?')[0]
           : null,
       ),
     };
@@ -238,17 +248,30 @@ describe('BookingService', () => {
       {} as never,
       {} as never,
       {} as never,
-      storageServiceMock as never,
+      privateStorageMock as never,
       mockPaymentPort,
     );
   });
 
-  it('gọi bookingPaymentPort.initPayment trong transaction khi createBooking thành công', async () => {
+  it('gọi initPayment trong transaction rồi activatePayment sau khi commit khi createBooking thành công', async () => {
+    let committed = false;
+    dataSource.transaction.mockImplementationOnce(
+      async (cb: (m: unknown) => Promise<unknown>) => {
+        const result = await cb(dataSource.manager);
+        committed = true;
+        return result;
+      },
+    );
+    activatePaymentMock.mockImplementationOnce(() => {
+      expect(committed).toBe(true);
+      return Promise.resolve(null);
+    });
+
     const result = await service.createBooking(CUSTOMER_ID, {
       serviceId: SERVICE_ID,
       addressId: ADDRESS_ID,
       scheduledStartAt: startAt.toISOString(),
-      paymentMethod: 'payos',
+      paymentMethod: PaymentMethod.PAYOS,
     });
 
     expect(result.id).toBe(BOOKING_ID);
@@ -258,9 +281,11 @@ describe('BookingService', () => {
       expect.objectContaining({
         bookingId: BOOKING_ID,
         amount: 200000,
-        paymentMethod: 'payos',
+        paymentMethod: PaymentMethod.PAYOS,
       }),
     );
+    expect(activatePaymentMock).toHaveBeenCalledTimes(1);
+    expect(activatePaymentMock).toHaveBeenCalledWith(BOOKING_ID);
   });
 
   it('chặn 409 Conflict khi thợ đang tắt trạng thái nhận việc (isOnline = false)', async () => {
@@ -376,6 +401,58 @@ describe('BookingService', () => {
       BOOKING_ID,
       'Kín lịch',
     );
+
+    // Hủy link PayOS sau khi commit, một lần cho mỗi lượt hủy hoặc từ chối
+    expect(releaseGatewayLinksMock).toHaveBeenCalledTimes(2);
+    expect(releaseGatewayLinksMock).toHaveBeenCalledWith(BOOKING_ID);
+  });
+
+  it('ví thợ lọc bảng sao kê theo phương thức thanh toán nhưng giữ nguyên thẻ tổng hợp', async () => {
+    const andWhereCalls: unknown[][] = [];
+    const makeQb = (): Record<string, jest.Mock> => {
+      const qb: Record<string, jest.Mock> = {};
+      for (const method of [
+        'select',
+        'addSelect',
+        'leftJoinAndSelect',
+        'where',
+        'groupBy',
+        'orderBy',
+        'offset',
+        'limit',
+      ]) {
+        qb[method] = jest.fn().mockReturnValue(qb);
+      }
+      qb.andWhere = jest.fn((...args: unknown[]) => {
+        andWhereCalls.push(args);
+        return qb;
+      });
+      qb.clone = jest.fn(() => qb);
+      qb.getRawOne = jest
+        .fn()
+        .mockResolvedValue({ revenue: '900000', count: '5' });
+      qb.getRawMany = jest.fn().mockResolvedValue([]);
+      qb.getRawAndEntities = jest
+        .fn()
+        .mockResolvedValue({ entities: [], raw: [] });
+      qb.getCount = jest.fn().mockResolvedValue(2);
+      return qb;
+    };
+    bookingRepo.createQueryBuilder = jest.fn(() => makeQb());
+
+    const result = await service.getProviderWallet(PROVIDER_USER_ID, {
+      paymentMethod: PaymentMethod.PAYOS,
+    });
+
+    expect(andWhereCalls).toContainEqual([
+      expect.stringContaining('EXISTS (SELECT 1 FROM payment p'),
+      {
+        walletPaymentMethod: PaymentMethod.PAYOS,
+        walletPaidStatus: PaymentStatus.COMPLETED,
+      },
+    ]);
+    expect(result.transactions.total).toBe(2);
+    expect(result.summary.completedCountThisMonth).toBe(5);
   });
 
   it('H1: chặn 400 BadRequest khi lọc đơn thợ với ngày không có thật (2026-99-99, 2026-02-31)', async () => {
@@ -448,7 +525,7 @@ describe('BookingService', () => {
         scheduledStartAt: startAt.toISOString(),
         initialImages: [
           {
-            url: 'https://storage.test/bucket/bookings/initial/other-user/img.png',
+            url: 'https://storage.test/object/sign/private-files/bookings/initial/other-user/img.png',
             capturedAt: new Date().toISOString(),
           },
         ],
@@ -462,20 +539,34 @@ describe('BookingService', () => {
         scheduledStartAt: startAt.toISOString(),
         initialImages: [
           {
-            url: `https://storage.test/bucket/bookings/initial/${CUSTOMER_ID}/img.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/initial/${CUSTOMER_ID}/img.png?token=abc`,
             capturedAt: new Date().toISOString(),
           },
         ],
       }),
     ).resolves.toMatchObject({ id: BOOKING_ID });
 
-    bookingRepoInTx.findOne.mockResolvedValue({
+    // Database lưu path, không lưu URL có chữ ký
+    expect(bookingRepoInTx.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        inspectionImages: {
+          initial: [
+            expect.objectContaining({
+              url: `bookings/initial/${CUSTOMER_ID}/img.png`,
+            }),
+          ],
+        },
+      }),
+    );
+
+    const inProgressBooking = {
       id: BOOKING_ID,
       customerId: CUSTOMER_ID,
       providerId: PROVIDER_ID,
       status: BookingStatus.IN_PROGRESS,
       inspectionImages: null,
-    });
+    };
+    bookingRepoInTx.findOne.mockResolvedValue(inProgressBooking);
 
     await expect(
       service.submitInspection(PROVIDER_USER_ID, BOOKING_ID, {
@@ -487,7 +578,7 @@ describe('BookingService', () => {
         ],
         after: [
           {
-            url: `https://storage.test/bucket/bookings/inspections/${BOOKING_ID}/after/a.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/inspections/${BOOKING_ID}/after/a.png`,
             capturedAt: new Date().toISOString(),
           },
         ],
@@ -498,17 +589,22 @@ describe('BookingService', () => {
       service.submitInspection(PROVIDER_USER_ID, BOOKING_ID, {
         before: [
           {
-            url: `https://storage.test/bucket/bookings/inspections/${BOOKING_ID}/before/b.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/inspections/${BOOKING_ID}/before/b.png`,
             capturedAt: new Date().toISOString(),
           },
         ],
         after: [
           {
-            url: `https://storage.test/bucket/bookings/inspections/${BOOKING_ID}/after/a.png`,
+            url: `https://storage.test/object/sign/private-files/bookings/inspections/${BOOKING_ID}/after/a.png`,
             capturedAt: new Date().toISOString(),
           },
         ],
       }),
     ).resolves.toMatchObject({ id: BOOKING_ID });
+
+    expect(inProgressBooking.inspectionImages).toMatchObject({
+      before: [{ url: `bookings/inspections/${BOOKING_ID}/before/b.png` }],
+      after: [{ url: `bookings/inspections/${BOOKING_ID}/after/a.png` }],
+    });
   });
 });

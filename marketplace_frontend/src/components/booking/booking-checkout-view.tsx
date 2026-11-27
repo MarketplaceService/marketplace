@@ -5,17 +5,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAddresses } from "@/hooks/use-addresses";
+import { useAuthSession } from "@/hooks/use-auth";
 import {
   useBookingPreview,
   useCreateBooking,
   useUploadInitialBookingImages,
 } from "@/hooks/use-bookings";
+import { usePaymentMethods } from "@/hooks/use-payment";
 import { usePublicProvider } from "@/hooks/use-provider";
 import { getApiErrorMessage } from "@/lib/api/api-error";
+import { redirectToPayos } from "@/lib/payment";
 import { FREE_TRAVEL_KM, formatVnd } from "@/lib/travel-fee";
 import { cn } from "@/lib/utils";
 import { formatVnDateTime } from "@/lib/vn-time";
-import type { InspectionPhoto } from "@/types/booking.types";
+import type { InspectionPhoto, PaymentMethod } from "@/types/booking.types";
 import {
   AlertCircle,
   ArrowLeft,
@@ -23,9 +26,11 @@ import {
   Camera,
   CheckCircle2,
   Loader2,
+  LogIn,
   MapPin,
   Plus,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -38,22 +43,119 @@ const MAX_INITIAL_PHOTOS = 3;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-export function BookingCheckoutView({
-  providerId,
-  serviceId,
-  startAt,
-}: {
+interface BookingCheckoutViewProps {
   providerId: string;
   serviceId?: string;
   startAt?: string;
+}
+
+/**
+ * Vỏ của trang checkout: chặn guest và admin trước khi gọi API đặt lịch.
+ * proxy.ts đã chuyển người chưa đăng nhập và phiên ẩn danh sang trang đăng nhập; lớp này bắt nốt
+ * trường hợp phiên trong cache là guest hoặc vừa hết hạn.
+ */
+export function BookingCheckoutView(props: BookingCheckoutViewProps) {
+  const { data: session, isLoading } = useAuthSession();
+
+  if (isLoading) {
+    return (
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8 space-y-4">
+        <div className="h-10 w-1/2 animate-pulse rounded-xl bg-muted" />
+        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+      </main>
+    );
+  }
+
+  if (!session?.isAuthenticated || session.isGuest || !session.user) {
+    const query = new URLSearchParams();
+    if (props.serviceId) query.set("serviceId", props.serviceId);
+    if (props.startAt) query.set("startAt", props.startAt);
+    const queryString = query.toString();
+    const redirectTo = `/providers/${props.providerId}/book${queryString ? `?${queryString}` : ""}`;
+
+    return (
+      <CheckoutNotice
+        icon={<LogIn className="mx-auto size-10 text-primary" />}
+        title="Đăng nhập để đặt lịch"
+        description="Bạn cần đăng nhập bằng tài khoản đã xác minh để đặt lịch và thanh toán. Khung giờ bạn chọn được giữ nguyên sau khi đăng nhập."
+        href={`/auth/signin?redirect=${encodeURIComponent(redirectTo)}`}
+        actionLabel="Đăng nhập"
+      />
+    );
+  }
+
+  if (session.user.role === "admin") {
+    return (
+      <CheckoutNotice
+        icon={<ShieldAlert className="mx-auto size-10 text-warning" />}
+        title="Tài khoản quản trị không đặt lịch được"
+        description="Hãy dùng tài khoản khách hàng hoặc nhà cung cấp để đặt lịch dịch vụ."
+        href={`/providers/${props.providerId}`}
+        actionLabel="Quay lại hồ sơ thợ"
+      />
+    );
+  }
+
+  return <BookingCheckoutContent {...props} />;
+}
+
+function CheckoutNotice({
+  icon,
+  title,
+  description,
+  href,
+  actionLabel,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  href: string;
+  actionLabel: string;
 }) {
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-8">
+      <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-xs space-y-4">
+        {icon}
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+        <Link
+          href={href}
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          {actionLabel}
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+function BookingCheckoutContent({
+  providerId,
+  serviceId,
+  startAt,
+}: BookingCheckoutViewProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Chặn bấm "Xác nhận" hai lần trước khi isPending kịp cập nhật
+  const submittingRef = useRef(false);
 
   const [pickedAddressId, setPickedAddressId] = useState<string | null>(null);
   const [customerNote, setCustomerNote] = useState("");
   const [initialImages, setInitialImages] = useState<InspectionPhoto[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string | undefined>(undefined);
+  const [pickedMethod, setPickedMethod] = useState<PaymentMethod | null>(null);
+
+  const { data: paymentMethods, isLoading: methodsLoading } = usePaymentMethods();
+  const isMethodEnabled = (method: PaymentMethod) =>
+    paymentMethods?.some((item) => item.method === method && item.enabled) ?? false;
+  // PayOS được chọn sẵn khi đã bật; lựa chọn của khách chỉ được giữ nếu phương thức đó còn bật
+  const paymentMethod: PaymentMethod =
+    pickedMethod && isMethodEnabled(pickedMethod)
+      ? pickedMethod
+      : isMethodEnabled("payos")
+        ? "payos"
+        : "cod";
 
   const { data: provider, isLoading: providerLoading } = usePublicProvider(providerId);
   const {
@@ -155,9 +257,17 @@ export function BookingCheckoutView({
   };
 
   const handleSubmit = () => {
-    if (!effectiveAddressId || !preview?.canBook || isCreating || isUploadingImages) {
+    if (
+      submittingRef.current ||
+      !effectiveAddressId ||
+      !preview?.canBook ||
+      isCreating ||
+      isUploadingImages ||
+      methodsLoading
+    ) {
       return;
     }
+    submittingRef.current = true;
 
     createBooking(
       {
@@ -170,7 +280,24 @@ export function BookingCheckoutView({
       },
       {
         onSuccess: (created) => {
+          const payment = created.latestPayment;
+          if (paymentMethod === "payos") {
+            // Giữ submittingRef để không bấm lại trong lúc trình duyệt rời sang trang PayOS
+            if (
+              payment?.paymentMethod === "payos" &&
+              payment.status === "pending" &&
+              redirectToPayos(payment.paymentLinkUrl)
+            ) {
+              return;
+            }
+            toast.warning(
+              "Đã tạo đơn nhưng chưa tạo được link thanh toán. Bạn có thể thử lại trong trang đơn.",
+            );
+          }
           router.push(`/bookings/${created.id}`);
+        },
+        onError: () => {
+          submittingRef.current = false;
         },
       },
     );
@@ -571,13 +698,18 @@ export function BookingCheckoutView({
 
                 <BookingPaymentMethodSlot
                   value={paymentMethod}
-                  onChange={setPaymentMethod}
+                  onChange={setPickedMethod}
+                  options={paymentMethods}
+                  isLoading={methodsLoading}
+                  totalPrice={preview.pricing.totalPrice}
                 />
 
                 <Button
                   type="button"
                   size="lg"
-                  disabled={!preview.canBook || isCreating || isUploadingImages}
+                  disabled={
+                    !preview.canBook || isCreating || isUploadingImages || methodsLoading
+                  }
                   onClick={handleSubmit}
                   className="w-full min-h-[48px] rounded-xl text-base font-semibold"
                 >
@@ -586,6 +718,8 @@ export function BookingCheckoutView({
                       <Loader2 className="size-4 animate-spin" />
                       Đang tạo đơn đặt lịch...
                     </>
+                  ) : paymentMethod === "payos" ? (
+                    `Đặt lịch và thanh toán (${formatVnd(preview.pricing.totalPrice)})`
                   ) : (
                     "Xác nhận đặt lịch"
                   )}

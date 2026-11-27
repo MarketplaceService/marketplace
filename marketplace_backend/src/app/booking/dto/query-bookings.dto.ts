@@ -10,6 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import { BookingStatus } from 'src/shared/types/booking-status.enum';
+import { PaymentMethod } from 'src/shared/types/payment-method.enum';
 
 export const CUSTOMER_BOOKING_TABS = [
   'all',
@@ -113,4 +114,12 @@ export class GetProviderWalletQueryDto {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  @ApiPropertyOptional({
+    enum: PaymentMethod,
+    description: 'Chỉ lấy đơn đã thanh toán bằng phương thức này',
+  })
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 }

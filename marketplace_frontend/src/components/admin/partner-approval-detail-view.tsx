@@ -146,7 +146,7 @@ export function PartnerApprovalDetailView({
     areaName: "Vùng trung tâm Quận 9, TP.HCM",
     isActive: true,
   };
-  const initialService = profile.services?.[0];
+  const registeredServices = profile.services ?? [];
 
   const docItems = [
     {
@@ -310,29 +310,31 @@ export function PartnerApprovalDetailView({
             </div>
           </div>
 
-          {/* Dịch vụ khởi tạo ban đầu */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-sm">
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-                Dịch vụ khởi tạo ban đầu
-              </span>
+          {/* Các dịch vụ đăng ký */}
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-sm">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+              Dịch vụ đăng ký ({registeredServices.length})
+            </span>
+            {registeredServices.length === 0 ? (
               <p className="mt-0.5 font-medium text-foreground">
-                {initialService?.title ||
-                  "Chưa thiết lập dịch vụ riêng (hệ thống tự tạo dịch vụ mặc định khi duyệt)"}
+                Chưa thiết lập dịch vụ riêng (hệ thống tự tạo dịch vụ mặc định khi duyệt)
               </p>
-            </div>
-            {initialService && (
-              <div className="text-left sm:text-right shrink-0">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Biểu giá cơ sở
-                </span>
-                <p className="mt-0.5 font-bold tabular-nums text-primary">
-                  {Number(initialService.basePrice).toLocaleString("vi-VN")} đ (
-                  {PRICE_UNIT_LABELS[initialService.priceUnit] ??
-                    initialService.priceUnit}
-                  ) • {initialService.durationMinutes} phút
-                </p>
-              </div>
+            ) : (
+              <ul className="mt-1 divide-y divide-primary/10">
+                {registeredServices.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 py-2 first:pt-1 last:pb-0"
+                  >
+                    <p className="font-medium text-foreground">{item.title}</p>
+                    <p className="shrink-0 font-bold tabular-nums text-primary">
+                      {Number(item.basePrice).toLocaleString("vi-VN")} đ (
+                      {PRICE_UNIT_LABELS[item.priceUnit] ?? item.priceUnit}) •{" "}
+                      {item.durationMinutes} phút
+                    </p>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 

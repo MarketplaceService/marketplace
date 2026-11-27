@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { StorageService } from 'src/app/storage/storage.service';
+import { PrivateStorageService } from 'src/app/storage/private-storage.service';
 import { User } from 'src/app/user/entities/user.entity';
 import { apiBadRequest, apiNotFound } from 'src/shared/helpers/api-i18n';
 import { UserRole } from 'src/shared/types/user-role.enum';
@@ -13,7 +13,10 @@ import { VerificationStatus } from 'src/shared/types/verification-status.enum';
 import { DataSource, Repository } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
 import { CheckServiceAreaDto } from './dto/service-area-and-approval.dto';
-import { RegisterProviderDto } from './dto/register-provider.dto';
+import {
+  InitialServiceDto,
+  RegisterProviderDto,
+} from './dto/register-provider.dto';
 import { UpdateServiceAreaDto } from './dto/update-service-area.dto';
 import { ProviderDocument } from './entities/provider-document.entity';
 import { ProviderProfile } from './entities/provider-profile.entity';
@@ -58,22 +61,88 @@ export class ProviderService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly dataSource: DataSource,
-    private readonly storageService: StorageService,
+    private readonly privateStorage: PrivateStorageService,
   ) {}
 
   private getDocumentPrefix(userId: string): string {
     return `providers/documents/${userId}/`;
   }
 
-  private assertManagedDocumentUrl(url: string, userId: string): void {
-    const storagePath = this.storageService.getPathFromUrl(url);
+  /** Trả path của giấy tờ trong bucket riêng tư; chỉ nhận file trong thư mục của chính user */
+  private toManagedDocumentPath(url: string, userId: string): string {
+    const storagePath = this.privateStorage.toPath(url);
     if (
       !storagePath ||
-      storagePath.includes('..') ||
       !storagePath.startsWith(this.getDocumentPrefix(userId))
     ) {
       apiBadRequest('errors.provider.invalidDocumentUrl');
     }
+    return storagePath;
+  }
+
+  /** Cắt khoảng trắng ở tên dịch vụ; tên rỗng hoặc trùng nhau (không phân biệt hoa thường) trả 400 */
+  private normalizeServiceDrafts(
+    services: InitialServiceDto[] | undefined,
+  ): InitialServiceDto[] {
+    const seen = new Set<string>();
+
+    return (services ?? []).map((service) => {
+      const title = service.title.trim();
+      if (!title) {
+        apiBadRequest('errors.provider.serviceTitleRequired');
+      }
+
+      const key = title.toLocaleLowerCase('vi');
+      if (seen.has(key)) {
+        apiBadRequest('errors.provider.duplicateServiceTitle');
+      }
+      seen.add(key);
+
+      return { ...service, title };
+    });
+  }
+
+  /**
+   * Sau khi lưu hồ sơ, xóa mọi file trong thư mục KYC của user mà hồ sơ không dùng tới.
+   * Giấy tờ được tải lên trước khi gửi hồ sơ, nên lần gửi bị lỗi, giấy tờ chọn lại hoặc bấm gửi hai lần
+   * đều để lại file mồ côi; giấy tờ của hồ sơ trước bị thay cũng nằm trong thư mục này.
+   * Không liệt kê được thư mục thì chỉ dọn giấy tờ cũ mà database từng trỏ tới.
+   */
+  private async removeUnusedDocumentFiles(
+    userId: string,
+    keptPaths: string[],
+    previousDocPaths: string[],
+  ) {
+    const prefix = this.getDocumentPrefix(userId);
+    const kept = new Set(keptPaths);
+
+    // URL công khai cũ (máy chưa chạy storage:move-private) cho toPath trả null nên không bị xóa
+    const candidates =
+      (await this.privateStorage.listFiles(prefix)) ??
+      previousDocPaths.map((value) => this.privateStorage.toPath(value));
+
+    const unused = candidates.filter(
+      (path): path is string =>
+        Boolean(path?.startsWith(prefix)) && !kept.has(path),
+    );
+
+    await this.privateStorage.removeMany([...new Set(unused)]);
+  }
+
+  // Database lưu path; thay bằng URL có chữ ký trước khi trả cho client
+  private async signDocuments<T extends { documents?: ProviderDocument[] }>(
+    profiles: T[],
+  ): Promise<T[]> {
+    const docs = profiles.flatMap((profile) => profile.documents ?? []);
+    if (docs.length === 0) return profiles;
+
+    const signed = await this.privateStorage.signPaths(
+      docs.map((doc) => doc.fileUrl),
+    );
+    for (const doc of docs) {
+      doc.fileUrl = signed.get(doc.fileUrl) ?? null;
+    }
+    return profiles;
   }
 
   private isUuid(value: string): boolean {
@@ -189,7 +258,9 @@ export class ProviderService {
       };
     }
 
-    const [enriched] = await this.attachCategoryNames([profile]);
+    const [enriched] = await this.signDocuments(
+      await this.attachCategoryNames([profile]),
+    );
     return {
       status: profile.verificationStatus,
       profile: enriched,
@@ -216,13 +287,14 @@ export class ProviderService {
 
     const ext = PROVIDER_DOCUMENT_EXTENSIONS.get(file.mimetype) ?? 'jpg';
     const path = `${this.getDocumentPrefix(userId)}${uuidv7()}.${ext}`;
-    const fileUrl = await this.storageService.upload(
+    const { signedUrl } = await this.privateStorage.upload(
       path,
       file.buffer,
       file.mimetype,
     );
 
-    return { fileUrl };
+    // URL có chữ ký để xem trước; form gửi lại URL này khi nộp hồ sơ
+    return { fileUrl: signedUrl };
   }
 
   async register(userId: string, dto: RegisterProviderDto) {
@@ -246,11 +318,17 @@ export class ProviderService {
       throw new ConflictException('Hồ sơ của bạn đã được phê duyệt');
     }
 
-    for (const doc of dto.documents ?? []) {
-      this.assertManagedDocumentUrl(doc.fileUrl, userId);
-    }
+    // Client gửi lại URL nhận được lúc tải lên hoặc lúc xem hồ sơ; database chỉ lưu path
+    const documentPaths = (dto.documents ?? []).map((doc) =>
+      this.toManagedDocumentPath(doc.fileUrl, userId),
+    );
 
-    let previousDocUrls: string[] = [];
+    // Frontend cũ gửi initialService (một dịch vụ); coi như danh sách một phần tử
+    const serviceDrafts = this.normalizeServiceDrafts(
+      dto.services ?? (dto.initialService ? [dto.initialService] : undefined),
+    );
+
+    let previousDocPaths: string[] = [];
 
     await this.dataSource.transaction(async (manager) => {
       const pRepo = manager.getRepository(ProviderProfile);
@@ -295,14 +373,14 @@ export class ProviderService {
           where: { providerId: savedProfile.id },
           select: { fileUrl: true },
         });
-        previousDocUrls = previousDocs.map((doc) => doc.fileUrl);
+        previousDocPaths = previousDocs.map((doc) => doc.fileUrl);
 
         await dRepo.delete({ providerId: savedProfile.id });
-        const docs = dto.documents.map((d) =>
+        const docs = dto.documents.map((d, index) =>
           dRepo.create({
             providerId: savedProfile.id,
             documentType: d.documentType,
-            fileUrl: d.fileUrl,
+            fileUrl: documentPaths[index],
             status: VerificationStatus.PENDING,
           }),
         );
@@ -323,42 +401,47 @@ export class ProviderService {
         await aRepo.save(area);
       }
 
-      // Tạo bản ghi dịch vụ khởi tạo ở trạng thái PENDING gắn với category_id trong bảng service
+      // Tạo lại các dịch vụ ở trạng thái PENDING, tất cả thuộc ngành nghề chính; admin duyệt
+      // hồ sơ thì mọi dịch vụ PENDING chuyển ACTIVE
       await sRepo.delete({
         providerId: savedProfile.id,
         status: ServiceStatus.PENDING,
       });
 
-      const initialTitle =
-        dto.initialService?.title.trim() ||
-        `Dịch vụ ${resolvedCategory.name} chuyên nghiệp`;
+      const drafts = serviceDrafts.length
+        ? serviceDrafts
+        : [
+            {
+              title: `Dịch vụ ${resolvedCategory.name} chuyên nghiệp`,
+              basePrice: 200000,
+              priceUnit: PriceUnit.FIXED,
+              durationMinutes: 60,
+            },
+          ];
 
-      const initialService = sRepo.create({
-        providerId: savedProfile.id,
-        categoryId: resolvedCategory.id,
-        title: initialTitle,
-        description:
-          dto.bio?.trim() ||
-          `Cung cấp dịch vụ ${initialTitle} tận nơi uy tín trên Servigo.`,
-        basePrice: dto.initialService?.basePrice ?? 200000,
-        priceUnit: dto.initialService?.priceUnit ?? PriceUnit.FIXED,
-        durationMinutes: dto.initialService?.durationMinutes ?? 60,
-        status: ServiceStatus.PENDING,
-      });
-      await sRepo.save(initialService);
+      await sRepo.save(
+        drafts.map((draft) =>
+          sRepo.create({
+            providerId: savedProfile.id,
+            categoryId: resolvedCategory.id,
+            title: draft.title,
+            description:
+              dto.bio?.trim() ||
+              `Cung cấp dịch vụ ${draft.title} tận nơi uy tín trên Servigo.`,
+            basePrice: draft.basePrice,
+            priceUnit: draft.priceUnit,
+            durationMinutes: draft.durationMinutes,
+            status: ServiceStatus.PENDING,
+          }),
+        ),
+      );
     });
 
-    // Dọn file cũ đã bị thay thế trên Supabase sau khi giao dịch DB thành công
-    if (previousDocUrls.length > 0) {
-      const newUrlSet = new Set((dto.documents ?? []).map((d) => d.fileUrl));
-      const prefix = this.getDocumentPrefix(userId);
-      const stalePaths = previousDocUrls
-        .filter((url) => !newUrlSet.has(url))
-        .map((url) => this.storageService.getPathFromUrl(url))
-        .filter((path): path is string => Boolean(path?.startsWith(prefix)));
-
-      await Promise.all(
-        stalePaths.map((path) => this.storageService.remove(path)),
+    if (documentPaths.length > 0) {
+      await this.removeUnusedDocumentFiles(
+        userId,
+        documentPaths,
+        previousDocPaths,
       );
     }
 
@@ -604,7 +687,9 @@ export class ProviderService {
     qb.skip(skip).take(limit);
 
     const [items, totalFiltered] = await qb.getManyAndCount();
-    const enrichedItems = await this.attachCategoryNames(items);
+    const enrichedItems = await this.signDocuments(
+      await this.attachCategoryNames(items),
+    );
 
     // Stats
     const total = await this.profileRepo.count();
@@ -646,7 +731,9 @@ export class ProviderService {
       throw new NotFoundException('Không tìm thấy hồ sơ nhà cung cấp');
     }
 
-    const [enriched] = await this.attachCategoryNames([profile]);
+    const [enriched] = await this.signDocuments(
+      await this.attachCategoryNames([profile]),
+    );
     return enriched;
   }
 

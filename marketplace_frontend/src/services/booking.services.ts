@@ -8,6 +8,7 @@ import type {
   CustomerBookingTab,
   InspectionPhoto,
   MyBookingsResponse,
+  PaymentMethod,
   ProviderBookingTab,
   ProviderBookingsResponse,
   ProviderWalletResponse,
@@ -143,6 +144,7 @@ export const bookingServices = {
     month?: string;
     page?: number;
     limit?: number;
+    paymentMethod?: PaymentMethod;
   }): Promise<ProviderWalletResponse> => {
     const { data } = await axiosInstance.get<ProviderWalletResponse>(
       "/provider/wallet",

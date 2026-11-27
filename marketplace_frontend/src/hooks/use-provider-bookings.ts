@@ -5,6 +5,7 @@ import { bookingServices } from "@/services/booking.services";
 import { providerServices } from "@/services/provider.services";
 import type {
   BookingStatus,
+  PaymentMethod,
   ProviderBookingTab,
   SubmitInspectionPayload,
 } from "@/types/booking.types";
@@ -130,6 +131,7 @@ export function useProviderWallet(params?: {
   month?: string;
   page?: number;
   limit?: number;
+  paymentMethod?: PaymentMethod;
 }) {
   return useQuery({
     queryKey: PROVIDER_BOOKING_KEYS.wallet(params),

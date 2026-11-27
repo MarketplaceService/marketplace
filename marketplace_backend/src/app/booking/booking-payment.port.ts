@@ -9,6 +9,7 @@ export interface BookingPaymentSummary {
   currency: string;
   status: string;
   transactionId: string | null;
+  payosOrderCode: number | null;
   paymentLinkUrl: string | null;
   paymentDetails: Record<string, unknown> | null;
   expiresAt: string | null;
@@ -18,7 +19,9 @@ export interface BookingPaymentSummary {
 
 /**
  * Cổng nối trừu tượng giữa BookingModule (#133) và PaymentModule (#150).
- * Toàn bộ thao tác ghi nhận EntityManager của transaction hiện hành để đảm bảo atomic.
+ * Các thao tác ghi nhận EntityManager của transaction hiện hành để đảm bảo atomic.
+ * activatePayment và releaseGatewayLinks chạy sau khi transaction đã commit, vì chúng gọi cổng
+ * thanh toán bên ngoài và không được giữ khóa hồ sơ thợ trong lúc chờ.
  */
 export abstract class BookingPaymentPort {
   abstract initPayment(
@@ -32,6 +35,11 @@ export abstract class BookingPaymentPort {
     },
   ): Promise<BookingPaymentSummary | null>;
 
+  /** Tạo link ở cổng thanh toán cho giao dịch vừa tạo. Không bao giờ ném lỗi */
+  abstract activatePayment(
+    bookingId: string,
+  ): Promise<BookingPaymentSummary | null>;
+
   abstract markCompletedOnAcceptance(
     manager: EntityManager,
     bookingId: string,
@@ -43,6 +51,9 @@ export abstract class BookingPaymentPort {
     reason: string,
   ): Promise<BookingPaymentSummary | null>;
 
+  /** Hủy link ở cổng thanh toán của các giao dịch vừa bị hủy. Không bao giờ ném lỗi */
+  abstract releaseGatewayLinks(bookingId: string): Promise<void>;
+
   abstract findByBookingId(bookingId: string): Promise<BookingPaymentSummary[]>;
 
   abstract findLatestByBookingIds(
@@ -50,10 +61,14 @@ export abstract class BookingPaymentPort {
   ): Promise<Map<string, BookingPaymentSummary>>;
 }
 
-/** Bản mặc định khi chưa tích hợp bảng payment */
+/** Bản rỗng, chỉ còn dùng trong test */
 @Injectable()
 export class NoopPaymentPort extends BookingPaymentPort {
   initPayment(): Promise<BookingPaymentSummary | null> {
+    return Promise.resolve(null);
+  }
+
+  activatePayment(): Promise<BookingPaymentSummary | null> {
     return Promise.resolve(null);
   }
 
@@ -63,6 +78,10 @@ export class NoopPaymentPort extends BookingPaymentPort {
 
   cancelOrRefund(): Promise<BookingPaymentSummary | null> {
     return Promise.resolve(null);
+  }
+
+  releaseGatewayLinks(): Promise<void> {
+    return Promise.resolve();
   }
 
   findByBookingId(): Promise<BookingPaymentSummary[]> {

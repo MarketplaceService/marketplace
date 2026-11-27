@@ -27,6 +27,7 @@ import {
   useStartBooking,
 } from "@/hooks/use-provider-bookings";
 import { getApiErrorMessage } from "@/lib/api/api-error";
+import { isPaymentReadyForAcceptance } from "@/lib/payment";
 import { formatVnd } from "@/lib/travel-fee";
 import { cn } from "@/lib/utils";
 import { formatVnDateTime } from "@/lib/vn-time";
@@ -173,6 +174,8 @@ export function BookingDetailView({
     isCustomerOwner &&
     booking.status === "IN_PROGRESS" &&
     booking.hasRequiredInspection;
+  // PayOS phải trả xong mới nghiệm thu được; tiền mặt được chốt lúc nghiệm thu
+  const isPaymentReady = isPaymentReadyForAcceptance(booking.latestPayment);
   const hasActions =
     canAcceptAndComplete ||
     canProviderConfirmOrReject ||
@@ -594,7 +597,10 @@ export function BookingDetailView({
           </section>
 
           {/* Thanh toán */}
-          <BookingPaymentCard booking={booking} />
+          <BookingPaymentCard
+            booking={booking}
+            canManagePayment={isCustomerOwner}
+          />
 
           {/* Thẻ Hành động chính */}
           {hasActions && (
@@ -651,15 +657,24 @@ export function BookingDetailView({
               )}
 
               {canAcceptAndComplete && (
-                <Button
-                  type="button"
-                  size="lg"
-                  onClick={() => setConfirmAcceptOpen(true)}
-                  className="w-full min-h-[48px] rounded-xl text-sm font-semibold"
-                >
-                  <CheckCircle2 className="size-4" />
-                  Xác nhận nghiệm thu &amp; Hoàn tất đơn
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={!isPaymentReady}
+                    onClick={() => setConfirmAcceptOpen(true)}
+                    className="w-full min-h-[48px] rounded-xl text-sm font-semibold"
+                  >
+                    <CheckCircle2 className="size-4" />
+                    Xác nhận nghiệm thu &amp; Hoàn tất đơn
+                  </Button>
+                  {!isPaymentReady && (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Đơn chưa được thanh toán. Hãy hoàn tất thanh toán PayOS ở thẻ &quot;Chi tiết
+                      thanh toán&quot;, hoặc đổi sang tiền mặt, rồi mới nghiệm thu.
+                    </p>
+                  )}
+                </div>
               )}
 
               {canCancel && (

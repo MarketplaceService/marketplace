@@ -2,7 +2,7 @@
 
 import { AddressAutocomplete } from "@/components/map/address-autocomplete";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCurrentUser } from "@/hooks/use-auth";
+import { useCurrentUser, useRefreshAuthSession } from "@/hooks/use-auth";
 import { useCategories } from "@/hooks/use-discovery";
 import {
   useCheckServiceArea,
@@ -12,6 +12,13 @@ import {
 import { useServiceAreaCenter } from "@/hooks/use-service-area-center";
 import { toastApiError } from "@/lib/api/api-error";
 import { providerServices } from "@/services/provider.services";
+import {
+  createServiceDraft,
+  MAX_REGISTER_SERVICES,
+  RegisterServicesFields,
+  type ServiceDraft,
+  validateServiceDrafts,
+} from "./register-services-fields";
 import {
   AlertCircle,
   BadgeCheck,
@@ -27,7 +34,6 @@ import {
   Trash2,
   Upload,
   User,
-  Wrench,
   XCircle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -70,14 +76,29 @@ export interface UploadedDoc {
 
 export function PartnerRegisterView() {
   const { data: user } = useCurrentUser();
-  const { data: providerData, isLoading } = useMyProviderProfile();
+  const { data: providerData, isLoading } = useMyProviderProfile({
+    pollWhilePendingMs: 20_000,
+  });
   const { data: apiCategories } = useCategories();
   const registerMutation = useRegisterProvider();
   const checkAreaMutation = useCheckServiceArea();
+  const refreshSession = useRefreshAuthSession();
 
   const [isEditingAfterReject, setIsEditingAfterReject] = useState(false);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
   const objectUrlsRef = useRef<Set<string>>(new Set());
+  // State chỉ cập nhật ở lần render sau, nên hai lần bấm gửi liên tiếp vẫn lọt qua; ref chặn ngay
+  const submittingRef = useRef(false);
+
+  // Admin duyệt xong thì role ở server đã là provider, nhưng session trong cache vẫn là customer
+  // (header còn "Trở thành nhà cung cấp", menu thiếu "Kênh Nhà cung cấp") cho tới khi lấy lại
+  const providerStatus = providerData?.status;
+  const sessionRole = user?.role;
+  useEffect(() => {
+    if (providerStatus === "APPROVED" && sessionRole && sessionRole !== "provider") {
+      void refreshSession();
+    }
+  }, [providerStatus, sessionRole, refreshSession]);
 
   useEffect(() => {
     const urls = objectUrlsRef.current;
@@ -94,11 +115,10 @@ export function PartnerRegisterView() {
   const [categoryId, setCategoryId] = useState("");
   const [bio, setBio] = useState("");
 
-  // Initial service info
-  const [serviceTitle, setServiceTitle] = useState("");
-  const [basePrice, setBasePrice] = useState<number | "">("");
-  const [priceUnit, setPriceUnit] = useState<"FIXED" | "HOURLY" | "FROM">("FIXED");
-  const [durationMinutes, setDurationMinutes] = useState<number | "">(60);
+  // Các dịch vụ đăng ký (1 đến MAX_REGISTER_SERVICES), cùng thuộc ngành nghề chính
+  const [services, setServices] = useState<ServiceDraft[]>(() => [
+    createServiceDraft(),
+  ]);
 
   const categoryOptions =
     apiCategories && apiCategories.length > 0
@@ -234,7 +254,9 @@ export function PartnerRegisterView() {
   // Submit Registration
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isUploadingDocs || registerMutation.isPending) return;
+    if (submittingRef.current || isUploadingDocs || registerMutation.isPending) {
+      return;
+    }
 
     if (!displayName.trim()) {
       toast.error("Vui lòng nhập tên hiển thị Nhà cung cấp");
@@ -262,18 +284,9 @@ export function PartnerRegisterView() {
       return;
     }
 
-    if (!serviceTitle.trim()) {
-      toast.error("Vui lòng nhập tên dịch vụ ban đầu");
-      return;
-    }
-
-    if (basePrice === "" || Number(basePrice) < 0) {
-      toast.error("Vui lòng nhập giá cơ sở hợp lệ");
-      return;
-    }
-
-    if (durationMinutes === "" || Number(durationMinutes) < 15) {
-      toast.error("Thời lượng dịch vụ tối thiểu 15 phút");
+    const servicesError = validateServiceDrafts(services);
+    if (servicesError) {
+      toast.error(servicesError);
       return;
     }
 
@@ -300,6 +313,7 @@ export function PartnerRegisterView() {
       return fileUrl;
     };
 
+    submittingRef.current = true;
     let uploadedUrls: [string, string, string, string];
     try {
       setIsUploadingDocs(true);
@@ -310,6 +324,7 @@ export function PartnerRegisterView() {
         resolveDocUrl(doc4, setDoc4),
       ]);
     } catch (error) {
+      submittingRef.current = false;
       toastApiError(error, "Không thể tải tài liệu xác minh lên máy chủ");
       return;
     } finally {
@@ -336,16 +351,19 @@ export function PartnerRegisterView() {
           radiusKm,
           isActive,
         },
-        initialService: {
-          title: serviceTitle.trim(),
-          basePrice: Number(basePrice),
-          priceUnit,
-          durationMinutes: Number(durationMinutes),
-        },
+        services: services.map((item) => ({
+          title: item.title.trim(),
+          basePrice: Number(item.basePrice),
+          priceUnit: item.priceUnit,
+          durationMinutes: Number(item.durationMinutes),
+        })),
       },
       {
         onSuccess: () => {
           setIsEditingAfterReject(false);
+        },
+        onSettled: () => {
+          submittingRef.current = false;
         },
       },
     );
@@ -590,7 +608,10 @@ export function PartnerRegisterView() {
                 type="button"
                 onClick={() => {
                   if (profile) {
-                    const initialService = profile.services?.[0];
+                    const savedServices = (profile.services ?? []).slice(
+                      0,
+                      MAX_REGISTER_SERVICES,
+                    );
                     const area = profile.serviceAreas?.[0];
                     const toUploadedDoc = (
                       documentType: string,
@@ -614,13 +635,21 @@ export function PartnerRegisterView() {
                     setPhone(profile.phone || "");
                     setExperienceYears(profile.experienceYears ?? "");
                     setBio(profile.bio || "");
-                    setCategoryId(initialService?.categoryId || profile.categoryId || "");
-                    if (initialService) {
-                      setServiceTitle(initialService.title || "");
-                      setBasePrice(Number(initialService.basePrice));
-                      setPriceUnit(initialService.priceUnit || "FIXED");
-                      setDurationMinutes(initialService.durationMinutes || 60);
-                    }
+                    setCategoryId(
+                      savedServices[0]?.categoryId || profile.categoryId || "",
+                    );
+                    setServices(
+                      savedServices.length > 0
+                        ? savedServices.map((item) =>
+                            createServiceDraft({
+                              title: item.title || "",
+                              basePrice: Number(item.basePrice),
+                              priceUnit: item.priceUnit || "FIXED",
+                              durationMinutes: item.durationMinutes || 60,
+                            }),
+                          )
+                        : [createServiceDraft()],
+                    );
                     if (area) {
                       setAreaName(area.areaName || "");
                       setCenterLat(Number(area.centerLatitude));
@@ -844,90 +873,17 @@ export function PartnerRegisterView() {
                     </select>
 
                     <p className="mt-1.5 text-xs text-muted-foreground">
-                      Chọn 1 trong 8 danh mục dịch vụ tiêu chuẩn của Servigo.
+                      Chọn 1 trong 8 danh mục; mọi dịch vụ bên dưới thuộc ngành
+                      này.
                     </p>
                   </div>
                 </div>
 
-                {/* Thiết lập dịch vụ khởi tạo */}
-                <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground">
-                    <Wrench className="h-4 w-4 text-primary" />
-                    <span>Thiết lập dịch vụ khởi tạo khi được phê duyệt</span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
-                    <div className="sm:col-span-5">
-                      <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                        Tên dịch vụ ban đầu{" "}
-                        <span className="text-destructive">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={serviceTitle}
-                        onChange={(e) => setServiceTitle(e.target.value)}
-                        placeholder="VD: Bảo trì & Vệ sinh điều hòa dân dụng"
-                        className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none placeholder:text-muted-foreground"
-                      />
-                    </div>
-                    <div className="sm:col-span-3">
-                      <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                        Giá cơ sở (VNĐ) <span className="text-destructive">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        min={0}
-                        step={10000}
-                        value={basePrice}
-                        onChange={(e) =>
-                          setBasePrice(
-                            e.target.value === "" ? "" : Number(e.target.value),
-                          )
-                        }
-                        placeholder="VD: 250000"
-                        className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none placeholder:text-muted-foreground"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                        Đơn vị tính <span className="text-destructive">*</span>
-                      </label>
-                      <select
-                        value={priceUnit}
-                        onChange={(e) =>
-                          setPriceUnit(
-                            e.target.value as "FIXED" | "HOURLY" | "FROM",
-                          )
-                        }
-                        className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none cursor-pointer"
-                      >
-                        <option value="FIXED">Trọn gói</option>
-                        <option value="HOURLY">Theo giờ</option>
-                        <option value="FROM">Từ mức giá</option>
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-muted-foreground">
-                        Thời lượng (phút) <span className="text-destructive">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        min={15}
-                        step={15}
-                        value={durationMinutes}
-                        onChange={(e) =>
-                          setDurationMinutes(
-                            e.target.value === "" ? "" : Number(e.target.value),
-                          )
-                        }
-                        placeholder="VD: 60"
-                        className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none placeholder:text-muted-foreground"
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* Các dịch vụ đăng ký, cùng thuộc ngành nghề chính */}
+                <RegisterServicesFields
+                  items={services}
+                  onChange={setServices}
+                />
 
                 <div>
                   <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-foreground">

@@ -40,15 +40,18 @@ const STATUS_META: Record<
 const PAYMENT_STATUS_META: Record<string, { label: string; className: string }> = {
   pending: {
     label: "Chờ thanh toán",
-    className: "border-amber-300/70 bg-amber-50 text-amber-800",
+    className:
+      "border-amber-300/70 bg-amber-50 text-amber-800 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300",
   },
   processing: {
     label: "Đang xử lý",
-    className: "border-sky-300/70 bg-sky-50 text-sky-800",
+    className:
+      "border-sky-300/70 bg-sky-50 text-sky-800 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-300",
   },
   completed: {
     label: "Đã thanh toán",
-    className: "border-emerald-300/70 bg-emerald-50 text-emerald-800",
+    className:
+      "border-emerald-300/70 bg-emerald-50 text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/40 dark:text-emerald-300",
   },
   failed: {
     label: "Thanh toán lỗi",
@@ -64,7 +67,8 @@ const PAYMENT_STATUS_META: Record<string, { label: string; className: string }> 
   },
   refunded: {
     label: "Đã hoàn tiền",
-    className: "border-sky-300/70 bg-sky-50 text-sky-800",
+    className:
+      "border-sky-300/70 bg-sky-50 text-sky-800 dark:border-sky-700/60 dark:bg-sky-950/40 dark:text-sky-300",
   },
 };
 

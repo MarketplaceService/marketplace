@@ -5,6 +5,7 @@ import {
   SUPABASE_CONFIG,
   SupabaseConfig,
 } from 'src/config/supabase/supabase.config';
+import { PrivateStorageService } from './private-storage.service';
 import { StorageService, SUPABASE_CLIENT } from './storage.service';
 
 @Module({
@@ -22,7 +23,8 @@ import { StorageService, SUPABASE_CLIENT } from './storage.service';
       },
     },
     StorageService,
+    PrivateStorageService,
   ],
-  exports: [StorageService],
+  exports: [StorageService, PrivateStorageService],
 })
 export class StorageModule {}

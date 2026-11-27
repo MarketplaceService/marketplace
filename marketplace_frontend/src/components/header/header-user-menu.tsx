@@ -1,5 +1,6 @@
 "use client";
 
+import { useRefreshAuthSession } from "@/hooks/use-auth";
 import { roleLabel } from "@/lib/user-role";
 import { cn } from "@/lib/utils";
 import { User } from "@/types/api.types";
@@ -34,7 +35,11 @@ export function UserMenu({
   accountHref,
 }: UserMenuProps) {
   const pathname = usePathname();
-  const isDashboardArea = pathname.startsWith("/admin") || pathname.startsWith("/provider");
+  const refreshSession = useRefreshAuthSession();
+  // /provider/register là trang khách hàng (nằm trong route group (customer)), không phải portal thợ
+  const isProviderPortal =
+    pathname.startsWith("/provider") && !pathname.startsWith("/provider/register");
+  const isDashboardArea = pathname.startsWith("/admin") || isProviderPortal;
   if (loading) {
     return <div className="h-[38px] w-24 animate-pulse rounded-full bg-muted" />;
   }
@@ -51,7 +56,9 @@ export function UserMenu({
   }
 
   return (
-    <DropdownMenu>
+    // Mở menu thì lấy lại session nếu đã cũ hơn 30 giây: role có thể vừa đổi ở server
+    // (ví dụ admin duyệt hồ sơ nhà cung cấp) mà cache vẫn giữ role cũ
+    <DropdownMenu onOpenChange={(open) => open && void refreshSession(30_000)}>
       <DropdownMenuTrigger
         aria-label="Menu tài khoản"
         className="group flex cursor-pointer items-center gap-2.5 rounded-full pl-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -97,7 +104,7 @@ export function UserMenu({
           </DropdownMenuItem>
         )}
 
-        {!pathname.startsWith("/provider") && user.role === "provider" && (
+        {!isProviderPortal && user.role === "provider" && (
           <DropdownMenuItem render={<Link href="/provider" />}>
             <LayoutDashboard />
             Kênh Nhà cung cấp
