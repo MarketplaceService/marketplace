@@ -19,6 +19,7 @@ import {
   translateApiMessage,
 } from 'src/shared/helpers/api-i18n';
 import { BookingStatus } from 'src/shared/types/booking-status.enum';
+import { PaymentStatus } from 'src/shared/types/payment-status.enum';
 import { ServiceStatus } from 'src/shared/types/service-status.enum';
 import { UserRole } from 'src/shared/types/user-role.enum';
 import { VerificationStatus } from 'src/shared/types/verification-status.enum';
@@ -505,6 +506,9 @@ export class BookingService {
       throw error;
     }
 
+    // Tạo link PayOS sau khi commit để không giữ khóa hồ sơ thợ trong lúc chờ cổng thanh toán
+    await this.bookingPaymentPort.activatePayment(createdId);
+
     return this.getBookingDetail(
       { id: userId, role: UserRole.CUSTOMER },
       createdId,
@@ -565,6 +569,7 @@ export class BookingService {
         );
       },
     });
+    await this.bookingPaymentPort.releaseGatewayLinks(bookingId);
 
     return this.getBookingDetail(
       { id: providerUserId, role: UserRole.PROVIDER },
@@ -761,6 +766,7 @@ export class BookingService {
         );
       },
     });
+    await this.bookingPaymentPort.releaseGatewayLinks(bookingId);
 
     return this.getBookingDetail(actorUser, bookingId);
   }
@@ -1086,84 +1092,105 @@ export class BookingService {
     const chartStart = monthRangeInVn(months[0]).start;
     const chartEnd = monthRangeInVn(currentMonth).end;
 
-    const [monthAgg, inProgressAgg, lifetimeAgg, chartRows, txRawResult] =
-      await Promise.all([
-        this.bookingRepo
-          .createQueryBuilder('booking')
-          .select('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
-          .addSelect('COUNT(*)', 'count')
-          .where('booking.providerId = :providerId', {
-            providerId: profile.id,
-          })
-          .andWhere('booking.status = :status', {
-            status: BookingStatus.COMPLETED,
-          })
-          .andWhere(`${COMPLETED_AT_EXPR} >= :monthStart`, { monthStart })
-          .andWhere(`${COMPLETED_AT_EXPR} < :monthEnd`, { monthEnd })
-          .getRawOne<{ revenue: string; count: string }>(),
+    // Bảng sao kê trong tháng. Lọc theo phương thức chỉ áp cho bảng, các thẻ tổng hợp giữ nguyên
+    const txQuery = this.bookingRepo
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.customer', 'customer')
+      .addSelect(COMPLETED_AT_EXPR, 'booking_completed_at')
+      .where('booking.providerId = :providerId', {
+        providerId: profile.id,
+      })
+      .andWhere('booking.status = :status', {
+        status: BookingStatus.COMPLETED,
+      })
+      .andWhere(`${COMPLETED_AT_EXPR} >= :monthStart`, { monthStart })
+      .andWhere(`${COMPLETED_AT_EXPR} < :monthEnd`, { monthEnd });
+    if (query.paymentMethod) {
+      txQuery.andWhere(
+        `EXISTS (SELECT 1 FROM payment p WHERE p.booking_id = booking.id AND p.payment_method = :walletPaymentMethod AND p.status = :walletPaidStatus)`,
+        {
+          walletPaymentMethod: query.paymentMethod,
+          walletPaidStatus: PaymentStatus.COMPLETED,
+        },
+      );
+    }
 
-        this.bookingRepo
-          .createQueryBuilder('booking')
-          .select('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
-          .addSelect('COUNT(*)', 'count')
-          .where('booking.providerId = :providerId', {
-            providerId: profile.id,
-          })
-          .andWhere('booking.status IN (:...statuses)', {
-            statuses: ACTIVE_BOOKING_STATUSES,
-          })
-          .getRawOne<{ revenue: string; count: string }>(),
+    const [
+      monthAgg,
+      inProgressAgg,
+      lifetimeAgg,
+      chartRows,
+      txRawResult,
+      filteredTxCount,
+    ] = await Promise.all([
+      this.bookingRepo
+        .createQueryBuilder('booking')
+        .select('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
+        .addSelect('COUNT(*)', 'count')
+        .where('booking.providerId = :providerId', {
+          providerId: profile.id,
+        })
+        .andWhere('booking.status = :status', {
+          status: BookingStatus.COMPLETED,
+        })
+        .andWhere(`${COMPLETED_AT_EXPR} >= :monthStart`, { monthStart })
+        .andWhere(`${COMPLETED_AT_EXPR} < :monthEnd`, { monthEnd })
+        .getRawOne<{ revenue: string; count: string }>(),
 
-        this.bookingRepo
-          .createQueryBuilder('booking')
-          .select('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
-          .addSelect('COUNT(*)', 'count')
-          .where('booking.providerId = :providerId', {
-            providerId: profile.id,
-          })
-          .andWhere('booking.status = :status', {
-            status: BookingStatus.COMPLETED,
-          })
-          .getRawOne<{ revenue: string; count: string }>(),
+      this.bookingRepo
+        .createQueryBuilder('booking')
+        .select('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
+        .addSelect('COUNT(*)', 'count')
+        .where('booking.providerId = :providerId', {
+          providerId: profile.id,
+        })
+        .andWhere('booking.status IN (:...statuses)', {
+          statuses: ACTIVE_BOOKING_STATUSES,
+        })
+        .getRawOne<{ revenue: string; count: string }>(),
 
-        this.bookingRepo
-          .createQueryBuilder('booking')
-          .select(
-            `to_char((${COMPLETED_AT_EXPR}) AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM')`,
-            'month',
-          )
-          .addSelect('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
-          .addSelect('COUNT(*)', 'count')
-          .where('booking.providerId = :providerId', {
-            providerId: profile.id,
-          })
-          .andWhere('booking.status = :status', {
-            status: BookingStatus.COMPLETED,
-          })
-          .andWhere(`${COMPLETED_AT_EXPR} >= :chartStart`, { chartStart })
-          .andWhere(`${COMPLETED_AT_EXPR} < :chartEnd`, { chartEnd })
-          .groupBy(
-            `to_char((${COMPLETED_AT_EXPR}) AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM')`,
-          )
-          .getRawMany<{ month: string; revenue: string; count: string }>(),
+      this.bookingRepo
+        .createQueryBuilder('booking')
+        .select('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
+        .addSelect('COUNT(*)', 'count')
+        .where('booking.providerId = :providerId', {
+          providerId: profile.id,
+        })
+        .andWhere('booking.status = :status', {
+          status: BookingStatus.COMPLETED,
+        })
+        .getRawOne<{ revenue: string; count: string }>(),
 
-        this.bookingRepo
-          .createQueryBuilder('booking')
-          .leftJoinAndSelect('booking.customer', 'customer')
-          .addSelect(COMPLETED_AT_EXPR, 'booking_completed_at')
-          .where('booking.providerId = :providerId', {
-            providerId: profile.id,
-          })
-          .andWhere('booking.status = :status', {
-            status: BookingStatus.COMPLETED,
-          })
-          .andWhere(`${COMPLETED_AT_EXPR} >= :monthStart`, { monthStart })
-          .andWhere(`${COMPLETED_AT_EXPR} < :monthEnd`, { monthEnd })
-          .orderBy('booking_completed_at', 'DESC')
-          .offset(skip)
-          .limit(limit)
-          .getRawAndEntities<{ booking_completed_at: Date | string }>(),
-      ]);
+      this.bookingRepo
+        .createQueryBuilder('booking')
+        .select(
+          `to_char((${COMPLETED_AT_EXPR}) AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM')`,
+          'month',
+        )
+        .addSelect('COALESCE(SUM(booking.totalPrice), 0)', 'revenue')
+        .addSelect('COUNT(*)', 'count')
+        .where('booking.providerId = :providerId', {
+          providerId: profile.id,
+        })
+        .andWhere('booking.status = :status', {
+          status: BookingStatus.COMPLETED,
+        })
+        .andWhere(`${COMPLETED_AT_EXPR} >= :chartStart`, { chartStart })
+        .andWhere(`${COMPLETED_AT_EXPR} < :chartEnd`, { chartEnd })
+        .groupBy(
+          `to_char((${COMPLETED_AT_EXPR}) AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYYY-MM')`,
+        )
+        .getRawMany<{ month: string; revenue: string; count: string }>(),
+
+      txQuery
+        .clone()
+        .orderBy('booking_completed_at', 'DESC')
+        .offset(skip)
+        .limit(limit)
+        .getRawAndEntities<{ booking_completed_at: Date | string }>(),
+
+      query.paymentMethod ? txQuery.clone().getCount() : null,
+    ]);
 
     const chartMap = new Map<
       string,
@@ -1189,7 +1216,8 @@ export class BookingService {
 
     const txItems = txRawResult.entities;
     const txRawRows = txRawResult.raw;
-    const txTotal = Number(monthAgg?.count) || 0;
+    const completedCountThisMonth = Number(monthAgg?.count) || 0;
+    const txTotal = filteredTxCount ?? completedCountThisMonth;
     const paymentMap = await this.bookingPaymentPort.findLatestByBookingIds(
       txItems.map((item) => item.id),
     );
@@ -1198,7 +1226,7 @@ export class BookingService {
       month: selectedMonth,
       summary: {
         completedThisMonth: Math.round(Number(monthAgg?.revenue) || 0),
-        completedCountThisMonth: txTotal,
+        completedCountThisMonth,
         inProgressRevenue: Math.round(Number(inProgressAgg?.revenue) || 0),
         inProgressCount: Number(inProgressAgg?.count) || 0,
         totalLifetimeRevenue: Math.round(Number(lifetimeAgg?.revenue) || 0),

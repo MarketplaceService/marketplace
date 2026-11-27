@@ -8,19 +8,61 @@ export type BookingStatus =
   | "REJECTED"
   | "CANCELLED";
 
+export type PaymentMethod =
+  | "cod"
+  | "bank_transfer"
+  | "payos"
+  | "vnpay"
+  | "momo"
+  | "zalopay";
+
+export type PaymentStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "expired"
+  | "refunded";
+
+/** Các trường công khai trong payment_details. Với PayOS là dữ liệu để vẽ QR và hiện thông tin chuyển khoản */
+export interface PayosPaymentDetails {
+  qrCode?: string;
+  bin?: string;
+  accountNumber?: string;
+  accountName?: string;
+  description?: string;
+  amountPaid?: number;
+  cancellationReason?: string;
+  refundNote?: string;
+}
+
 export interface BookingPaymentSummary {
   id: string;
   bookingId: string;
-  paymentMethod: string;
+  paymentMethod: PaymentMethod;
   amount: number;
   currency: string;
-  status: string;
+  status: PaymentStatus;
+  /** Mã tham chiếu giao dịch ngân hàng */
   transactionId: string | null;
+  payosOrderCode: number | null;
   paymentLinkUrl: string | null;
-  paymentDetails: Record<string, unknown> | null;
+  paymentDetails: PayosPaymentDetails | null;
   expiresAt: string | null;
   paidAt: string | null;
   refundedAt: string | null;
+}
+
+export interface PaymentMethodOption {
+  method: PaymentMethod;
+  enabled: boolean;
+  reason: string | null;
+}
+
+export interface PaymentStatusResponse {
+  payment: BookingPaymentSummary;
+  booking: { id: string; bookingCode: string; status: BookingStatus };
 }
 
 export interface BookingAddressSnapshot {
@@ -132,7 +174,7 @@ export interface BookingPreviewResponse {
 export interface CreateBookingPayload extends BookingPreviewPayload {
   customerNote?: string;
   initialImages?: InspectionPhoto[];
-  paymentMethod?: string;
+  paymentMethod?: PaymentMethod;
 }
 
 export interface BookingSummaryItem {
@@ -269,8 +311,8 @@ export interface ProviderWalletTransaction {
   completedAt: string;
   totalPrice: number;
   distanceFee: number;
-  paymentMethod: string | null;
-  paymentStatus: string | null;
+  paymentMethod: PaymentMethod | null;
+  paymentStatus: PaymentStatus | null;
   latestPayment: BookingPaymentSummary | null;
 }
 

@@ -6,8 +6,8 @@ import { ProviderServiceArea } from '../provider/entities/provider-service-area.
 import { ProviderAvailability } from '../scheduling/entities/provider-availability.entity';
 import { ProviderTimeOff } from '../scheduling/entities/provider-time-off.entity';
 import { Service } from '../service/entities/service.entity';
+import { PaymentModule } from '../payment/payment.module';
 import { StorageModule } from '../storage/storage.module';
-import { BookingPaymentPort, NoopPaymentPort } from './booking-payment.port';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { BookingStatusHistory } from './entities/booking-status-history.entity';
@@ -27,12 +27,11 @@ import { ProviderBookingController } from './provider-booking.controller';
       ProviderTimeOff,
     ]),
     StorageModule,
+    // Cung cấp BookingPaymentPort (bản TypeOrmPaymentPort)
+    PaymentModule,
   ],
   controllers: [BookingController, ProviderBookingController],
-  providers: [
-    BookingService,
-    { provide: BookingPaymentPort, useClass: NoopPaymentPort },
-  ],
-  exports: [BookingService, BookingPaymentPort],
+  providers: [BookingService],
+  exports: [BookingService],
 })
 export class BookingModule {}

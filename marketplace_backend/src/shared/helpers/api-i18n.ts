@@ -77,6 +77,23 @@ const messages: Record<string, string> = {
     'Không tìm thấy địa chỉ hoặc địa chỉ không thuộc tài khoản của bạn',
   'errors.booking.invalidScheduleTime':
     'Thời gian hẹn đặt lịch không hợp lệ hoặc đã qua',
+  'errors.payment.notFound': 'Không tìm thấy giao dịch thanh toán',
+  'errors.payment.forbidden':
+    'Bạn không có quyền thực hiện thao tác này trên giao dịch thanh toán',
+  'errors.payment.methodUnsupported':
+    'Phương thức thanh toán này chưa được hỗ trợ',
+  'errors.payment.payosNotConfigured': 'Chưa cấu hình cổng thanh toán PayOS',
+  'errors.payment.gatewayFailed':
+    'Cổng thanh toán PayOS đang gặp lỗi, vui lòng thử lại sau',
+  'errors.payment.invalidWebhook': 'Dữ liệu webhook không hợp lệ',
+  'errors.payment.invalidSignature': 'Chữ ký webhook không hợp lệ',
+  'errors.payment.bookingClosed':
+    'Đơn đặt lịch đã kết thúc nên không thể thanh toán',
+  'errors.payment.alreadyPaid': 'Đơn đặt lịch này đã được thanh toán',
+  'errors.payment.processing':
+    'Giao dịch đang được ngân hàng xử lý, vui lòng đợi trong giây lát',
+  'errors.payment.unpaid':
+    'Đơn chưa được thanh toán. Hãy thanh toán qua PayOS hoặc đổi sang tiền mặt trước khi nghiệm thu',
 };
 
 export function translateApiMessage(key: string) {
