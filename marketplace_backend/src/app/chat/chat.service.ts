@@ -153,10 +153,10 @@ export class ChatService {
         apiForbidden('errors.chat.forbidden');
       }
 
-      const conversationId = await this.ensureBookingConversation(
-        booking.id,
+      const conversationId = await this.ensurePairConversation(
         booking.customerId,
         booking.provider.userId,
+        booking.id,
       );
 
       return this.getConversationSummaryById(currentUserId, conversationId);
@@ -195,54 +195,9 @@ export class ChatService {
       apiBadRequest('errors.chat.selfConversation');
     }
 
-    const [minUserId, maxUserId] = [currentUserId, targetUserId].sort();
-
-    const conversationId = await this.dataSource.transaction(
-      async (manager) => {
-        // Chống race condition tạo trùng phòng direct chat trên cặp (minUserId, maxUserId)
-        await manager.query(
-          `SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`,
-          [minUserId, maxUserId],
-        );
-
-        const existingRows = await manager.query<Array<{ id: string }>>(
-          `SELECT c.id
-           FROM conversation c
-           INNER JOIN conversation_participant p1
-             ON p1.conversation_id = c.id AND p1.user_id = $1
-           INNER JOIN conversation_participant p2
-             ON p2.conversation_id = c.id AND p2.user_id = $2
-           WHERE c.booking_id IS NULL
-           ORDER BY c.created_at ASC
-           LIMIT 1`,
-          [minUserId, maxUserId],
-        );
-
-        if (existingRows[0]?.id) {
-          return existingRows[0].id;
-        }
-
-        const convRepo = manager.getRepository(Conversation);
-        const partRepo = manager.getRepository(ConversationParticipant);
-
-        const created = await convRepo.save(
-          convRepo.create({ bookingId: null }),
-        );
-        await partRepo.save([
-          partRepo.create({
-            conversationId: created.id,
-            userId: minUserId,
-            lastReadAt: null,
-          }),
-          partRepo.create({
-            conversationId: created.id,
-            userId: maxUserId,
-            lastReadAt: null,
-          }),
-        ]);
-
-        return created.id;
-      },
+    const conversationId = await this.ensurePairConversation(
+      currentUserId,
+      targetUserId,
     );
 
     return this.getConversationSummaryById(currentUserId, conversationId);
@@ -501,10 +456,10 @@ export class ChatService {
     const trimmed = input.content.trim();
     if (!trimmed) return null;
 
-    const conversationId = await this.ensureBookingConversation(
-      input.bookingId,
+    const conversationId = await this.ensurePairConversation(
       input.customerId,
       input.providerUserId,
+      input.bookingId,
     );
 
     return this.persistAndBroadcastMessage({
@@ -590,28 +545,87 @@ export class ChatService {
     return rows.map((row) => row.user_id);
   }
 
-  private async ensureBookingConversation(
-    bookingId: string,
-    customerId: string,
-    providerUserId: string,
+  private async ensurePairConversation(
+    userA: string,
+    userB: string,
+    bookingId?: string,
   ): Promise<string> {
+    const [minUserId, maxUserId] = [userA, userB].sort();
+
     try {
       return await this.dataSource.transaction(async (manager) => {
+        // Khóa theo cặp (minUserId, maxUserId) để mỗi cặp Khách - Thợ luôn dùng chung 1 khung chat xuyên suốt
         await manager.query(
-          `SELECT pg_advisory_xact_lock(hashtext('chat_booking'), hashtext($1))`,
-          [bookingId],
+          `SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`,
+          [minUserId, maxUserId],
         );
+
+        const existingRows = await manager.query<
+          Array<{
+            id: string;
+            booking_id: string | null;
+            booking_created_at: Date | string | null;
+          }>
+        >(
+          `SELECT c.id,
+                  c.booking_id,
+                  b.created_at AS booking_created_at
+           FROM conversation c
+           INNER JOIN conversation_participant p1
+             ON p1.conversation_id = c.id AND p1.user_id = $1
+           INNER JOIN conversation_participant p2
+             ON p2.conversation_id = c.id AND p2.user_id = $2
+           LEFT JOIN booking b ON b.id = c.booking_id
+           ORDER BY c.updated_at DESC, c.created_at ASC`,
+          [minUserId, maxUserId],
+        );
+
+        const primary = existingRows[0];
+
+        if (primary) {
+          if (bookingId && primary.booking_id !== bookingId) {
+            const heldByOtherLegacyRow = existingRows.some(
+              (row) => row.id !== primary.id && row.booking_id === bookingId,
+            );
+
+            if (!heldByOtherLegacyRow) {
+              let shouldUpdateBooking = primary.booking_id === null;
+
+              if (!shouldUpdateBooking && primary.booking_created_at) {
+                const targetBooking = await manager
+                  .getRepository(Booking)
+                  .findOne({
+                    where: { id: bookingId },
+                    select: { id: true, createdAt: true },
+                  });
+
+                if (
+                  targetBooking &&
+                  targetBooking.createdAt.getTime() >=
+                    new Date(primary.booking_created_at).getTime()
+                ) {
+                  shouldUpdateBooking = true;
+                }
+              }
+
+              if (shouldUpdateBooking) {
+                await manager
+                  .getRepository(Conversation)
+                  .update({ id: primary.id }, { bookingId });
+              }
+            }
+          }
+
+          return primary.id;
+        }
 
         const convRepo = manager.getRepository(Conversation);
         const partRepo = manager.getRepository(ConversationParticipant);
 
-        const existing = await convRepo.findOne({ where: { bookingId } });
-        if (existing) {
-          return existing.id;
-        }
-
-        const created = await convRepo.save(convRepo.create({ bookingId }));
-        const uniqueUsers = Array.from(new Set([customerId, providerUserId]));
+        const created = await convRepo.save(
+          convRepo.create({ bookingId: bookingId ?? null }),
+        );
+        const uniqueUsers = Array.from(new Set([minUserId, maxUserId]));
         await partRepo.save(
           uniqueUsers.map((uid) =>
             partRepo.create({
@@ -625,7 +639,7 @@ export class ChatService {
         return created.id;
       });
     } catch (error) {
-      if (getPgErrorCode(error) === '23505') {
+      if (bookingId && getPgErrorCode(error) === '23505') {
         const existing = await this.conversationRepo.findOne({
           where: { bookingId },
         });

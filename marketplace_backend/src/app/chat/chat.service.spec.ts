@@ -91,6 +91,7 @@ function createMocks() {
     if (entity === Conversation) return conversationRepo;
     if (entity === ConversationParticipant) return participantRepo;
     if (entity === Message) return messageRepo;
+    if (entity === Booking) return bookingRepo;
     return null;
   });
 
@@ -214,6 +215,138 @@ describe('ChatService', () => {
     );
     expect(result.id).toBe(CONV_ID);
     expect(result.partner.displayName).toBe('Lê Văn Minh');
+  });
+
+  it('reuses existing conversation and switches booking_id when customer re-books same provider', async () => {
+    const BOOKING_ID_2 = '01950000-0000-7000-8000-000000000021';
+    const {
+      service,
+      txManager,
+      dataSourceQuery,
+      bookingRepo,
+      conversationRepo,
+      providerProfileRepo,
+    } = createMocks();
+
+    bookingRepo.findOne
+      .mockResolvedValueOnce({
+        id: BOOKING_ID_2,
+        customerId: CUSTOMER_ID,
+        provider: { id: PROVIDER_PROFILE_ID, userId: PROVIDER_USER_ID },
+      })
+      .mockResolvedValueOnce({
+        id: BOOKING_ID_2,
+        createdAt: new Date('2026-11-27T12:00:00Z'),
+      });
+
+    txManager.query
+      .mockResolvedValueOnce([]) // advisory lock
+      .mockResolvedValueOnce([
+        {
+          id: CONV_ID,
+          booking_id: BOOKING_ID,
+          booking_created_at: new Date('2026-11-25T10:00:00Z'),
+        },
+      ]);
+
+    conversationRepo.find.mockResolvedValue([
+      {
+        id: CONV_ID,
+        bookingId: BOOKING_ID_2,
+        booking: null,
+        createdAt: new Date('2026-11-25T10:00:00Z'),
+        updatedAt: new Date('2026-11-27T12:00:00Z'),
+        participants: [
+          {
+            userId: CUSTOMER_ID,
+            lastReadAt: null,
+            user: { id: CUSTOMER_ID, name: 'Khách', image: null },
+          },
+          {
+            userId: PROVIDER_USER_ID,
+            lastReadAt: null,
+            user: { id: PROVIDER_USER_ID, name: 'Thợ', image: null },
+          },
+        ],
+      },
+    ]);
+    providerProfileRepo.find.mockResolvedValue([]);
+    dataSourceQuery.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const result = await service.createOrGetConversation(CUSTOMER_ID, {
+      bookingId: BOOKING_ID_2,
+    });
+
+    expect(result.id).toBe(CONV_ID);
+    expect(conversationRepo.save).not.toHaveBeenCalled();
+    expect(conversationRepo.update).toHaveBeenCalledWith(
+      { id: CONV_ID },
+      { bookingId: BOOKING_ID_2 },
+    );
+  });
+
+  it('reuses existing conversation without downgrading booking_id when opening older booking', async () => {
+    const BOOKING_ID_2 = '01950000-0000-7000-8000-000000000021';
+    const {
+      service,
+      txManager,
+      dataSourceQuery,
+      bookingRepo,
+      conversationRepo,
+      providerProfileRepo,
+    } = createMocks();
+
+    bookingRepo.findOne
+      .mockResolvedValueOnce({
+        id: BOOKING_ID,
+        customerId: CUSTOMER_ID,
+        provider: { id: PROVIDER_PROFILE_ID, userId: PROVIDER_USER_ID },
+      })
+      .mockResolvedValueOnce({
+        id: BOOKING_ID,
+        createdAt: new Date('2026-11-25T10:00:00Z'),
+      });
+
+    txManager.query
+      .mockResolvedValueOnce([]) // advisory lock
+      .mockResolvedValueOnce([
+        {
+          id: CONV_ID,
+          booking_id: BOOKING_ID_2,
+          booking_created_at: new Date('2026-11-27T12:00:00Z'),
+        },
+      ]);
+
+    conversationRepo.find.mockResolvedValue([
+      {
+        id: CONV_ID,
+        bookingId: BOOKING_ID_2,
+        booking: null,
+        createdAt: new Date('2026-11-25T10:00:00Z'),
+        updatedAt: new Date('2026-11-27T12:00:00Z'),
+        participants: [
+          {
+            userId: CUSTOMER_ID,
+            lastReadAt: null,
+            user: { id: CUSTOMER_ID, name: 'Khách', image: null },
+          },
+          {
+            userId: PROVIDER_USER_ID,
+            lastReadAt: null,
+            user: { id: PROVIDER_USER_ID, name: 'Thợ', image: null },
+          },
+        ],
+      },
+    ]);
+    providerProfileRepo.find.mockResolvedValue([]);
+    dataSourceQuery.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const result = await service.createOrGetConversation(CUSTOMER_ID, {
+      bookingId: BOOKING_ID,
+    });
+
+    expect(result.id).toBe(CONV_ID);
+    expect(conversationRepo.update).not.toHaveBeenCalled();
   });
 
   it('blocks client from sending SYSTEM messageType (403)', async () => {
