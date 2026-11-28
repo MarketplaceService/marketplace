@@ -787,6 +787,7 @@ export class BookingService {
       .leftJoinAndSelect('provider.user', 'providerUser')
       .leftJoinAndSelect('booking.service', 'service')
       .leftJoinAndSelect('service.category', 'category')
+      .leftJoinAndSelect('booking.review', 'review')
       .where('booking.customerId = :customerUserId', { customerUserId });
 
     if (query.status) {
@@ -808,6 +809,10 @@ export class BookingService {
         qb.andWhere('booking.status IN (:...statuses)', {
           statuses: [BookingStatus.CANCELLED, BookingStatus.REJECTED],
         });
+      } else if (query.tab === 'unreviewed') {
+        qb.andWhere('booking.status = :status', {
+          status: BookingStatus.COMPLETED,
+        }).andWhere('review.id IS NULL');
       }
     }
 
@@ -818,13 +823,24 @@ export class BookingService {
       items.map((item) => item.id),
     );
 
-    const statusCountsRaw = await this.bookingRepo
-      .createQueryBuilder('booking')
-      .select('booking.status', 'status')
-      .addSelect('COUNT(*)', 'count')
-      .where('booking.customerId = :customerUserId', { customerUserId })
-      .groupBy('booking.status')
-      .getRawMany<{ status: BookingStatus; count: string }>();
+    const [statusCountsRaw, unreviewedCount] = await Promise.all([
+      this.bookingRepo
+        .createQueryBuilder('booking')
+        .select('booking.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .where('booking.customerId = :customerUserId', { customerUserId })
+        .groupBy('booking.status')
+        .getRawMany<{ status: BookingStatus; count: string }>(),
+      this.bookingRepo
+        .createQueryBuilder('booking')
+        .leftJoin('booking.review', 'review')
+        .where('booking.customerId = :customerUserId', { customerUserId })
+        .andWhere('booking.status = :completedStatus', {
+          completedStatus: BookingStatus.COMPLETED,
+        })
+        .andWhere('review.id IS NULL')
+        .getCount(),
+    ]);
 
     const countByStatus = new Map<BookingStatus, number>();
     for (const row of statusCountsRaw) {
@@ -847,6 +863,7 @@ export class BookingService {
         active: activeCount,
         completed: completedCount,
         cancelled: cancelledCount,
+        unreviewed: unreviewedCount,
       },
       items: items.map((item) =>
         this.serializeBookingSummary(item, paymentMap.get(item.id) ?? null),
@@ -931,6 +948,9 @@ export class BookingService {
             priceMatched: existingReview.priceMatched,
             comment: existingReview.comment,
             createdAt: toVnIsoString(existingReview.createdAt),
+            updatedAt: toVnIsoString(
+              existingReview.updatedAt ?? existingReview.createdAt,
+            ),
           }
         : null,
       payments,
@@ -1579,6 +1599,7 @@ export class BookingService {
       },
       hasInspectionReport: Boolean(booking.inspectionImages?.submittedAt),
       inspectionSubmittedAt: booking.inspectionImages?.submittedAt ?? null,
+      hasReview: Boolean(booking.review),
       service: booking.service
         ? {
             id: booking.service.id,

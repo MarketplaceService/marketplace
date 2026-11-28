@@ -16,7 +16,7 @@ import {
 import { BookingStatus } from 'src/shared/types/booking-status.enum';
 import { VerificationStatus } from 'src/shared/types/verification-status.enum';
 import { toVnIsoString } from 'src/shared/utils/vn-time';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { GetProviderReviewsQueryDto } from './dto/query-reviews.dto';
 import { Review } from './entities/review.entity';
@@ -106,6 +106,31 @@ export class ReviewService {
     };
   }
 
+  private async lockCompletedOwnedBooking(
+    manager: EntityManager,
+    customerUserId: string,
+    bookingId: string,
+  ): Promise<Booking> {
+    const booking = await manager.getRepository(Booking).findOne({
+      where: { id: bookingId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    if (!booking) {
+      apiNotFound('errors.booking.notFound');
+    }
+
+    if (booking.customerId !== customerUserId) {
+      apiForbidden('errors.review.forbidden');
+    }
+
+    if (booking.status !== BookingStatus.COMPLETED) {
+      apiConflict('errors.review.bookingNotCompleted');
+    }
+
+    return booking;
+  }
+
   async createReview(
     customerUserId: string,
     bookingId: string,
@@ -115,22 +140,11 @@ export class ReviewService {
 
     try {
       await this.dataSource.transaction(async (manager) => {
-        const booking = await manager.getRepository(Booking).findOne({
-          where: { id: bookingId },
-          lock: { mode: 'pessimistic_write' },
-        });
-
-        if (!booking) {
-          apiNotFound('errors.booking.notFound');
-        }
-
-        if (booking.customerId !== customerUserId) {
-          apiForbidden('errors.review.forbidden');
-        }
-
-        if (booking.status !== BookingStatus.COMPLETED) {
-          apiConflict('errors.review.bookingNotCompleted');
-        }
+        await this.lockCompletedOwnedBooking(
+          manager,
+          customerUserId,
+          bookingId,
+        );
 
         const reviewRepo = manager.getRepository(Review);
         const existing = await reviewRepo.findOne({
@@ -157,6 +171,46 @@ export class ReviewService {
       if (pgCode === '23505') {
         apiConflict('errors.review.alreadyReviewed');
       }
+      if (pgCode === '23514') {
+        apiBadRequest('errors.review.invalidRating');
+      }
+      throw error;
+    }
+
+    return this.serializeReview(savedReview);
+  }
+
+  async updateReview(
+    customerUserId: string,
+    bookingId: string,
+    dto: CreateReviewDto,
+  ): Promise<SerializedReview> {
+    let savedReview!: Review;
+
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        await this.lockCompletedOwnedBooking(
+          manager,
+          customerUserId,
+          bookingId,
+        );
+
+        const reviewRepo = manager.getRepository(Review);
+        const existing = await reviewRepo.findOne({
+          where: { bookingId },
+        });
+
+        if (!existing) {
+          apiNotFound('errors.review.notFound');
+        }
+
+        existing.rating = dto.rating;
+        existing.priceMatched = dto.priceMatched;
+        existing.comment = dto.comment?.trim() || null;
+        savedReview = await reviewRepo.save(existing);
+      });
+    } catch (error) {
+      const pgCode = getPgDriverErrorCode(error);
       if (pgCode === '23514') {
         apiBadRequest('errors.review.invalidRating');
       }
@@ -292,6 +346,9 @@ export class ReviewService {
           .addSelect('booking.scheduledStartAt', 'scheduledStartAt')
           .addSelect('MIN(history.createdAt)', 'startedAt')
           .where('booking.providerId = :providerId', { providerId })
+          .andWhere('booking.status = :completedStatus', {
+            completedStatus: BookingStatus.COMPLETED,
+          })
           .andWhere('history.newStatus = :status', {
             status: BookingStatus.IN_PROGRESS,
           })
@@ -331,6 +388,12 @@ export class ReviewService {
             'respondedAt',
           )
           .where('booking.providerId = :providerId', { providerId })
+          .andWhere('booking.status IN (:...acceptanceStatuses)', {
+            acceptanceStatuses: [
+              BookingStatus.COMPLETED,
+              BookingStatus.REJECTED,
+            ],
+          })
           .groupBy('booking.id')
           .addGroupBy('booking.createdAt')
           .getRawMany<{
@@ -362,18 +425,12 @@ export class ReviewService {
     const skillQuality = calculateSkillQualityScore(averageRating, reviewCount);
 
     let completedCount = 0;
-    let confirmedCount = 0;
-    let inProgressCount = 0;
     let providerCancelledCount = 0;
 
     for (const row of statusCounts) {
       const count = Number(row.count) || 0;
       if (row.status === BookingStatus.COMPLETED) {
         completedCount += count;
-      } else if (row.status === BookingStatus.CONFIRMED) {
-        confirmedCount += count;
-      } else if (row.status === BookingStatus.IN_PROGRESS) {
-        inProgressCount += count;
       } else if (
         row.status === BookingStatus.CANCELLED &&
         row.cancelledBy === provider.userId
@@ -382,11 +439,50 @@ export class ReviewService {
       }
     }
 
-    const completionDenominator =
-      completedCount +
-      confirmedCount +
-      inProgressCount +
-      providerCancelledCount;
+    // Đơn đang mở (PENDING/CONFIRMED/IN_PROGRESS) chưa hoàn thành nên không đưa vào mẫu số làm tụt tỉ lệ hoàn thành
+    const completionDenominator = completedCount + providerCancelledCount;
+
+    // Chỉ hiển thị số liệu lên biểu đồ Radar sau khi thợ có ít nhất 1 đơn COMPLETED (hoặc đã có đánh giá)
+    if (completedCount === 0 && reviewCount === 0) {
+      return {
+        providerId,
+        reviewCount: 0,
+        ratingAverage: 0,
+        punctuality: 0,
+        priceAdherence: 0,
+        skillQuality: 0,
+        completionRate: 0,
+        acceptanceSpeed: 0,
+        metrics: {
+          punctuality: {
+            score: 0,
+            onTimeCount: 0,
+            totalStartedCount: 0,
+          },
+          priceAdherence: {
+            score: 0,
+            matchedCount: 0,
+            totalReviewCount: 0,
+          },
+          skillQuality: {
+            score: 0,
+            averageRating: 0,
+            totalReviewCount: 0,
+          },
+          completionRate: {
+            score: 0,
+            completedCount: 0,
+            denominatorCount: 0,
+          },
+          acceptanceSpeed: {
+            score: 0,
+            avgResponseMinutes: null,
+            respondedCount: 0,
+          },
+        },
+      };
+    }
+
     const completionRate = calculateCompletionRateScore(
       completedCount,
       completionDenominator,

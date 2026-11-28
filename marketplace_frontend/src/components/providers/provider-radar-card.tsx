@@ -59,6 +59,39 @@ function buildPolygonPoints(radii: number[]): string {
   }).join(" ");
 }
 
+function hasCompletedData(radar: ProviderRadarResponse | undefined): boolean {
+  if (!radar) return false;
+  if (radar.reviewCount > 0) return true;
+  if (radar.metrics) {
+    return radar.metrics.completionRate.completedCount > 0;
+  }
+  return false;
+}
+
+function hasAxisData(
+  radar: ProviderRadarResponse | undefined,
+  key: RadarAxisConfig["key"],
+  score: number,
+): boolean {
+  if (!hasCompletedData(radar) || !radar) return false;
+  if (!radar.metrics) {
+    return radar.reviewCount > 0 || score > 0;
+  }
+
+  switch (key) {
+    case "punctuality":
+      return radar.metrics.punctuality.totalStartedCount > 0;
+    case "priceAdherence":
+      return radar.metrics.priceAdherence.totalReviewCount > 0;
+    case "skillQuality":
+      return radar.metrics.skillQuality.totalReviewCount > 0;
+    case "completionRate":
+      return radar.metrics.completionRate.denominatorCount > 0;
+    case "acceptanceSpeed":
+      return radar.metrics.acceptanceSpeed.respondedCount > 0;
+  }
+}
+
 export function ProviderRadarCard({
   radar,
   isLoading,
@@ -85,8 +118,10 @@ export function ProviderRadarCard({
     return Math.max(0, Math.min(5, Number(raw) || 0));
   });
 
+  const completedCount = radar?.metrics?.completionRate?.completedCount ?? 0;
   const hasAnyData =
-    (radar?.reviewCount ?? 0) > 0 || scores.some((score) => score > 0);
+    hasCompletedData(radar) &&
+    ((radar?.reviewCount ?? 0) > 0 || scores.some((score) => score > 0));
 
   const dataRadii = scores.map((score) => (score / 5) * MAX_RADIUS);
   const dataPoints = scores.map((score, idx) =>
@@ -106,7 +141,9 @@ export function ProviderRadarCard({
           <p className="mt-0.5 text-xs text-muted-foreground">
             {radar && radar.reviewCount > 0
               ? `Tổng hợp từ ${radar.reviewCount} đánh giá thực tế`
-              : "Chưa có dữ liệu đánh giá từ đơn hoàn thành"}
+              : completedCount > 0
+                ? `Tổng hợp từ ${completedCount} đơn đã hoàn thành`
+                : "Chưa có dữ liệu từ đơn hoàn thành"}
           </p>
         </div>
         <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -204,24 +241,31 @@ export function ProviderRadarCard({
         <div className="mt-4 w-full space-y-2.5 text-sm">
           {RADAR_AXES.map((axis, idx) => {
             const score = scores[idx];
+            const axisHasData = hasAxisData(radar, axis.key, score);
             return (
               <div
                 key={axis.key}
-                className="flex items-center justify-between text-muted-foreground"
+                className="flex items-center justify-between gap-3 text-muted-foreground"
               >
                 <span className="flex items-center gap-2">
                   <span
                     className={
-                      score > 0
+                      axisHasData && score > 0
                         ? "inline-block size-2.5 rounded-full bg-primary"
                         : "inline-block size-2.5 rounded-full bg-muted-foreground/30"
                     }
                   />
                   <span>{axis.label}</span>
                 </span>
-                <span className="font-bold tabular-nums text-foreground">
-                  {score.toFixed(1)} / 5.0
-                </span>
+                {axisHasData ? (
+                  <span className="font-bold tabular-nums text-foreground">
+                    {score.toFixed(1)} / 5.0
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Chưa có dữ liệu
+                  </span>
+                )}
               </div>
             );
           })}

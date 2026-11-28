@@ -14,6 +14,7 @@ import type {
   ProviderBookingsResponse,
   ProviderWalletResponse,
   SubmitInspectionPayload,
+  UpdateReviewPayload,
 } from "@/types/booking.types";
 
 export const bookingServices = {
@@ -80,6 +81,17 @@ export const bookingServices = {
     payload: CreateReviewPayload,
   ): Promise<BookingReviewItem> => {
     const { data } = await axiosInstance.post<BookingReviewItem>(
+      `/bookings/${bookingId}/reviews`,
+      payload,
+    );
+    return data;
+  },
+
+  updateBookingReview: async (
+    bookingId: string,
+    payload: UpdateReviewPayload,
+  ): Promise<BookingReviewItem> => {
+    const { data } = await axiosInstance.patch<BookingReviewItem>(
       `/bookings/${bookingId}/reviews`,
       payload,
     );

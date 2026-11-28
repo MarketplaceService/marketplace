@@ -35,6 +35,7 @@ import {
   MapPin,
   RefreshCw,
   Search,
+  Star,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -46,6 +47,7 @@ const TABS: { key: CustomerBookingTab; label: string }[] = [
   { key: "active", label: "Đang thực hiện" },
   { key: "completed", label: "Hoàn thành" },
   { key: "cancelled", label: "Đã hủy / Từ chối" },
+  { key: "unreviewed", label: "Chưa đánh giá" },
 ];
 
 export function MyBookingsView() {
@@ -190,10 +192,14 @@ export function MyBookingsView() {
           <ClipboardList className="mx-auto size-10 text-muted-foreground" />
           <div className="space-y-1">
             <h2 className="text-base font-semibold text-foreground">
-              Chưa có đơn đặt lịch nào trong mục này
+              {tab === "unreviewed"
+                ? "Không còn đơn nào chưa đánh giá"
+                : "Chưa có đơn đặt lịch nào trong mục này"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Khám phá các thợ uy tín quanh khu vực của bạn để đặt lịch sửa chữa nhanh chóng.
+              {tab === "unreviewed"
+                ? "Tất cả các đơn hoàn thành của bạn đều đã được đánh giá."
+                : "Khám phá các thợ uy tín quanh khu vực của bạn để đặt lịch sửa chữa nhanh chóng."}
             </p>
           </div>
           <Link
@@ -210,6 +216,8 @@ export function MyBookingsView() {
               booking.status === "PENDING" || booking.status === "CONFIRMED";
             const readyForAcceptance =
               booking.status === "IN_PROGRESS" && booking.hasInspectionReport;
+            const needsReview =
+              booking.status === "COMPLETED" && booking.hasReview === false;
 
             return (
               <article
@@ -231,6 +239,12 @@ export function MyBookingsView() {
                       {readyForAcceptance && (
                         <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
                           Đã có ảnh nghiệm thu — Chờ bạn xác nhận
+                        </span>
+                      )}
+                      {needsReview && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                          <Star className="size-3 fill-amber-500 text-amber-500" />
+                          Chưa đánh giá
                         </span>
                       )}
                     </div>
@@ -307,6 +321,16 @@ export function MyBookingsView() {
                         <XCircle className="size-4" />
                         Hủy đơn
                       </Button>
+                    )}
+
+                    {needsReview && (
+                      <Link
+                        href={`/bookings/${booking.id}#review-section`}
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-amber-500 px-4 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
+                      >
+                        <Star className="size-4 fill-current" />
+                        Đánh giá ngay
+                      </Link>
                     )}
 
                     <Link

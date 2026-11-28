@@ -6,6 +6,7 @@ import type {
   CreateBookingPayload,
   CreateReviewPayload,
   CustomerBookingTab,
+  UpdateReviewPayload,
 } from "@/types/booking.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -88,6 +89,7 @@ export function useCompleteBooking() {
       queryClient.setQueryData(BOOKING_KEYS.detail(updated.id), updated);
       void queryClient.invalidateQueries({ queryKey: BOOKING_KEYS.all });
       void queryClient.invalidateQueries({ queryKey: ["provider"] });
+      void queryClient.invalidateQueries({ queryKey: ["providers"] });
       toast.success("Đã xác nhận nghiệm thu & hoàn tất đơn hàng!");
     },
     onError: mutationErrorToast("Không thể hoàn tất đơn hàng"),
@@ -111,6 +113,18 @@ export function useCancelBooking() {
   });
 }
 
+function invalidateAfterReviewMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+  bookingId: string,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: BOOKING_KEYS.detail(bookingId),
+  });
+  void queryClient.invalidateQueries({ queryKey: BOOKING_KEYS.all });
+  void queryClient.invalidateQueries({ queryKey: ["providers"] });
+  void queryClient.invalidateQueries({ queryKey: ["discovery"] });
+}
+
 export function useCreateBookingReview() {
   const queryClient = useQueryClient();
 
@@ -123,14 +137,28 @@ export function useCreateBookingReview() {
       payload: CreateReviewPayload;
     }) => bookingServices.createBookingReview(bookingId, payload),
     onSuccess: (_review, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: BOOKING_KEYS.detail(variables.bookingId),
-      });
-      void queryClient.invalidateQueries({ queryKey: BOOKING_KEYS.all });
-      void queryClient.invalidateQueries({ queryKey: ["providers"] });
-      void queryClient.invalidateQueries({ queryKey: ["discovery"] });
+      invalidateAfterReviewMutation(queryClient, variables.bookingId);
       toast.success("Cảm ơn bạn đã gửi đánh giá dịch vụ!");
     },
     onError: mutationErrorToast("Không thể gửi đánh giá"),
+  });
+}
+
+export function useUpdateBookingReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      bookingId,
+      payload,
+    }: {
+      bookingId: string;
+      payload: UpdateReviewPayload;
+    }) => bookingServices.updateBookingReview(bookingId, payload),
+    onSuccess: (_review, variables) => {
+      invalidateAfterReviewMutation(queryClient, variables.bookingId);
+      toast.success("Đã cập nhật đánh giá dịch vụ!");
+    },
+    onError: mutationErrorToast("Không thể cập nhật đánh giá"),
   });
 }

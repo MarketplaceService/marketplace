@@ -1,7 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useCreateBookingReview } from "@/hooks/use-bookings";
+import {
+  useCreateBookingReview,
+  useUpdateBookingReview,
+} from "@/hooks/use-bookings";
 import { cn } from "@/lib/utils";
 import { formatVnDateTime } from "@/lib/vn-time";
 import type { BookingDetail } from "@/types/booking.types";
@@ -9,9 +12,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Pencil,
   Send,
   ShieldCheck,
   Star,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -33,11 +38,19 @@ const QUICK_COMMENTS = [
 export function BookingReviewSection({
   booking,
   providerDisplayName,
+  isCustomerOwner = false,
 }: {
   booking: BookingDetail;
   providerDisplayName?: string;
+  isCustomerOwner?: boolean;
 }) {
-  const { mutate: submitReview, isPending } = useCreateBookingReview();
+  const { mutate: submitReview, isPending: isCreating } =
+    useCreateBookingReview();
+  const { mutate: updateReview, isPending: isUpdating } =
+    useUpdateBookingReview();
+  const isPending = isCreating || isUpdating;
+
+  const [isEditing, setIsEditing] = useState(false);
   const [rating, setRating] = useState<number>(5);
   const [priceMatched, setPriceMatched] = useState<boolean | null>(null);
   const [comment, setComment] = useState<string>("");
@@ -52,6 +65,23 @@ export function BookingReviewSection({
     return null;
   }
 
+  const canEdit = isCustomerOwner && Boolean(booking.review);
+  const showForm = !booking.review || isEditing;
+
+  const handleStartEdit = () => {
+    if (!booking.review) return;
+    setRating(booking.review.rating);
+    setPriceMatched(booking.review.priceMatched);
+    setComment(booking.review.comment ?? "");
+    setFormError(null);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setFormError(null);
+    setIsEditing(false);
+  };
+
   const handleAddQuickComment = (snippet: string) => {
     setComment((prev) => {
       const trimmed = prev.trim();
@@ -64,35 +94,70 @@ export function BookingReviewSection({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (priceMatched === null) {
-      setFormError("Vui lòng xác nhận chi phí thực tế có đúng giá niêm yết không.");
+      setFormError(
+        "Vui lòng xác nhận chi phí thực tế có đúng giá niêm yết không.",
+      );
       return;
     }
     setFormError(null);
-    submitReview({
-      bookingId: booking.id,
-      payload: {
-        rating,
-        priceMatched,
-        comment: comment.trim() || undefined,
-      },
-    });
+
+    const payload = {
+      rating,
+      priceMatched,
+      comment: comment.trim() || undefined,
+    };
+
+    if (isEditing) {
+      updateReview(
+        { bookingId: booking.id, payload },
+        { onSuccess: () => setIsEditing(false) },
+      );
+      return;
+    }
+
+    submitReview({ bookingId: booking.id, payload });
   };
 
+  const isEdited = Boolean(
+    booking.review?.updatedAt &&
+      booking.review.updatedAt !== booking.review.createdAt,
+  );
+
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-      <div className="border-b border-border pb-3">
-        <div className="flex items-center gap-2">
-          <Star className="size-5 fill-amber-500 text-amber-500" />
-          <h2 className="font-display text-lg font-bold text-foreground">
-            Đánh giá chất lượng dịch vụ
-          </h2>
+    <section
+      id="review-section"
+      className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4 scroll-mt-24"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Star className="size-5 fill-amber-500 text-amber-500" />
+            <h2 className="font-display text-lg font-bold text-foreground">
+              {isEditing
+                ? "Chỉnh sửa đánh giá dịch vụ"
+                : "Đánh giá chất lượng dịch vụ"}
+            </h2>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Mỗi đơn hàng có một đánh giá khách quan; khách hàng có thể cập nhật lại đánh giá nếu trải nghiệm thay đổi.
+          </p>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Đánh giá chỉ thực hiện 1 lần duy nhất cho mỗi đơn hàng để đảm bảo tính khách quan và minh bạch.
-        </p>
+
+        {canEdit && !isEditing && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleStartEdit}
+            className="h-9 gap-1.5 rounded-xl text-xs font-semibold"
+          >
+            <Pencil className="size-3.5" />
+            Chỉnh sửa
+          </Button>
+        )}
       </div>
 
-      {booking.review ? (
+      {!showForm && booking.review ? (
         <div className="space-y-3">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs text-emerald-950 dark:border-emerald-800/70 dark:bg-emerald-950/30 dark:text-emerald-100 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -102,6 +167,9 @@ export function BookingReviewSection({
               </div>
               <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
                 {formatVnDateTime(booking.review.createdAt)}
+                {isEdited && booking.review.updatedAt
+                  ? ` (Đã sửa ${formatVnDateTime(booking.review.updatedAt)})`
+                  : ""}
               </span>
             </div>
 
@@ -144,10 +212,6 @@ export function BookingReviewSection({
               </p>
             )}
           </div>
-
-          <p className="text-center text-[11px] text-muted-foreground italic">
-            * Theo quy định hệ thống Servigo, mỗi đơn hàng chỉ được gửi đánh giá một lần duy nhất.
-          </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -264,7 +328,19 @@ export function BookingReviewSection({
             />
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2.5">
+            {isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isPending}
+                onClick={handleCancelEdit}
+                className="min-h-[44px] rounded-xl px-4 font-semibold"
+              >
+                <X className="size-4" />
+                Hủy
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={isPending}
@@ -273,12 +349,12 @@ export function BookingReviewSection({
               {isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Đang gửi...
+                  Đang lưu...
                 </>
               ) : (
                 <>
                   <Send className="size-4" />
-                  Gửi đánh giá
+                  {isEditing ? "Lưu thay đổi" : "Gửi đánh giá"}
                 </>
               )}
             </Button>

@@ -158,6 +158,7 @@ export interface BookingSummaryItem {
   };
   hasInspectionReport: boolean;
   inspectionSubmittedAt: string | null;
+  hasReview?: boolean;
   service: {
     id: string;
     title: string;
@@ -199,6 +200,7 @@ export interface BookingReviewItem {
   priceMatched: boolean;
   comment: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CreateReviewPayload {
@@ -206,6 +208,8 @@ export interface CreateReviewPayload {
   priceMatched: boolean;
   comment?: string;
 }
+
+export type UpdateReviewPayload = CreateReviewPayload;
 
 export interface BookingDetail extends BookingSummaryItem {
   customerNote: string | null;
@@ -230,7 +234,8 @@ export type CustomerBookingTab =
   | "pending"
   | "active"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "unreviewed";
 
 export interface MyBookingsResponse {
   counts: Record<CustomerBookingTab, number>;

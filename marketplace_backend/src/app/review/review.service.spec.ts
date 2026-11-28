@@ -243,6 +243,71 @@ describe('ReviewService & Radar Calculation', () => {
     });
   });
 
+  describe('updateReview()', () => {
+    it('ném 404 khi booking không có đánh giá trước đó', async () => {
+      bookingRepoInTx.findOne.mockResolvedValue({
+        id: BOOKING_ID,
+        customerId: CUSTOMER_ID,
+        status: BookingStatus.COMPLETED,
+      });
+      reviewRepoInTx.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateReview(CUSTOMER_ID, BOOKING_ID, {
+          rating: 5,
+          priceMatched: true,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('ném 403 khi người dùng không sở hữu booking', async () => {
+      bookingRepoInTx.findOne.mockResolvedValue({
+        id: BOOKING_ID,
+        customerId: CUSTOMER_ID,
+        status: BookingStatus.COMPLETED,
+      });
+
+      await expect(
+        service.updateReview(OTHER_USER_ID, BOOKING_ID, {
+          rating: 5,
+          priceMatched: true,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('cập nhật số sao, trạng thái giá và nhận xét thành công cho khách hàng chủ đơn', async () => {
+      bookingRepoInTx.findOne.mockResolvedValue({
+        id: BOOKING_ID,
+        customerId: CUSTOMER_ID,
+        status: BookingStatus.COMPLETED,
+      });
+      const existingReview = {
+        id: 'review-1',
+        bookingId: BOOKING_ID,
+        rating: 3,
+        priceMatched: true,
+        comment: 'Đúng giờ hẹn',
+        createdAt: new Date('2026-11-26T13:20:00Z'),
+        updatedAt: new Date('2026-11-26T13:20:00Z'),
+      };
+      reviewRepoInTx.findOne.mockResolvedValueOnce(existingReview);
+
+      const updated = await service.updateReview(CUSTOMER_ID, BOOKING_ID, {
+        rating: 5,
+        priceMatched: false,
+        comment: '  Đã sửa đánh giá mới  ',
+      });
+
+      expect(updated).toMatchObject({
+        id: 'review-1',
+        bookingId: BOOKING_ID,
+        rating: 5,
+        priceMatched: false,
+        comment: 'Đã sửa đánh giá mới',
+      });
+    });
+  });
+
   describe('getProviderReviews() (S25.2)', () => {
     it('ném 404 khi thợ không tồn tại hoặc chưa được duyệt', async () => {
       profileRepo.findOne.mockResolvedValue(null);
@@ -428,6 +493,7 @@ describe('ReviewService & Radar Calculation', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
         addGroupBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue([
@@ -484,6 +550,173 @@ describe('ReviewService & Radar Calculation', () => {
       expect(radar.completionRate).toBe(3.8);
       expect(radar.acceptanceSpeed).toBe(5);
       expect(radar.metrics.acceptanceSpeed.respondedCount).toBe(1);
+    });
+
+    it('getProviderRadar() giữ nguyên trạng thái chưa có dữ liệu (0) khi thợ mới nhận/đang làm nhưng chưa hoàn thành đơn nào', async () => {
+      const reviewAggQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({
+          reviewCount: '0',
+          matchedCount: '0',
+          averageRating: '0',
+        }),
+      };
+      reviewRepo.createQueryBuilder.mockReturnValue(reviewAggQb);
+
+      const tStart = new Date('2026-11-25T09:00:00Z');
+      const startedQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            bookingId: 'b-in-progress',
+            scheduledStartAt: tStart,
+            startedAt: new Date(tStart.getTime() + 5 * 60_000),
+          },
+        ]),
+      };
+
+      const acceptanceQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            bookingId: 'b-in-progress',
+            bookingCreatedAt: '2026-11-25T08:00:00Z',
+            pendingAt: '2026-11-25T08:00:00Z',
+            respondedAt: '2026-11-25T08:05:00Z',
+          },
+        ]),
+      };
+
+      historyRepo.createQueryBuilder
+        .mockReturnValueOnce(startedQb)
+        .mockReturnValueOnce(acceptanceQb);
+
+      const statusQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            status: BookingStatus.IN_PROGRESS,
+            cancelledBy: null,
+            count: '1',
+          },
+        ]),
+      };
+      bookingRepo.createQueryBuilder.mockReturnValue(statusQb);
+
+      const radar = await service.getProviderRadar(PROVIDER_ID);
+
+      expect(radar.reviewCount).toBe(0);
+      expect(radar.punctuality).toBe(0);
+      expect(radar.priceAdherence).toBe(0);
+      expect(radar.skillQuality).toBe(0);
+      expect(radar.completionRate).toBe(0);
+      expect(radar.acceptanceSpeed).toBe(0);
+      expect(radar.metrics.punctuality.totalStartedCount).toBe(0);
+      expect(radar.metrics.completionRate.denominatorCount).toBe(0);
+      expect(radar.metrics.acceptanceSpeed.respondedCount).toBe(0);
+    });
+
+    it('getProviderRadar() chỉ lọc đơn đã hoàn thành ở đúng giờ hẹn và không trừ đơn đang CONFIRMED/IN_PROGRESS vào tỉ lệ hoàn thành', async () => {
+      const reviewAggQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({
+          reviewCount: '1',
+          matchedCount: '1',
+          averageRating: '5',
+        }),
+      };
+      reviewRepo.createQueryBuilder.mockReturnValue(reviewAggQb);
+
+      const tStart = new Date('2026-11-25T09:00:00Z');
+      const startedQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            bookingId: 'b-completed',
+            scheduledStartAt: tStart,
+            startedAt: new Date(tStart.getTime() + 5 * 60_000),
+          },
+        ]),
+      };
+
+      const acceptanceQb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            bookingId: 'b-completed',
+            bookingCreatedAt: '2026-11-25T08:00:00Z',
+            pendingAt: '2026-11-25T08:00:00Z',
+            respondedAt: '2026-11-25T08:10:00Z',
+          },
+        ]),
+      };
+
+      historyRepo.createQueryBuilder
+        .mockReturnValueOnce(startedQb)
+        .mockReturnValueOnce(acceptanceQb);
+
+      const statusQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { status: BookingStatus.COMPLETED, cancelledBy: null, count: '1' },
+          { status: BookingStatus.CONFIRMED, cancelledBy: null, count: '2' },
+          { status: BookingStatus.IN_PROGRESS, cancelledBy: null, count: '1' },
+        ]),
+      };
+      bookingRepo.createQueryBuilder.mockReturnValue(statusQb);
+
+      const radar = await service.getProviderRadar(PROVIDER_ID);
+
+      expect(startedQb.andWhere).toHaveBeenCalledWith(
+        'booking.status = :completedStatus',
+        { completedStatus: BookingStatus.COMPLETED },
+      );
+      expect(acceptanceQb.andWhere).toHaveBeenCalledWith(
+        'booking.status IN (:...acceptanceStatuses)',
+        {
+          acceptanceStatuses: [BookingStatus.COMPLETED, BookingStatus.REJECTED],
+        },
+      );
+      expect(radar.completionRate).toBe(5);
+      expect(radar.metrics.completionRate.denominatorCount).toBe(1);
     });
   });
 });

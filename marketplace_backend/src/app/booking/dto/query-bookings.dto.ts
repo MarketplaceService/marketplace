@@ -17,6 +17,7 @@ export const CUSTOMER_BOOKING_TABS = [
   'active',
   'completed',
   'cancelled',
+  'unreviewed',
 ] as const;
 
 export const PROVIDER_BOOKING_TABS = [

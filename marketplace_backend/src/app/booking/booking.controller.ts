@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -159,5 +160,18 @@ export class BookingController {
     @Body() dto: CreateReviewDto,
   ) {
     return this.reviewService.createReview(req.user.id, id, dto);
+  }
+
+  @Patch(':id/reviews')
+  @RequireRoles(UserRole.CUSTOMER, UserRole.PROVIDER)
+  @ApiOperation({
+    summary: 'Khách hàng chỉnh sửa đánh giá đã gửi cho đơn hàng hoàn thành',
+  })
+  updateReview(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateReviewDto,
+  ) {
+    return this.reviewService.updateReview(req.user.id, id, dto);
   }
 }

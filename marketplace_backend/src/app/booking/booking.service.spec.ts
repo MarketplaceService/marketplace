@@ -549,6 +549,7 @@ describe('BookingService', () => {
         priceMatched: true,
         comment: 'Làm rất sạch sẽ',
         createdAt: new Date('2026-11-25T10:00:00Z'),
+        updatedAt: new Date('2026-11-25T10:00:00Z'),
       },
     });
 
@@ -563,5 +564,60 @@ describe('BookingService', () => {
       priceMatched: true,
       comment: 'Làm rất sạch sẽ',
     });
+  });
+
+  it('getMyBookings hỗ trợ tab=unreviewed lọc đơn COMPLETED chưa có review và trả counts.unreviewed', async () => {
+    const baseDetail = (await bookingRepo.findOne()) as Record<string, unknown>;
+    const listQb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([
+        [
+          {
+            ...baseDetail,
+            status: BookingStatus.COMPLETED,
+            review: null,
+          },
+        ],
+        1,
+      ]),
+    };
+
+    const statusCountsQb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest
+        .fn()
+        .mockResolvedValue([{ status: BookingStatus.COMPLETED, count: '3' }]),
+    };
+
+    const unreviewedQb = {
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getCount: jest.fn().mockResolvedValue(1),
+    };
+
+    bookingRepo.createQueryBuilder = jest
+      .fn()
+      .mockReturnValueOnce(listQb)
+      .mockReturnValueOnce(statusCountsQb)
+      .mockReturnValueOnce(unreviewedQb);
+
+    const res = await service.getMyBookings(CUSTOMER_ID, {
+      tab: 'unreviewed',
+      page: 1,
+      limit: 10,
+    });
+
+    expect(listQb.andWhere).toHaveBeenCalledWith('review.id IS NULL');
+    expect(res.counts.unreviewed).toBe(1);
+    expect(res.items[0].hasReview).toBe(false);
   });
 });

@@ -79,6 +79,7 @@ const messages: Record<string, string> = {
   'errors.review.bookingNotCompleted':
     'Chỉ có thể đánh giá sau khi đơn đặt lịch đã hoàn thành',
   'errors.review.alreadyReviewed': 'Đơn đặt lịch này đã được đánh giá trước đó',
+  'errors.review.notFound': 'Không tìm thấy đánh giá để chỉnh sửa',
   'errors.review.invalidRating': 'Điểm đánh giá phải từ 1 đến 5 sao',
   'errors.chat.invalidCreatePayload':
     'Vui lòng cung cấp mã đơn đặt lịch hoặc người nhận để bắt đầu trò chuyện',

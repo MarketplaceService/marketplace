@@ -708,6 +708,7 @@ export function BookingDetailView({
           <BookingReviewSection
             booking={booking}
             providerDisplayName={booking.provider?.displayName}
+            isCustomerOwner={isCustomerOwner}
           />
 
           {/* Nhật ký trạng thái */}
