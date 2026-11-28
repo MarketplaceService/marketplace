@@ -22,6 +22,7 @@ import {
   useCancelBooking,
   useCompleteBooking,
 } from "@/hooks/use-bookings";
+import { useCreateConversation } from "@/hooks/use-chat";
 import {
   useConfirmBooking,
   useRejectBooking,
@@ -50,6 +51,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const PROGRESS_STEPS: { status: BookingStatus; label: string }[] = [
@@ -76,8 +78,11 @@ export function BookingDetailView({
   portal?: "customer" | "provider";
 }) {
   const isProviderPortal = portal === "provider";
+  const router = useRouter();
   const Wrapper = isProviderPortal ? "div" : "main";
   const { data: currentUser } = useCurrentUser();
+  const { mutate: openConversation, isPending: isOpeningChat } =
+    useCreateConversation();
   const {
     data: booking,
     isLoading,
@@ -584,10 +589,27 @@ export function BookingDetailView({
               <Button
                 type="button"
                 variant="outline"
-                onClick={notifyComingSoon}
+                disabled={isOpeningChat}
+                onClick={() =>
+                  openConversation(
+                    { bookingId: booking.id },
+                    {
+                      onSuccess: (conv) => {
+                        const base = isProviderPortal
+                          ? "/provider/messages"
+                          : "/messages";
+                        router.push(`${base}?conversationId=${conv.id}`);
+                      },
+                    },
+                  )
+                }
                 className="min-h-[44px] shrink-0"
               >
-                <MessageSquare className="size-4" />
+                {isOpeningChat ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <MessageSquare className="size-4" />
+                )}
                 Nhắn tin
               </Button>
             </div>

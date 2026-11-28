@@ -20,6 +20,7 @@ import { SchedulingModule } from './app/scheduling/scheduling.module';
 import { GeocodingModule } from './app/geocoding/geocoding.module';
 import { BookingModule } from './app/booking/booking.module';
 import { ReviewModule } from './app/review/review.module';
+import { ChatModule } from './app/chat/chat.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 const envFile =
@@ -49,6 +50,7 @@ const envFile =
     GeocodingModule,
     BookingModule,
     ReviewModule,
+    ChatModule,
     ScheduleModule.forRoot(),
   ],
   providers: [

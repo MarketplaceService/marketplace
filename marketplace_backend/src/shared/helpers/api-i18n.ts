@@ -80,6 +80,20 @@ const messages: Record<string, string> = {
     'Chỉ có thể đánh giá sau khi đơn đặt lịch đã hoàn thành',
   'errors.review.alreadyReviewed': 'Đơn đặt lịch này đã được đánh giá trước đó',
   'errors.review.invalidRating': 'Điểm đánh giá phải từ 1 đến 5 sao',
+  'errors.chat.invalidCreatePayload':
+    'Vui lòng cung cấp mã đơn đặt lịch hoặc người nhận để bắt đầu trò chuyện',
+  'errors.chat.selfConversation':
+    'Bạn không thể tự tạo cuộc trò chuyện với chính mình',
+  'errors.chat.recipientNotFound': 'Không tìm thấy người nhận hợp lệ',
+  'errors.chat.conversationNotFound': 'Không tìm thấy cuộc trò chuyện',
+  'errors.chat.forbidden': 'Bạn không có quyền truy cập cuộc trò chuyện này',
+  'errors.chat.invalidContent':
+    'Nội dung tin nhắn không được để trống và tối đa 2.000 ký tự',
+  'errors.chat.systemMessageForbidden':
+    'Không được phép gửi tin nhắn hệ thống từ phía người dùng',
+  'errors.chat.invalidCursor': 'Con trỏ phân trang tin nhắn không hợp lệ',
+  'errors.chat.invalidImage':
+    'Ảnh gửi trong tin nhắn phải là định dạng JPG, PNG hoặc WebP và tối đa 5MB',
 };
 
 export function translateApiMessage(key: string) {

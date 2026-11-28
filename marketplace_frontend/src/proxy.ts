@@ -58,6 +58,7 @@ export const config = {
     "/admin/:path*",
     "/provider/:path*",
     "/bookings/:path*",
+    "/messages/:path*",
     "/providers/:id/book",
   ],
 };

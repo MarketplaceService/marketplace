@@ -1,13 +1,25 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { useCreateConversation } from "@/hooks/use-chat";
 import {
   useProviderRadar,
   useProviderReviews,
   usePublicProvider,
 } from "@/hooks/use-provider";
-import { BadgeCheck, ChevronRight, MapPin, Star, Wrench } from "lucide-react";
+import {
+  BadgeCheck,
+  ChevronRight,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  Star,
+  Wrench,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { formatKm } from "../provider/schedule/service-area-card";
 import { ProviderRadarCard } from "./provider-radar-card";
@@ -25,13 +37,33 @@ export function ProviderPublicView({
   providerId: string;
   serviceId?: string;
 }) {
+  const router = useRouter();
   const [reviewsPage, setReviewsPage] = useState(1);
+  const { data: currentUser } = useCurrentUser();
   const { data: provider, isLoading, isError } = usePublicProvider(providerId);
   const { data: radar, isLoading: radarLoading } = useProviderRadar(providerId);
   const { data: reviewsData, isLoading: reviewsLoading } = useProviderReviews(
     providerId,
     { page: reviewsPage, limit: 5 },
   );
+  const { mutate: openConversation, isPending: isOpeningChat } =
+    useCreateConversation();
+
+  const handleDirectChat = () => {
+    if (!currentUser || currentUser.isAnonymous) {
+      const redirect = encodeURIComponent(`/providers/${providerId}`);
+      router.push(`/auth/signin?redirect=${redirect}`);
+      return;
+    }
+    openConversation(
+      { providerId },
+      {
+        onSuccess: (conv) => {
+          router.push(`/messages?conversationId=${conv.id}`);
+        },
+      },
+    );
+  };
 
   if (isLoading) {
     return (
@@ -181,6 +213,23 @@ export function ProviderPublicView({
                 {provider.bio}
               </p>
             )}
+
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isOpeningChat}
+                onClick={handleDirectChat}
+                className="min-h-[42px] gap-2 rounded-xl border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
+              >
+                {isOpeningChat ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <MessageSquare className="size-4" />
+                )}
+                Nhắn tin tư vấn
+              </Button>
+            </div>
           </div>
         </div>
       </section>

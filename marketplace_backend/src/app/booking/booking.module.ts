@@ -8,6 +8,7 @@ import { ProviderTimeOff } from '../scheduling/entities/provider-time-off.entity
 import { Service } from '../service/entities/service.entity';
 import { StorageModule } from '../storage/storage.module';
 import { ReviewModule } from '../review/review.module';
+import { ChatModule } from '../chat/chat.module';
 import { BookingPaymentPort, NoopPaymentPort } from './booking-payment.port';
 import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
@@ -29,6 +30,7 @@ import { ProviderBookingController } from './provider-booking.controller';
     ]),
     StorageModule,
     ReviewModule,
+    ChatModule,
   ],
   controllers: [BookingController, ProviderBookingController],
   providers: [

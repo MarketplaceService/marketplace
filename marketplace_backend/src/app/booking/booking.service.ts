@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import { Address } from 'src/app/address/entities/address.entity';
+import { ChatService } from 'src/app/chat/chat.service';
 import { ProviderProfile } from 'src/app/provider/entities/provider-profile.entity';
 import { ProviderServiceArea } from 'src/app/provider/entities/provider-service-area.entity';
 import { ProviderAvailability } from 'src/app/scheduling/entities/provider-availability.entity';
@@ -147,6 +148,7 @@ export class BookingService {
     private readonly timeOffRepo: Repository<ProviderTimeOff>,
     private readonly storageService: StorageService,
     private readonly bookingPaymentPort: BookingPaymentPort,
+    @Optional() private readonly chatService?: ChatService,
   ) {}
 
   async previewBooking(userId: string, dto: PreviewBookingDto) {
@@ -1413,6 +1415,14 @@ export class BookingService {
       booking: Booking,
     ) => Promise<void>;
   }) {
+    let chatEvent: {
+      bookingId: string;
+      bookingCode: string;
+      customerId: string;
+      providerUserId: string;
+      providerDisplayName: string;
+    } | null = null;
+
     await this.dataSource.transaction(async (manager) => {
       const bookingRepo = manager.getRepository(Booking);
       const booking = await bookingRepo.findOne({
@@ -1426,7 +1436,7 @@ export class BookingService {
 
       const provider = await manager.getRepository(ProviderProfile).findOne({
         where: { id: booking.providerId },
-        select: { id: true, userId: true },
+        select: { id: true, userId: true, displayName: true },
       });
 
       const isCustomerOwner = booking.customerId === input.actorUser.id;
@@ -1483,7 +1493,62 @@ export class BookingService {
       if (input.onAfterStatusUpdate) {
         await input.onAfterStatusUpdate(manager, savedBooking);
       }
+
+      if (provider?.userId) {
+        chatEvent = {
+          bookingId: savedBooking.id,
+          bookingCode: savedBooking.bookingCode,
+          customerId: savedBooking.customerId,
+          providerUserId: provider.userId,
+          providerDisplayName: provider.displayName ?? 'Nhà cung cấp',
+        };
+      }
     });
+
+    if (chatEvent && this.chatService) {
+      const ev = chatEvent;
+      const content = this.buildBookingSystemMessage(
+        ev.bookingCode,
+        ev.providerDisplayName,
+        input.targetStatus,
+        input.historyReason,
+      );
+      if (content) {
+        try {
+          await this.chatService.createSystemMessageForBooking({
+            bookingId: ev.bookingId,
+            customerId: ev.customerId,
+            providerUserId: ev.providerUserId,
+            actorUserId: input.actorUser.id,
+            content,
+          });
+        } catch {
+          // Không làm gián đoạn giao dịch chuyển trạng thái đơn nếu đồng bộ tin nhắn hệ thống lỗi
+        }
+      }
+    }
+  }
+
+  private buildBookingSystemMessage(
+    bookingCode: string,
+    providerDisplayName: string,
+    targetStatus: BookingStatus,
+    reason: string,
+  ): string | null {
+    switch (targetStatus) {
+      case BookingStatus.CONFIRMED:
+        return `Đơn đặt lịch #${bookingCode} đã được Nhà cung cấp ${providerDisplayName} xác nhận`;
+      case BookingStatus.IN_PROGRESS:
+        return `Nhà cung cấp ${providerDisplayName} đã bắt đầu thực hiện đơn #${bookingCode}`;
+      case BookingStatus.COMPLETED:
+        return `Đơn đặt lịch #${bookingCode} đã hoàn tất nghiệm thu thành công`;
+      case BookingStatus.REJECTED:
+        return `Đơn đặt lịch #${bookingCode} đã bị từ chối: ${reason}`;
+      case BookingStatus.CANCELLED:
+        return `Đơn đặt lịch #${bookingCode} đã bị hủy: ${reason}`;
+      default:
+        return null;
+    }
   }
 
   private serializeBookingSummary(

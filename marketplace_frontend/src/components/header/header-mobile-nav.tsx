@@ -15,8 +15,10 @@ const ITEM_CLASS_NAME =
 
 export function HeaderMobileNav({
   showBecomeProvider,
+  unreadChatCount = 0,
 }: {
   showBecomeProvider: boolean;
+  unreadChatCount?: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -33,11 +35,14 @@ export function HeaderMobileNav({
             variant="ghost"
             size="icon-lg"
             aria-label="Mở menu"
-            className="lg:hidden"
+            className="relative lg:hidden"
           />
         }
       >
         <Menu />
+        {unreadChatCount > 0 && (
+          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary ring-2 ring-card" />
+        )}
       </SheetTrigger>
 
       <SheetContent side="left">
@@ -51,6 +56,8 @@ export function HeaderMobileNav({
           {HEADER_NAV_ITEMS.map((item) => {
             const active = isActivePath(pathname, item.href);
             const Icon = item.icon;
+            const showBadge =
+              item.href === "/messages" && unreadChatCount > 0;
 
             return (
               <HeaderAction
@@ -60,13 +67,21 @@ export function HeaderMobileNav({
                 onSelect={close}
                 className={cn(
                   ITEM_CLASS_NAME,
+                  "justify-between",
                   active
                     ? "bg-primary/10 font-semibold text-primary"
                     : "text-foreground hover:bg-muted",
                 )}
               >
-                {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                {item.label}
+                <span className="flex items-center gap-2">
+                  {Icon && <Icon className="h-4 w-4 shrink-0" />}
+                  {item.label}
+                </span>
+                {showBadge && (
+                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-xs leading-none font-bold text-primary-foreground tabular-nums">
+                    {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                  </span>
+                )}
               </HeaderAction>
             );
           })}

@@ -6,6 +6,7 @@ import { setUpApp } from './bootstrap/setup-app';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { APP_CONFIG } from './config/app/app.config';
 import { setUpSwagger } from './bootstrap/setup-swagger';
+import { CorsSocketIoAdapter } from './bootstrap/socket-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -18,6 +19,7 @@ async function bootstrap() {
   const logger = app.get(Logger);
 
   setUpApp(app, logger, config);
+  app.useWebSocketAdapter(new CorsSocketIoAdapter(app, config, logger));
   setUpSwagger(app);
 
   const port = appCfg.PORT;
